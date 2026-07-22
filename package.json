@@ -1,0 +1,22 @@
+{
+  "name": "reinos-ancestrales",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server/index.js",
+    "start": "concurrently \"npm run server\" \"npm run dev\"",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.179.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.179.0",
+    "concurrently": "^10.0.3",
+    "typescript": "^5.8.3",
+    "vite": "^7.1.3"
+  }
+}

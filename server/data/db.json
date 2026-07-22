@@ -1,0 +1,24 @@
+{
+  "users": {
+    "1234567890": {
+      "passwordHash": "xkm2wm5",
+      "createdAt": 1784642310700
+    },
+    "3228281708": {
+      "passwordHash": "x1yess1p",
+      "createdAt": 1784741514088
+    }
+  },
+  "profiles": {
+    "1234567890": {
+      "nft": null,
+      "game": null,
+      "updatedAt": 1784642310700
+    },
+    "3228281708": {
+      "nft": null,
+      "game": null,
+      "updatedAt": 1784741514088
+    }
+  }
+}

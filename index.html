@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#17251d" />
+    <meta name="description" content="MVP de Reinos Ancestrales" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+    <title>Reinos Ancestrales</title>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="game-canvas" aria-label="Mundo de juego 3D"></canvas>
+      <section class="hud" aria-label="Estado del personaje">
+        <div class="brand"><span>*</span><div><strong>REINOS</strong><small>ANCESTRALES</small></div></div>
+        <div class="bars">
+          <label>Vida <span id="health-value">100 / 100</span><i><b id="health-bar"></b></i></label>
+          <label>Energia <span id="energy-value">100 / 100</span><i><b class="energy" id="energy-bar"></b></i></label>
+          <label class="xp-label">EXP <span id="xp-value">0 / 30</span><i><b class="xp" id="xp-bar"></b></i></label>
+        </div>
+        <button class="profile-button" id="inventory-button" aria-label="Abrir mochila">=</button>
+        <button class="profile-button" id="reward-button" aria-label="Abrir recompensas">+</button>
+        <button class="profile-button" id="settings-button" aria-label="Ajustes graficos">o</button>
+        <button class="install-button" id="install-button" hidden>Instalar</button>
+        <span class="zone-badge" id="zone-label">Aldea</span>
+        <div class="compass" id="compass"><span id="compass-arrow"></span><small id="compass-label"></small></div>
+      </section>
+      <section class="quest-card"><p class="eyebrow">MISION ACTUAL</p><h1 id="quest-title">El lobo del bosque</h1><p id="quest-description">Explora el claro y encuentra al lobo ancestral.</p></section>
+      <section class="target-card" id="target-card" hidden><span id="target-name">Criatura</span><i><b id="target-health"></b></i></section>
+      <section class="controls" aria-label="Controles tactiles">
+        <div class="joystick-area" id="joystick" aria-label="Joystick para moverse"><span id="joystick-knob"></span></div>
+        <div class="action-buttons"><button id="interact-button" aria-label="Interactuar">+<small>USAR</small></button><button id="attack-button" aria-label="Atacar">X<small>ATACAR</small></button></div>
+      </section>
+      <div class="hint" id="hint">Camina para moverte. Los recursos se recolectan al tocarlos.</div>
+      <div class="levelup-flash" id="levelup-flash"></div>
+      <div class="damage-numbers" id="damage-numbers"></div>
+      <aside class="inventory-panel" id="inventory-panel" hidden>
+        <button class="close-panel" id="close-inventory" aria-label="Cerrar mochila">x</button><p class="eyebrow">MOCHILA</p><h2 id="profession-name">Aventurero</h2><p class="level" id="level-value">Nivel 1 - 0 EXP</p>
+        <div class="items"><span>Trigo <b id="trigo-count">0</b></span><span>Mineral <b id="mineral-count">0</b></span><span>Esencia <b id="esencia-count">0</b></span><span>Madera <b id="madera-count">0</b></span><span>Hierba <b id="hierba-count">0</b></span></div>
+        <p class="eyebrow craft-title">ESTADISTICAS <b id="attribute-points">0</b> puntos</p>
+        <div class="attributes">
+          <span>⚔ Ataque <b id="atk-value">1</b><button data-attribute="atk">+</button></span><span>🛡 Defensa <b id="def-value">1</b><button data-attribute="def">+</button></span><span>💨 Velocidad <b id="spd-value">1</b><button data-attribute="spd">+</button></span><span>❤ Vida <b id="hp-value">1</b><button data-attribute="hp">+</button></span><span>✦ Habilidad <b id="ability-value">1</b><button data-attribute="ability">+</button></span>
+        </div>
+        <p class="eyebrow craft-title">CONSUMIBLES</p>
+        <div class="consumables"><button data-use="racion">Usar racion <b id="racion-use-count">0</b></button><button data-use="pocion">Usar pocion <b id="pocion-use-count">0</b></button><button data-use="unguento">Usar unguento <b id="unguento-use-count">0</b></button></div>
+        <p class="eyebrow craft-title">FABRICACION</p>
+        <div class="recipes">
+          <button data-recipe="racion">Racion <small>2 trigo: +40 energia</small><b id="racion-count">0</b></button>
+          <button data-recipe="espada">Espada <small>2 mineral: dano x2</small><b id="espada-count">0</b></button>
+          <button data-recipe="pocion">Pocion <small>2 esencia: +45 vida</small><b id="pocion-count">0</b></button>
+          <button data-recipe="escudo">Escudo <small>2 madera: reduce dano</small><b id="escudo-count">0</b></button>
+          <button data-recipe="unguento">Unguento <small>2 hierba: +25 vida</small><b id="unguento-count">0</b></button>
+        </div>
+      </aside>
+      <aside class="reward-panel" id="reward-panel" hidden>
+        <button class="close-panel" id="close-rewards" aria-label="Cerrar recompensas">x</button>
+        <p class="eyebrow">RECOMPENSA DE COMERCIO</p><h2>Canjear factura</h2>
+        <p>Demo local: usa <b>TABERNA</b> o <b>PANADERIA</b>.</p>
+        <button class="scan-button" id="scan-qr-button">Escanear QR</button>
+        <video id="qr-video" class="qr-video" muted playsinline hidden></video><p class="scan-status" id="scan-status"></p>
+        <form id="reward-form"><input id="reward-code" maxlength="128" placeholder="Codigo de factura" autocomplete="off" /><button>Canjear</button></form>
+        <small>En produccion, este formulario sera reemplazado por lector QR y validacion segura en servidor.</small>
+      </aside>
+      <aside class="settings-panel" id="settings-panel" hidden>
+        <button class="close-panel" id="close-settings" aria-label="Cerrar ajustes">x</button>
+        <p class="eyebrow">RENDIMIENTO</p><h2>Calidad grafica</h2>
+        <label for="quality-select">Resolucion de renderizado</label>
+        <select id="quality-select"><option value="low">Baja - mayor rendimiento</option><option value="medium">Media - equilibrada</option><option value="high">Alta - mejor imagen</option></select>
+        <small>El ajuste se guarda en este dispositivo. Usa baja en celulares con poca memoria.</small>
+      </aside>
+      <aside class="dialog-panel" id="dialog-panel" hidden>
+        <button class="close-panel" id="close-dialog" aria-label="Cerrar dialogo">x</button>
+        <p class="eyebrow">DIALOGO</p><h2 id="dialog-name">NPC</h2>
+        <p id="dialog-text"></p>
+      </aside>
+      <aside class="trade-panel" id="trade-panel" hidden>
+        <button class="close-panel" id="close-trade" aria-label="Cerrar comercio">x</button>
+        <p class="eyebrow">COMERCIO</p><h2 id="trade-name">Mercader</h2>
+        <div id="trade-offers" class="trade-offers"></div>
+      </aside>
+      <section class="login-screen" id="login-screen"><div class="login-panel">
+        <p class="eyebrow">INICIAR SESION</p>
+        <h1>Reinos Ancestrales</h1>
+        <p class="login-subtitle">Crea tu guerrero unico. Combate, recolecta y sube de nivel en un mundo 3D.</p>
+        <div class="login-form">
+          <label>Telefono
+            <input type="tel" id="login-phone" placeholder="10-digitos" maxlength="15" inputmode="numeric" autocomplete="username" />
+          </label>
+          <label>Contrasena
+            <input type="password" id="login-password" placeholder="Minimo 4 caracteres" maxlength="64" autocomplete="current-password" />
+          </label>
+          <p class="login-error hidden" id="login-error"></p>
+          <button id="login-submit" class="nft-btn primary">Iniciar sesion</button>
+          <button id="login-register" class="nft-btn">Crear cuenta nueva</button>
+        </div>
+        <small class="login-note">Tu personaje se guarda en el servidor. Accede desde cualquier dispositivo.</small>
+        <button class="clear-cache-button" id="clear-cache-button">Limpiar cache</button>
+        <small>Usa joystick/WASD. Espacio ataca; E interactua.</small>
+      </div></section>
+      <section class="intro hidden" id="intro"><div class="intro-panel"><p class="eyebrow">MVP WEB - PWA</p><h1>Reinos Ancestrales</h1><p>Entrena tu guerrero unico. Combate, recolecta y sube de nivel en un mundo 3D.</p></div></section>
+      <section class="nft-screen hidden" id="nft-screen"><div class="nft-panel">
+        <button class="close-panel" id="nft-back" aria-label="Volver">x</button>
+        <p class="eyebrow">TU GUERRERO NFT</p>
+        <div class="nft-info">
+          <h2 id="nft-name">-</h2>
+          <p class="nft-id" id="nft-id">-</p>
+          <div class="nft-tags"><span id="nft-rarity">-</span> · <span id="nft-element">-</span> · <span id="nft-body-type">-</span></div>
+        </div>
+        <div id="nft-preview" class="nft-preview"></div>
+        <div class="nft-stats-grid" id="nft-stats"></div>
+        <button id="nft-generate" class="nft-btn">Generar nuevo guerrero</button>
+        <small id="nft-generate-secondary" class="nft-link">O genera otro diferente</small>
+        <button id="nft-enter" class="nft-btn primary" hidden>Entrar al reino</button>
+        <p class="nft-hint">Cada guerrero es unico e irrepetible con estadisticas random.</p>
+      </div></section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
