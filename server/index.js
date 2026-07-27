@@ -220,7 +220,7 @@ app.put('/api/profile', auth, (req, res) => {
     saveProfile(req.phone, { nft: null, game: null });
   }
 
-  const { nft, inventory, crafted, redeemedRewards, quest, quests, attributePoints, currentZone, unlockedZones, loot } = req.body;
+  const { nft, inventory, crafted, redeemedRewards, quest, quests, attributePoints, currentZone, unlockedZones, loot, achievements } = req.body;
 
   if (!nft || typeof nft !== 'object') return res.status(400).json({ error: 'Perfil invalido: nft requerido' });
   if (typeof attributePoints !== 'number' || attributePoints < 0 || attributePoints > 100) {
@@ -233,9 +233,47 @@ app.put('/api/profile', auth, (req, res) => {
     return res.status(400).json({ error: 'redeemedRewards invalido' });
   }
 
-  const validZones = ['aldea', 'bosque', 'ruinas'];
+  const validZones = ['aldea', 'bosque', 'ruinas', 'desierto', 'cueva'];
   if (currentZone && !validZones.includes(currentZone)) {
     return res.status(400).json({ error: 'Zona invalida' });
+  }
+
+  for (const z of unlockedZones) {
+    if (!validZones.includes(z)) {
+      return res.status(400).json({ error: 'Zona desbloqueada invalida' });
+    }
+  }
+
+  const validResources = ['trigo', 'mineral', 'esencia', 'madera', 'hierba'];
+  if (inventory && typeof inventory === 'object') {
+    for (const key of Object.keys(inventory)) {
+      if (!validResources.includes(key) || typeof inventory[key] !== 'number' || inventory[key] < 0 || inventory[key] > 9999) {
+        return res.status(400).json({ error: 'Inventory invalido' });
+      }
+    }
+  }
+
+  const validCrafted = ['racion', 'espada', 'pocion', 'escudo', 'unguento', 'armadura', 'amuleto', 'pocion_fuerza', 'pocion_velocidad', 'antidoto', 'gran_pocion', 'elixir'];
+  if (crafted && typeof crafted === 'object') {
+    for (const key of Object.keys(crafted)) {
+      if (!validCrafted.includes(key) || typeof crafted[key] !== 'number' || crafted[key] < 0 || crafted[key] > 9999) {
+        return res.status(400).json({ error: 'Crafted invalido' });
+      }
+    }
+  }
+
+  if (quest && typeof quest === 'object') {
+    if (typeof quest.resources !== 'number' || typeof quest.creatures !== 'number' || typeof quest.completed !== 'boolean') {
+      return res.status(400).json({ error: 'Quest invalido' });
+    }
+  }
+
+  if (!Array.isArray(loot)) {
+    return res.status(400).json({ error: 'Loot invalido' });
+  }
+
+  if (nft.level && (typeof nft.level !== 'number' || nft.level < 1 || nft.level > 100)) {
+    return res.status(400).json({ error: 'Nivel invalido' });
   }
 
   const profileData = {
@@ -249,6 +287,7 @@ app.put('/api/profile', auth, (req, res) => {
     currentZone,
     unlockedZones,
     loot,
+    achievements: Array.isArray(achievements) ? achievements : [],
   };
 
   saveProfile(req.phone, profileData);

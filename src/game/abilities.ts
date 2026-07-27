@@ -1,10 +1,4 @@
-import {
-  type Element,
-  type NftCharacter,
-  totalStats,
-  type NftStats,
-} from './nft';
-import { type Enemy } from './world';
+import { type Element, type NftCharacter, type NftStats } from './nft';
 import { Group, Mesh, SphereGeometry, MeshLambertMaterial, Vector3 } from 'three';
 
 export interface Ability {
@@ -166,7 +160,11 @@ export function calculateAbilityEffect(
     case 'flame_burst':
       return { type: 'damage', value: Math.round(damageBase * 1.2), targets: 'aoe' };
     case 'heal_wave':
-      return { type: 'heal', value: Math.round(30 + stats.ability * 3 + level * 2), targets: 'single' };
+      return {
+        type: 'heal',
+        value: Math.round(30 + stats.ability * 3 + level * 2),
+        targets: 'single',
+      };
     case 'frost_shield':
       return { type: 'shield', value: 50, duration: 5, targets: 'single' };
     case 'stone_wall':
@@ -184,7 +182,12 @@ export function calculateAbilityEffect(
     case 'divine_smite':
       return { type: 'damage', value: Math.round(damageBase * 2), targets: 'single' };
     case 'holy_barrier':
-      return { type: 'shield', value: Math.round(50 + stats.ability * 2), duration: 8, targets: 'single' };
+      return {
+        type: 'shield',
+        value: Math.round(50 + stats.ability * 2),
+        duration: 8,
+        targets: 'single',
+      };
     default:
       return { type: 'damage', value: Math.round(damageBase), targets: 'single' };
   }

@@ -26,7 +26,7 @@ import {
   saveQuality,
   type QualityLevel,
 } from './quality';
-import { buildNftModel, totalStats, xpForLevel } from './nft';
+import { buildNftModel, totalStats, xpForLevel, type StatName } from './nft';
 import { apiSaveProfile, isLoggedIn } from './api';
 import {
   createActiveAbilities,
@@ -34,6 +34,23 @@ import {
   type ActiveAbility,
   type AbilityEffect,
 } from './abilities';
+import { updateAchievement } from './achievements';
+
+type ConsumableItem =
+  | 'racion'
+  | 'pocion'
+  | 'unguento'
+  | 'pocion_fuerza'
+  | 'pocion_velocidad'
+  | 'antidoto'
+  | 'gran_pocion'
+  | 'elixir';
+
+interface ActiveBuff {
+  stat: StatName;
+  amount: number;
+  timerId: ReturnType<typeof setTimeout>;
+}
 
 export class Game {
   private readonly scene = new Scene();
@@ -70,6 +87,15 @@ export class Game {
   private stunTimer = 0;
   private dashTimer = 0;
   private dashDirection = new Vector3();
+  private readonly cameraOffset = new Vector3(0, 7.5, 9);
+  private readonly tempVec = new Vector3();
+  private readonly activeBuffs: ActiveBuff[] = [];
+  private cachedNearestEnemy: Enemy | null = null;
+  private cachedNearestEnemyDist = Infinity;
+  private readonly dom = {} as Record<string, HTMLElement>;
+  private readonly domInput = {} as Record<string, HTMLInputElement>;
+  private readonly domButton = {} as Record<string, HTMLButtonElement>;
+  private readonly domSelect = {} as Record<string, HTMLSelectElement>;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -85,37 +111,40 @@ export class Game {
     this.loadZone(this.currentZone);
     this.health = this.maxHealth();
     this.camera.position.set(0, 7.5, 9);
+
+    this.cacheDom();
+
     this.input = new InputController(
-      this.element('#joystick'),
-      this.element('#joystick-knob'),
+      this.dom['joystick'],
+      this.dom['joystick-knob'],
       () => this.attack(),
       () => this.interact()
     );
     window.addEventListener('resize', () => this.resize());
     document.addEventListener('visibilitychange', () => this.clock.getDelta());
-    this.element('#inventory-button').addEventListener('click', () => this.toggleInventory());
-    this.element('#close-inventory').addEventListener('click', () => this.toggleInventory(true));
-    this.element('#reward-button').addEventListener('click', () => this.toggleRewards());
-    this.element('#close-rewards').addEventListener('click', () => this.toggleRewards(true));
-    this.element<HTMLFormElement>('#reward-form').addEventListener('submit', (event) => {
+    this.dom['inventory-button'].addEventListener('click', () => this.toggleInventory());
+    this.dom['close-inventory'].addEventListener('click', () => this.toggleInventory(true));
+    this.dom['reward-button'].addEventListener('click', () => this.toggleRewards());
+    this.dom['close-rewards'].addEventListener('click', () => this.toggleRewards(true));
+    (this.dom['reward-form'] as HTMLFormElement).addEventListener('submit', (event) => {
       event.preventDefault();
       void this.redeemReward();
     });
     this.qrScanner = new QrScanner(
-      this.element('#qr-video'),
-      this.element('#scan-status'),
+      this.domInput['qr-video'] as unknown as HTMLVideoElement,
+      this.dom['scan-status'],
       (code) => {
-        this.element<HTMLInputElement>('#reward-code').value = code;
+        this.domInput['reward-code'].value = code;
         void this.redeemReward();
       }
     );
-    this.element('#scan-qr-button').addEventListener('click', () => {
-      this.element('#qr-video').hidden = false;
+    this.dom['scan-qr-button'].addEventListener('click', () => {
+      this.domInput['qr-video'].hidden = false;
       void this.qrScanner.start();
     });
-    this.element('#settings-button').addEventListener('click', () => this.toggleSettings());
-    this.element('#close-settings').addEventListener('click', () => this.toggleSettings(true));
-    const qualitySelect = this.element<HTMLSelectElement>('#quality-select');
+    this.dom['settings-button'].addEventListener('click', () => this.toggleSettings());
+    this.dom['close-settings'].addEventListener('click', () => this.toggleSettings(true));
+    const qualitySelect = this.domSelect['quality-select'];
     qualitySelect.value = this.quality;
     qualitySelect.addEventListener('change', () =>
       this.setQuality(qualitySelect.value as QualityLevel)
@@ -131,18 +160,18 @@ export class Game {
       .querySelectorAll<HTMLButtonElement>('[data-attribute]')
       .forEach((button) =>
         button.addEventListener('click', () =>
-          this.increaseAttribute(button.dataset.attribute as import('./nft').StatName)
+          this.increaseAttribute(button.dataset.attribute as StatName)
         )
       );
     document
       .querySelectorAll<HTMLButtonElement>('[data-use]')
       .forEach((button) =>
         button.addEventListener('click', () =>
-          this.useConsumable(button.dataset.use as 'racion' | 'pocion' | 'unguento')
+          this.useConsumable(button.dataset.use as ConsumableItem)
         )
       );
-    this.element('#close-dialog')?.addEventListener('click', () => this.closeDialog());
-    this.element('#close-trade')?.addEventListener('click', () => this.closeTrade());
+    this.dom['close-dialog']?.addEventListener('click', () => this.closeDialog());
+    this.dom['close-trade']?.addEventListener('click', () => this.closeTrade());
     this.abilities = createActiveAbilities(this.profile.nft);
     this.setupAbilityButtons();
     this.updateProfilePanel();
@@ -177,6 +206,9 @@ export class Game {
       this.lastServerSave = now;
       apiSaveProfile(this.profile).catch(() => {});
     }
+
+    this.cacheNearestEnemy();
+
     const spdMul = 1 + (stats.spd - 5) * 0.04;
     if (direction.lengthSq() > 0) {
       const speed = 4.2 * spdMul;
@@ -211,10 +243,8 @@ export class Game {
     this.updateAnimations(delta);
     this.updateAbilityCooldowns();
     this.cameraTarget.set(this.player.position.x, 0.5, this.player.position.z);
-    this.camera.position.lerp(
-      this.cameraTarget.clone().add(new Vector3(0, 7.5, 9)),
-      1 - Math.exp(-delta * 5)
-    );
+    this.tempVec.copy(this.cameraTarget).add(this.cameraOffset);
+    this.camera.position.lerp(this.tempVec, 1 - Math.exp(-delta * 5));
     this.camera.lookAt(this.cameraTarget);
     this.updateHud();
     this.updateTarget();
@@ -231,6 +261,9 @@ export class Game {
     this.profile.inventory[node.kind] += amount;
     this.addExperience(5);
     this.profile.quest.resources += amount;
+    this.trackAchievement('collector_1', amount);
+    this.trackAchievement('collector_2', amount);
+    this.trackAchievement('collector_3', amount);
     this.updateQuest();
     this.hint(`+${amount} ${node.kind}`);
     window.setTimeout(() => {
@@ -271,13 +304,7 @@ export class Game {
     this.attackAnimTimer = 0.25;
     this.player.scale.setScalar(1.12);
     const stats = totalStats(this.profile.nft);
-    const enemy = this.enemies
-      .filter((candidate) => candidate.alive)
-      .sort(
-        (a, b) =>
-          this.player.position.distanceTo(a.mesh.position) -
-          this.player.position.distanceTo(b.mesh.position)
-      )[0];
+    const enemy = this.cachedNearestEnemy;
     if (!enemy) {
       this.hint('No hay criaturas cerca.');
       return;
@@ -297,6 +324,12 @@ export class Game {
       enemy.mesh.visible = false;
       this.addExperience(15);
       this.profile.quest.creatures += 1;
+      this.trackAchievement('monster_slayer_1', 1);
+      this.trackAchievement('monster_slayer_2', 1);
+      if (enemy.kind === 'wolf') this.trackAchievement('wolf_hunter_1', 1);
+      if (enemy.kind === 'wolf') this.trackAchievement('wolf_hunter_2', 1);
+      if (enemy.kind === 'spirit') this.trackAchievement('spirit_hunter_1', 1);
+      if (enemy.kind === 'golem') this.trackAchievement('golem_hunter_1', 1);
       this.trackQuestKill(enemy);
       const drops = rollLoot(enemy.kind);
       if (drops.length > 0) {
@@ -348,9 +381,16 @@ export class Game {
         );
       }
       this.hint(`Mision "${qdef.title}" completada. +${qdef.rewardExp} EXP`);
+      const completedCount = this.profile.quests.filter((q) => q.completed).length;
+      if (completedCount >= 3) this.trackAchievement('quest_complete_1', 0);
+      if (completedCount >= 7) this.trackAchievement('quest_complete_2', 0);
       if (isLoggedIn()) apiSaveProfile(this.profile).catch(() => {});
     }
     saveProfile(this.profile);
+  }
+
+  private trackAchievement(id: string, amount: number) {
+    this.profile.achievements = updateAchievement(this.profile.achievements, id, amount);
   }
 
   private interact() {
@@ -368,11 +408,16 @@ export class Game {
     this.profile.currentZone = portal.targetZone;
     saveProfile(this.profile);
     this.loadZone(portal.targetZone);
+    this.trackAchievement('explorer_2', 1);
+    this.trackAchievement('explorer_3', 1);
+    const visitedCount = new Set(this.profile.unlockedZones).size;
+    if (visitedCount >= 5) this.trackAchievement('explorer_1', 0);
     this.hint(`Has llegado a ${portal.label}.`);
     this.updateZoneLabel();
   }
 
   private loadZone(zone: ZoneId) {
+    this.clearBuffs();
     this.scene.clear();
     this.scene.add(this.player);
     const cfg = zoneConfig(zone);
@@ -396,19 +441,19 @@ export class Game {
   }
 
   private showDialog(npc: Npc) {
-    this.element('#dialog-name').textContent = npc.name;
-    this.element('#dialog-text').textContent = npc.dialogue;
-    this.element('#dialog-panel').hidden = false;
+    this.dom['dialog-name'].textContent = npc.name;
+    this.dom['dialog-text'].textContent = npc.dialogue;
+    this.dom['dialog-panel'].hidden = false;
   }
 
   private closeDialog() {
-    this.element('#dialog-panel').hidden = true;
+    this.dom['dialog-panel'].hidden = true;
   }
 
   private openTrade(npc: Npc) {
     if (!npc.tradeOffers) return;
-    this.element('#trade-name').textContent = npc.name;
-    const container = this.element('#trade-offers');
+    this.dom['trade-name'].textContent = npc.name;
+    const container = this.dom['trade-offers'];
     container.innerHTML = '';
     npc.tradeOffers.forEach((offer) => {
       const have = this.profile.inventory[offer.give];
@@ -432,11 +477,11 @@ export class Game {
       });
       container.appendChild(btn);
     });
-    this.element('#trade-panel').hidden = false;
+    this.dom['trade-panel'].hidden = false;
   }
 
   private closeTrade() {
-    this.element('#trade-panel').hidden = true;
+    this.dom['trade-panel'].hidden = true;
   }
 
   private handleStationInteract() {
@@ -498,11 +543,13 @@ export class Game {
   }
 
   private respawnPlayer() {
-    this.player.position.set(0, 0, 0);
+    this.clearBuffs();
+    const cfg = zoneConfig(this.currentZone);
+    this.player.position.set(cfg.playerStart.x, 0, cfg.playerStart.z);
     this.player.scale.setScalar(1);
     this.health = Math.round(this.maxHealth() * 0.65);
     this.energy = 60;
-    this.hint('Has caido en batalla. Regresaste a la aldea.');
+    this.hint('Has caido en batalla. Regresaste al punto de inicio.');
   }
 
   private addExperience(amount: number) {
@@ -515,6 +562,9 @@ export class Game {
       this.profile.attributePoints += 1;
       this.levelupFlashTimer = 0.6;
       this.hint(`${nft.name} subio a nivel ${nft.level}!`);
+      if (nft.level >= 5) this.trackAchievement('level_5', 0);
+      if (nft.level >= 10) this.trackAchievement('level_10', 0);
+      if (nft.level >= 20) this.trackAchievement('level_20', 0);
       if (isLoggedIn()) apiSaveProfile(this.profile).catch(() => {});
     }
     saveProfile(this.profile);
@@ -524,20 +574,20 @@ export class Game {
   private updateQuest() {
     const qdef = currentQuestDef(this.profile);
     if (!qdef) {
-      this.element('#quest-title').textContent = 'Sin misiones';
-      this.element('#quest-description').textContent = 'Todas las misiones completadas.';
+      this.dom['quest-title'].textContent = 'Sin misiones';
+      this.dom['quest-description'].textContent = 'Todas las misiones completadas.';
       return;
     }
     const qs = this.profile.quests.find((q) => !q.completed);
     if (!qs) {
-      this.element('#quest-title').textContent = 'Sin misiones';
-      this.element('#quest-description').textContent = 'Todas las misiones completadas.';
+      this.dom['quest-title'].textContent = 'Sin misiones';
+      this.dom['quest-description'].textContent = 'Todas las misiones completadas.';
       return;
     }
-    this.element('#quest-title').textContent = qdef.title;
+    this.dom['quest-title'].textContent = qdef.title;
     const resources = Math.min(this.profile.quest.resources, qdef.requiredResources);
     const creatures = Math.min(this.profile.quest.creatures, qdef.requiredCreatures);
-    this.element('#quest-description').textContent =
+    this.dom['quest-description'].textContent =
       `${qdef.description} (Recursos: ${resources}/${qdef.requiredResources}, Criaturas: ${creatures}/${qdef.requiredCreatures})`;
     saveProfile(this.profile);
   }
@@ -572,6 +622,9 @@ export class Game {
     }
     this.profile.inventory[ingredient] -= cost;
     this.profile.crafted[recipe] += 1;
+    this.trackAchievement('crafter_1', 1);
+    this.trackAchievement('crafter_2', 1);
+    this.trackAchievement('crafter_3', 1);
     this.addExperience(4);
     this.hint(`${name} fabricado${stationName ? ` en ${stationName}` : ''}.`);
     this.updateProfilePanel();
@@ -590,17 +643,7 @@ export class Game {
     this.hint(`${stat} ha aumentado.`);
   }
 
-  private useConsumable(
-    item:
-      | 'racion'
-      | 'pocion'
-      | 'unguento'
-      | 'pocion_fuerza'
-      | 'pocion_velocidad'
-      | 'antidoto'
-      | 'gran_pocion'
-      | 'elixir'
-  ) {
+  private useConsumable(item: ConsumableItem) {
     if (this.profile.crafted[item] <= 0) {
       this.hint(`No tienes ${item}.`);
       return;
@@ -626,18 +669,10 @@ export class Game {
         this.energy = Math.min(100, this.energy + 50);
         break;
       case 'pocion_fuerza':
-        this.profile.nft.baseStats.atk += 2;
-        this.hint('Ataque +2 por 60 segundos.');
-        window.setTimeout(() => {
-          this.profile.nft.baseStats.atk -= 2;
-        }, 60000);
+        this.applyBuff('atk', 2, 60000, 'Ataque +2 por 60 segundos.');
         break;
       case 'pocion_velocidad':
-        this.profile.nft.baseStats.spd += 3;
-        this.hint('Velocidad +3 por 45 segundos.');
-        window.setTimeout(() => {
-          this.profile.nft.baseStats.spd -= 3;
-        }, 45000);
+        this.applyBuff('spd', 3, 45000, 'Velocidad +3 por 45 segundos.');
         break;
       case 'antidoto':
         this.health = Math.min(this.maxHealth(), this.health + 20);
@@ -647,11 +682,36 @@ export class Game {
 
     saveProfile(this.profile);
     this.updateProfilePanel();
-    this.hint(`${item} usado.`);
+  }
+
+  private applyBuff(stat: StatName, amount: number, duration: number, message: string) {
+    const existing = this.activeBuffs.find((b) => b.stat === stat);
+    if (existing) {
+      clearTimeout(existing.timerId);
+      this.profile.nft.baseStats[stat] -= existing.amount;
+      this.activeBuffs.splice(this.activeBuffs.indexOf(existing), 1);
+    }
+    this.profile.nft.baseStats[stat] += amount;
+    const timerId = setTimeout(() => {
+      this.profile.nft.baseStats[stat] -= amount;
+      const idx = this.activeBuffs.findIndex((b) => b.stat === stat && b.amount === amount);
+      if (idx !== -1) this.activeBuffs.splice(idx, 1);
+      this.updateProfilePanel();
+    }, duration);
+    this.activeBuffs.push({ stat, amount, timerId });
+    this.hint(message);
+  }
+
+  private clearBuffs() {
+    for (const buff of this.activeBuffs) {
+      clearTimeout(buff.timerId);
+      this.profile.nft.baseStats[buff.stat] -= buff.amount;
+    }
+    this.activeBuffs.length = 0;
   }
 
   private setupAbilityButtons() {
-    const container = this.element('#ability-buttons');
+    const container = this.dom['ability-buttons'];
     if (!container) return;
     container.innerHTML = '';
 
@@ -711,18 +771,15 @@ export class Game {
     }
   }
 
-  private applyAbilityEffect(ability: ActiveAbility, effect: AbilityEffect) {
-    const stats = totalStats(this.profile.nft);
-
+  private applyAbilityEffect(_ability: ActiveAbility, effect: AbilityEffect) {
     switch (effect.type) {
       case 'damage': {
         const targets =
           effect.targets === 'aoe'
             ? this.enemies.filter(
-                (e) =>
-                  e.alive && e.mesh.position.distanceTo(this.player.position) < 6
+                (e) => e.alive && e.mesh.position.distanceTo(this.player.position) < 6
               )
-            : [this.nearestEnemy()];
+            : [this.cachedNearestEnemy];
 
         for (const enemy of targets) {
           if (!enemy) continue;
@@ -769,10 +826,7 @@ export class Game {
       }
       case 'stun': {
         this.enemies
-          .filter(
-            (e) =>
-              e.alive && e.mesh.position.distanceTo(this.player.position) < 6
-          )
+          .filter((e) => e.alive && e.mesh.position.distanceTo(this.player.position) < 6)
           .forEach((e) => {
             e.speed = 0;
             window.setTimeout(() => {
@@ -782,7 +836,7 @@ export class Game {
         break;
       }
       case 'lifesteal': {
-        const enemy = this.nearestEnemy();
+        const enemy = this.cachedNearestEnemy;
         if (enemy && enemy.alive) {
           const dmg = effect.value;
           enemy.health -= dmg;
@@ -816,7 +870,7 @@ export class Game {
         ability.currentCooldown = 0;
       }
 
-      const btn = this.element<HTMLButtonElement>(`[data-ability-index="${i}"]`);
+      const btn = document.querySelector<HTMLButtonElement>(`[data-ability-index="${i}"]`);
       if (btn) {
         const cooldownEl = btn.querySelector('.ability-cooldown');
         if (ability.currentCooldown > 0) {
@@ -833,7 +887,7 @@ export class Game {
   }
 
   private async redeemReward() {
-    const field = this.element<HTMLInputElement>('#reward-code');
+    const field = this.domInput['reward-code'];
     const reward = await validateRewardCode(field.value);
     if (!reward) {
       this.hint('Codigo de recompensa invalido.');
@@ -870,50 +924,114 @@ export class Game {
   }
   private updateHud() {
     const maxHealth = this.maxHealth();
-    this.element('#health-bar').style.width = `${(this.health / maxHealth) * 100}%`;
-    this.element('#health-value').textContent = `${Math.round(this.health)} / ${maxHealth}`;
-    this.element('#energy-bar').style.width = `${this.energy}%`;
-    this.element('#energy-value').textContent = `${Math.round(this.energy)} / 100`;
+    this.dom['health-bar'].style.width = `${(this.health / maxHealth) * 100}%`;
+    this.dom['health-value'].textContent = `${Math.round(this.health)} / ${maxHealth}`;
+    this.dom['energy-bar'].style.width = `${this.energy}%`;
+    this.dom['energy-value'].textContent = `${Math.round(this.energy)} / 100`;
     const xpRequired = xpForLevel(this.profile.nft.level);
-    this.element('#xp-bar').style.width = `${(this.profile.nft.xp / xpRequired) * 100}%`;
-    this.element('#xp-value').textContent = `${this.profile.nft.xp} / ${xpRequired}`;
+    this.dom['xp-bar'].style.width = `${(this.profile.nft.xp / xpRequired) * 100}%`;
+    this.dom['xp-value'].textContent = `${this.profile.nft.xp} / ${xpRequired}`;
   }
   private updateTarget() {
-    const enemy = this.nearestEnemy();
-    const card = this.element('#target-card');
-    const visible = Boolean(enemy && this.player.position.distanceTo(enemy.mesh.position) < 8);
+    const enemy = this.cachedNearestEnemy;
+    const card = this.dom['target-card'];
+    const visible = Boolean(enemy && this.cachedNearestEnemyDist < 8);
     card.hidden = !visible;
     if (!enemy || !visible) return;
-    this.element('#target-name').textContent = enemy.name;
-    this.element('#target-health').style.width = `${(enemy.health / enemy.maxHealth) * 100}%`;
+    this.dom['target-name'].textContent = enemy.name;
+    this.dom['target-health'].style.width = `${(enemy.health / enemy.maxHealth) * 100}%`;
   }
-  private nearestEnemy() {
-    return this.enemies
-      .filter((candidate) => candidate.alive)
-      .sort(
-        (a, b) =>
-          this.player.position.distanceTo(a.mesh.position) -
-          this.player.position.distanceTo(b.mesh.position)
-      )[0];
+  private cacheNearestEnemy() {
+    let closest: Enemy | null = null;
+    let minDist = Infinity;
+    for (const candidate of this.enemies) {
+      if (!candidate.alive) continue;
+      const dx = this.player.position.x - candidate.mesh.position.x;
+      const dz = this.player.position.z - candidate.mesh.position.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = candidate;
+      }
+    }
+    this.cachedNearestEnemy = closest;
+    this.cachedNearestEnemyDist = minDist;
+  }
+  private cacheDom() {
+    const ids = [
+      'joystick',
+      'joystick-knob',
+      'inventory-button',
+      'close-inventory',
+      'reward-button',
+      'close-rewards',
+      'reward-form',
+      'qr-video',
+      'scan-status',
+      'scan-qr-button',
+      'settings-button',
+      'close-settings',
+      'quality-select',
+      'close-dialog',
+      'close-trade',
+      'hint',
+      'health-bar',
+      'health-value',
+      'energy-bar',
+      'energy-value',
+      'xp-bar',
+      'xp-value',
+      'target-card',
+      'target-name',
+      'target-health',
+      'quest-title',
+      'quest-description',
+      'profession-name',
+      'level-value',
+      'attribute-points',
+      'zone-label',
+      'compass-arrow',
+      'compass-label',
+      'levelup-flash',
+      'damage-numbers',
+      'dialog-name',
+      'dialog-text',
+      'dialog-panel',
+      'trade-name',
+      'trade-offers',
+      'trade-panel',
+      'reward-code',
+      'ability-buttons',
+    ];
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) this.dom[id] = el;
+    }
+    this.domInput['qr-video'] = document.getElementById('qr-video') as HTMLInputElement;
+    this.domInput['reward-code'] = document.getElementById('reward-code') as HTMLInputElement;
+    this.domSelect['quality-select'] = document.getElementById(
+      'quality-select'
+    ) as HTMLSelectElement;
   }
   private updateProfilePanel() {
     const nft = this.profile.nft;
     const stats = totalStats(nft);
-    this.element('#profession-name').textContent = `${nft.name} (Lv.${nft.level})`;
-    this.element('#level-value').textContent = `${nft.xp} / ${xpForLevel(nft.level)} EXP`;
+    this.dom['profession-name'].textContent = `${nft.name} (Lv.${nft.level})`;
+    this.dom['level-value'].textContent = `${nft.xp} / ${xpForLevel(nft.level)} EXP`;
     (Object.keys(this.profile.inventory) as Array<keyof PlayerProfile['inventory']>).forEach(
       (key) => {
-        this.element(`#${key}-count`).textContent = String(this.profile.inventory[key]);
+        const el = this.dom[`${key}-count`];
+        if (el) el.textContent = String(this.profile.inventory[key]);
       }
     );
     (Object.keys(this.profile.crafted) as Array<keyof PlayerProfile['crafted']>).forEach((key) => {
-      const el = this.element<HTMLElement>(`#${key}-count`);
+      const el = this.dom[`${key}-count`];
       if (el) el.textContent = String(this.profile.crafted[key]);
     });
-    this.element('#attribute-points').textContent = String(this.profile.attributePoints);
+    this.dom['attribute-points'].textContent = String(this.profile.attributePoints);
     const statKeys = ['atk', 'def', 'spd', 'hp', 'ability'] as const;
     for (const key of statKeys) {
-      const el = this.element<HTMLElement>(`#${key}-value`);
+      const el = this.dom[`${key}-value`];
       if (el) el.textContent = String(stats[key]);
     }
   }
@@ -925,26 +1043,26 @@ export class Game {
       desierto: 'Desierto Ardiente',
       cueva: 'Cueva Profunda',
     };
-    this.element('#zone-label').textContent = labels[this.currentZone] ?? this.currentZone;
+    this.dom['zone-label'].textContent = labels[this.currentZone] ?? this.currentZone;
   }
   private toggleInventory(force?: boolean) {
-    const panel = this.element('#inventory-panel');
+    const panel = this.dom['inventory-panel'];
     panel.hidden = force ?? !panel.hidden;
   }
   private toggleRewards(force?: boolean) {
-    const panel = this.element('#reward-panel');
+    const panel = this.dom['reward-panel'];
     panel.hidden = force ?? !panel.hidden;
     if (panel.hidden) {
       this.qrScanner.stop();
-      this.element('#qr-video').hidden = true;
+      this.domInput['qr-video'].hidden = true;
     }
   }
   private toggleSettings(force?: boolean) {
-    const panel = this.element('#settings-panel');
+    const panel = this.dom['settings-panel'];
     panel.hidden = force ?? !panel.hidden;
   }
   private hint(message: string) {
-    this.element('#hint').textContent = message;
+    this.dom['hint'].textContent = message;
   }
   private updateAnimations(delta: number) {
     if (this.attackAnimTimer > 0) {
@@ -956,13 +1074,13 @@ export class Game {
     }
     if (this.levelupFlashTimer > 0) {
       this.levelupFlashTimer -= delta;
-      const flash = this.element<HTMLElement>('#levelup-flash');
+      const flash = this.dom['levelup-flash'];
       if (this.levelupFlashTimer > 0) flash.classList.add('active');
       else flash.classList.remove('active');
     }
   }
   private showDamageNumber(amount: number, isAbility = false) {
-    const container = this.element<HTMLElement>('#damage-numbers');
+    const container = this.dom['damage-numbers'];
     const num = document.createElement('div');
     num.className = 'damage-num';
     num.textContent = `-${amount}`;
@@ -977,7 +1095,7 @@ export class Game {
   }
 
   private showHealNumber(amount: number) {
-    const container = this.element<HTMLElement>('#damage-numbers');
+    const container = this.dom['damage-numbers'];
     const num = document.createElement('div');
     num.className = 'damage-num';
     num.textContent = `+${amount}`;
@@ -992,8 +1110,8 @@ export class Game {
     return 100 + totalStats(this.profile.nft).hp * 8;
   }
   private updateCompass() {
-    const arrow = this.element<HTMLElement>('#compass-arrow');
-    const label = this.element<HTMLElement>('#compass-label');
+    const arrow = this.dom['compass-arrow'];
+    const label = this.dom['compass-label'];
     if (!arrow || !label) return;
     if (this.portals.length === 0) {
       arrow.style.opacity = '0';
@@ -1025,10 +1143,9 @@ export class Game {
       aldea: 'Aldea',
       bosque: 'Bosque',
       ruinas: 'Ruinas',
+      desierto: 'Desierto',
+      cueva: 'Cueva',
     };
     label.textContent = zoneNames[nearest.targetZone] ?? nearest.targetZone;
-  }
-  private element<T extends HTMLElement>(selector: string): T {
-    return document.querySelector(selector) as T;
   }
 }

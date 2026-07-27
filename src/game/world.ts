@@ -86,18 +86,22 @@ export function createWorld(scene: Scene, zone: ZoneId): ZoneWorld {
   sun.position.set(8, 14, 5);
   scene.add(sun);
 
-  const resources =
-    zone === 'aldea'
-      ? createAldeaResources(scene)
-      : zone === 'bosque'
-        ? createBosqueResources(scene)
-        : createRuinasResources(scene);
-  const enemies =
-    zone === 'aldea'
-      ? createAldeaEnemies()
-      : zone === 'bosque'
-        ? createBosqueEnemies()
-        : createRuinasEnemies();
+  const resourceMap: Record<ZoneId, (scene: Scene) => ResourceNode[]> = {
+    aldea: createAldeaResources,
+    bosque: createBosqueResources,
+    ruinas: createRuinasResources,
+    desierto: createDesiertoResources,
+    cueva: createCuevaResources,
+  };
+  const enemyMap: Record<ZoneId, () => Enemy[]> = {
+    aldea: createAldeaEnemies,
+    bosque: createBosqueEnemies,
+    ruinas: createRuinasEnemies,
+    desierto: createDesiertoEnemies,
+    cueva: createCuevaEnemies,
+  };
+  const resources = resourceMap[zone](scene);
+  const enemies = enemyMap[zone]();
   enemies.forEach((e) => scene.add(e.mesh));
   const npcs = createNpcs(scene, zone);
   const stations = createStations(scene, zone);
@@ -231,6 +235,81 @@ function createRuinasEnemies(): Enemy[] {
   return [golem, golem2, phantom];
 }
 
+function createDesiertoResources(scene: Scene): ResourceNode[] {
+  const resources = [
+    createResource('mineral', -7, -3),
+    createResource('mineral', 8, 2),
+    createResource('esencia', -3, -7),
+    createResource('esencia', 5, -5),
+    createResource('trigo', -6, 5),
+    createResource('trigo', 7, 6),
+    createResource('madera', -8, -6),
+    createResource('madera', 4, 8),
+    createResource('hierba', 2, -8),
+    createResource('hierba', -5, 3),
+  ];
+  resources.forEach((r) => scene.add(r.mesh));
+
+  for (let x = -6; x <= 6; x++) {
+    for (let z = -6; z <= 6; z++) {
+      if ((x * 3 + z * 5) % 7 === 0 && !(x === 0 && z === 0))
+        addCactus(scene, x * 4 + (z % 2), z * 4);
+    }
+  }
+  addRuin(scene, -5, -5);
+  addRuin(scene, 6, 4);
+
+  return resources;
+}
+
+function createDesiertoEnemies(): Enemy[] {
+  const scorpion = createCreature('Escorpion del desierto', 20, 0xc2a050, 'wolf', 'desierto');
+  scorpion.mesh.position.set(5, 0, -4);
+  scorpion.spawnPosition.copy(scorpion.mesh.position);
+  const serpent = createCreature('Serpiente de arena', 18, 0xb89040, 'spirit', 'desierto');
+  serpent.mesh.position.set(-6, 0, 2);
+  serpent.spawnPosition.copy(serpent.mesh.position);
+  const mummy = createCreature('Momia ancestral', 30, 0xd4c4a0, 'skeleton', 'desierto');
+  mummy.mesh.position.set(0, 0, -8);
+  mummy.spawnPosition.copy(mummy.mesh.position);
+  return [scorpion, serpent, mummy];
+}
+
+function createCuevaResources(scene: Scene): ResourceNode[] {
+  const resources = [
+    createResource('mineral', -5, -4),
+    createResource('mineral', 6, 3),
+    createResource('mineral', -3, 6),
+    createResource('esencia', 4, -6),
+    createResource('esencia', -7, -1),
+    createResource('esencia', 2, 7),
+    createResource('madera', -8, 4),
+    createResource('madera', 7, -3),
+    createResource('hierba', 1, -7),
+    createResource('hierba', -4, 2),
+    createResource('trigo', 5, 5),
+  ];
+  resources.forEach((r) => scene.add(r.mesh));
+
+  addRuin(scene, -4, -5);
+  addForestShrine(scene, 3, -8);
+
+  return resources;
+}
+
+function createCuevaEnemies(): Enemy[] {
+  const bat = createCreature('Murcielago cavernicola', 15, 0x3a3a4a, 'wolf', 'cueva');
+  bat.mesh.position.set(4, 0, -5);
+  bat.spawnPosition.copy(bat.mesh.position);
+  const ghost = createCreature('Fantasma de la cueva', 22, 0x5a4a6a, 'spirit', 'cueva');
+  ghost.mesh.position.set(-5, 0, 3);
+  ghost.spawnPosition.copy(ghost.mesh.position);
+  const golem = createCreature('Golem de obsidiana', 40, 0x2a2a35, 'golem', 'cueva');
+  golem.mesh.position.set(0, 0, -6);
+  golem.spawnPosition.copy(golem.mesh.position);
+  return [bat, ghost, golem];
+}
+
 function createNpcs(scene: Scene, zone: ZoneId): Npc[] {
   const npcs: Npc[] = [];
   if (zone === 'aldea') {
@@ -281,7 +360,7 @@ function createNpcs(scene: Scene, zone: ZoneId): Npc[] {
       dialogue: 'Compro hierbas y esencias a buen precio.',
       tradeOffers: TRADES.filter((t) => t.give === 'hierba' || t.give === 'esencia'),
     });
-  } else {
+  } else if (zone === 'ruinas') {
     const keeper = createNpcMesh(0x9a7a4a);
     keeper.position.set(3, 0, 5);
     scene.add(keeper);
@@ -299,6 +378,44 @@ function createNpcs(scene: Scene, zone: ZoneId): Npc[] {
       name: 'Colector de reliquias',
       dialogue: 'Traeme minerales y esencias de los golem. Pago bien por ellos.',
       tradeOffers: TRADES.filter((t) => t.give === 'mineral' || t.give === 'esencia'),
+    });
+  } else if (zone === 'desierto') {
+    const nomad = createNpcMesh(0xc9a44a);
+    nomad.position.set(3, 0, 3);
+    scene.add(nomad);
+    npcs.push({
+      mesh: nomad,
+      name: 'Nomada del desierto',
+      dialogue: 'El desierto es cruel pero guarda tesoros. Busca las momias para obtener esencia.',
+      tradeOffers: TRADES,
+    });
+
+    const sage = createNpcMesh(0xbfa46a);
+    sage.position.set(-3, 0, -2);
+    scene.add(sage);
+    npcs.push({
+      mesh: sage,
+      name: 'Sabio del oasis',
+      dialogue: 'Las criaturas del desierto son fuertes. Preparate antes de aventurarte.',
+    });
+  } else {
+    const miner = createNpcMesh(0x6b6b6b);
+    miner.position.set(3, 0, 3);
+    scene.add(miner);
+    npcs.push({
+      mesh: miner,
+      name: 'Minero veterano',
+      dialogue: 'La cueva es profunda y peligrosa. Los golem de obsidiana son formidables.',
+      tradeOffers: TRADES.filter((t) => t.give === 'mineral' || t.give === 'esencia'),
+    });
+
+    const mystic = createNpcMesh(0x7a6fbf);
+    mystic.position.set(-4, 0, -1);
+    scene.add(mystic);
+    npcs.push({
+      mesh: mystic,
+      name: 'Ermitano de la cueva',
+      dialogue: 'He estudiado a las criaturas de aqui. Sus esencias son muy poderosas.',
     });
   }
   return npcs;
@@ -326,7 +443,7 @@ function createStations(scene: Scene, zone: ZoneId): CraftingStation[] {
     workbench.position.set(5, 0, 8);
     scene.add(workbench);
     stations.push({ mesh: workbench, name: 'Banco de trabajo', recipe: 'escudo' });
-  } else {
+  } else if (zone === 'ruinas') {
     const forge = createStationMesh(0x6b3a1a, 0x9999aa);
     forge.position.set(5, 0, -2);
     scene.add(forge);
@@ -336,42 +453,63 @@ function createStations(scene: Scene, zone: ZoneId): CraftingStation[] {
     altar.position.set(-5, 0, -4);
     scene.add(altar);
     stations.push({ mesh: altar, name: 'Altar de poder', recipe: 'pocion' });
+  } else if (zone === 'desierto') {
+    const oasisForge = createStationMesh(0xc2a050, 0xddcc88);
+    oasisForge.position.set(4, 0, 5);
+    scene.add(oasisForge);
+    stations.push({ mesh: oasisForge, name: 'Fragua del oasis', recipe: 'armadura' });
+
+    const sandAltar = createStationMesh(0xb89040, 0xffcc00);
+    sandAltar.position.set(-6, 0, -3);
+    scene.add(sandAltar);
+    stations.push({ mesh: sandAltar, name: 'Altar solar', recipe: 'amuleto' });
+  } else {
+    const deepForge = createStationMesh(0x2a2a35, 0x5555aa);
+    deepForge.position.set(5, 0, 2);
+    scene.add(deepForge);
+    stations.push({ mesh: deepForge, name: 'Forja profunda', recipe: 'pocion_fuerza' });
+
+    const crystalAltar = createStationMesh(0x3a3a4a, 0x7766cc);
+    crystalAltar.position.set(-5, 0, -3);
+    scene.add(crystalAltar);
+    stations.push({ mesh: crystalAltar, name: 'Altar de cristal', recipe: 'gran_pocion' });
   }
   return stations;
 }
 
 function addPortals(scene: Scene, zone: ZoneId): import('./zones').ZonePortal[] {
-  const buildPortal = (x: number, z: number) => {
+  const buildPortal = (x: number, z: number, color = 0xe8ba66) => {
     const portal = new Group();
-    const ring = new Mesh(new TorusGeometry(1.2, 0.15, 6, 12), material(0xe8ba66));
+    const ring = new Mesh(new TorusGeometry(1.2, 0.15, 6, 12), material(color));
     ring.rotation.x = Math.PI / 2;
     ring.position.y = 1.2;
-    const glow = new Mesh(new SphereGeometry(0.8, 6, 4), material(0xe8ba66));
+    const glow = new Mesh(new SphereGeometry(0.8, 6, 4), material(color));
     glow.position.y = 1.2;
     portal.add(ring, glow);
     portal.position.set(x, 0, z);
     scene.add(portal);
   };
 
-  const buildRuinsPortal = (x: number, z: number) => {
-    const portal = new Group();
-    const ring = new Mesh(new TorusGeometry(1.2, 0.15, 6, 12), material(0xaa88dd));
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 1.2;
-    const glow = new Mesh(new SphereGeometry(0.8, 6, 4), material(0xaa88dd));
-    glow.position.y = 1.2;
-    portal.add(ring, glow);
-    portal.position.set(x, 0, z);
-    scene.add(portal);
+  const portalConfigs: Record<ZoneId, { x: number; z: number; color: number }[]> = {
+    aldea: [{ x: 0, z: -18, color: 0xe8ba66 }],
+    bosque: [
+      { x: 0, z: 18, color: 0xe8ba66 },
+      { x: -10, z: -14, color: 0xaa88dd },
+      { x: 12, z: -12, color: 0x44aaaa },
+    ],
+    ruinas: [
+      { x: 0, z: 14, color: 0xe8ba66 },
+      { x: -10, z: -12, color: 0xdd8844 },
+    ],
+    desierto: [
+      { x: 0, z: 18, color: 0xaa88dd },
+      { x: 10, z: -14, color: 0x555577 },
+    ],
+    cueva: [{ x: 0, z: 14, color: 0xdd8844 }],
   };
 
-  if (zone === 'aldea') {
-    buildPortal(0, -18);
-  } else if (zone === 'bosque') {
-    buildPortal(0, 18);
-    buildRuinsPortal(-10, -14);
-  } else {
-    buildRuinsPortal(0, 14);
+  for (const p of portalConfigs[zone]) {
+    buildPortal(p.x, p.z, p.color);
   }
 
   const portals: import('./zones').ZonePortal[] =
@@ -389,14 +527,45 @@ function addPortals(scene: Scene, zone: ZoneId): import('./zones').ZonePortal[] 
               targetZone: 'ruinas' as ZoneId,
               label: 'Ruinas Antiguas',
             },
-          ]
-        : [
             {
-              position: { x: 0, z: 14 },
-              targetZone: 'bosque' as ZoneId,
-              label: 'Volver al Bosque',
+              position: { x: 12, z: -12 },
+              targetZone: 'desierto' as ZoneId,
+              label: 'Desierto Ardiente',
             },
-          ];
+          ]
+        : zone === 'ruinas'
+          ? [
+              {
+                position: { x: 0, z: 14 },
+                targetZone: 'bosque' as ZoneId,
+                label: 'Volver al Bosque',
+              },
+              {
+                position: { x: -10, z: -12 },
+                targetZone: 'cueva' as ZoneId,
+                label: 'Cueva Profunda',
+              },
+            ]
+          : zone === 'desierto'
+            ? [
+                {
+                  position: { x: 0, z: 18 },
+                  targetZone: 'bosque' as ZoneId,
+                  label: 'Volver al Bosque',
+                },
+                {
+                  position: { x: 10, z: -14 },
+                  targetZone: 'cueva' as ZoneId,
+                  label: 'Cueva Profunda',
+                },
+              ]
+            : [
+                {
+                  position: { x: 0, z: 14 },
+                  targetZone: 'ruinas' as ZoneId,
+                  label: 'Volver a las Ruinas',
+                },
+              ];
   return portals;
 }
 
@@ -410,6 +579,22 @@ function addTree(scene: Scene, x: number, z: number) {
   tree.position.set(x, 0, z);
   tree.rotation.y = (x + z) * 0.5;
   scene.add(tree);
+}
+
+function addCactus(scene: Scene, x: number, z: number) {
+  const cactus = new Group();
+  const body = new Mesh(new CylinderGeometry(0.2, 0.25, 1.8, 6), material(0x4a8a3a));
+  body.position.y = 0.9;
+  cactus.add(body);
+  if (Math.random() > 0.4) {
+    const arm = new Mesh(new CylinderGeometry(0.12, 0.15, 0.8, 5), material(0x4a8a3a));
+    arm.position.set(0.3, 1.2, 0);
+    arm.rotation.z = -0.6;
+    cactus.add(arm);
+  }
+  cactus.position.set(x, 0, z);
+  cactus.rotation.y = Math.random() * Math.PI;
+  scene.add(cactus);
 }
 
 function cylinderGeometry(radius: number, height: number) {
