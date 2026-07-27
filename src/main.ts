@@ -1,9 +1,34 @@
 import './styles.css';
 import { Game } from './game/game';
 import { createProfile, type PlayerProfile } from './game/profile';
-import { generateNftFromPhone, buildNftModel, rarityLabel, rarityColor, elementLabel, elementColor, statLabel, statIcon, totalStats, type NftCharacter } from './game/nft';
-import { apiRegister, apiLogin, apiGetProfile, apiSaveProfile, isLoggedIn, getPhone } from './game/api';
-import { Scene, PerspectiveCamera, WebGLRenderer, HemisphereLight, DirectionalLight, Color } from 'three';
+import {
+  generateNftFromPhone,
+  buildNftModel,
+  rarityLabel,
+  rarityColor,
+  elementLabel,
+  elementColor,
+  statLabel,
+  statIcon,
+  totalStats,
+  type NftCharacter,
+} from './game/nft';
+import {
+  apiRegister,
+  apiLogin,
+  apiGetProfile,
+  apiSaveProfile,
+  isLoggedIn,
+  getPhone,
+} from './game/api';
+import {
+  Scene,
+  PerspectiveCamera,
+  WebGLRenderer,
+  HemisphereLight,
+  DirectionalLight,
+  Color,
+} from 'three';
 
 const loginScreen = document.querySelector<HTMLElement>('#login-screen')!;
 const intro = document.querySelector<HTMLElement>('#intro')!;
@@ -31,47 +56,78 @@ let previewCamera: PerspectiveCamera | null = null;
 let previewModel: ReturnType<typeof buildNftModel> | null = null;
 let previewFrame = 0;
 
-interface BeforeInstallPromptEvent extends Event { prompt(): Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>; }
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 window.addEventListener('beforeinstallprompt', (event) => {
-  event.preventDefault(); deferredPrompt = event as BeforeInstallPromptEvent;
+  event.preventDefault();
+  deferredPrompt = event as BeforeInstallPromptEvent;
   document.querySelector<HTMLButtonElement>('#install-button')!.hidden = false;
 });
 document.querySelector('#install-button')?.addEventListener('click', async () => {
   if (!deferredPrompt) return;
-  await deferredPrompt.prompt(); deferredPrompt = undefined;
+  await deferredPrompt.prompt();
+  deferredPrompt = undefined;
   document.querySelector<HTMLButtonElement>('#install-button')!.hidden = true;
 });
-document.querySelector<HTMLButtonElement>('#clear-cache-button')?.addEventListener('click', async () => {
-  const button = document.querySelector<HTMLButtonElement>('#clear-cache-button')!;
-  button.disabled = true;
-  if ('caches' in window) await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
-  button.textContent = 'Cache eliminada';
-  window.setTimeout(() => { button.textContent = 'Limpiar cache'; button.disabled = false; }, 1800);
-});
+document
+  .querySelector<HTMLButtonElement>('#clear-cache-button')
+  ?.addEventListener('click', async () => {
+    const button = document.querySelector<HTMLButtonElement>('#clear-cache-button')!;
+    button.disabled = true;
+    if ('caches' in window)
+      await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
+    button.textContent = 'Cache eliminada';
+    window.setTimeout(() => {
+      button.textContent = 'Limpiar cache';
+      button.disabled = false;
+    }, 1800);
+  });
 
-function showLoginError(msg: string) { loginError.textContent = msg; loginError.classList.remove('hidden'); }
-function hideLoginError() { loginError.classList.add('hidden'); }
+function showLoginError(msg: string) {
+  loginError.textContent = msg;
+  loginError.classList.remove('hidden');
+}
+function hideLoginError() {
+  loginError.classList.add('hidden');
+}
 
 async function handleAuthAction(action: 'login' | 'register') {
   hideLoginError();
   const ph = loginPhone.value.trim();
   const pw = loginPw.value;
-  if (!ph || ph.length < 6) { showLoginError('Ingresa un numero de telefono valido.'); return; }
-  if (!pw || pw.length < 4) { showLoginError('La contrasena debe tener al menos 4 caracteres.'); return; }
-  loginSubmit.disabled = true; loginRegister.disabled = true;
+  if (!ph || ph.length < 6) {
+    showLoginError('Ingresa un numero de telefono valido.');
+    return;
+  }
+  if (!pw || pw.length < 4) {
+    showLoginError('La contrasena debe tener al menos 4 caracteres.');
+    return;
+  }
+  loginSubmit.disabled = true;
+  loginRegister.disabled = true;
   try {
     if (action === 'register') await apiRegister(ph, pw);
     else await apiLogin(ph, pw);
     await onAuthSuccess();
-  } catch (e: unknown) { showLoginError(e instanceof Error ? e.message : 'Error de conexion'); }
-  finally { loginSubmit.disabled = false; loginRegister.disabled = false; }
+  } catch (e: unknown) {
+    showLoginError(e instanceof Error ? e.message : 'Error de conexion');
+  } finally {
+    loginSubmit.disabled = false;
+    loginRegister.disabled = false;
+  }
 }
 
 loginSubmit.addEventListener('click', () => handleAuthAction('login'));
 loginRegister.addEventListener('click', () => handleAuthAction('register'));
-loginPw.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleAuthAction('login'); });
-loginPhone.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginPw.focus(); });
+loginPw.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') handleAuthAction('login');
+});
+loginPhone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') loginPw.focus();
+});
 
 async function onAuthSuccess() {
   const phoneStr = getPhone()!;
@@ -110,12 +166,16 @@ nftGenerateBtn.addEventListener('click', () => {
   nftEnterBtn.hidden = false;
 });
 
-nftEnterBtn.addEventListener('click', () => {
-  if (!currentNft) return;
-  const profile = createProfile(currentNft);
-  apiSaveProfile(profile);
-  startGameWithProfile(profile);
-}, { once: true });
+nftEnterBtn.addEventListener(
+  'click',
+  () => {
+    if (!currentNft) return;
+    const profile = createProfile(currentNft);
+    apiSaveProfile(profile);
+    startGameWithProfile(profile);
+  },
+  { once: true }
+);
 
 document.querySelector('#nft-back')?.addEventListener('click', () => {
   nftScreen.classList.add('hidden');
@@ -129,11 +189,16 @@ function showNftInfo(nft: NftCharacter) {
   nftRarityEl.style.color = rarityColor(nft.traits.rarity);
   nftElementEl.textContent = elementLabel(nft.traits.element);
   nftElementEl.style.color = elementColor(nft.traits.element);
-  nftBodyEl.textContent = ({ humanoid: 'Humanoide', bestia: 'Bestia', espectral: 'Espectral', golem: 'Golem' })[nft.traits.bodyType];
+  nftBodyEl.textContent = {
+    humanoid: 'Humanoide',
+    bestia: 'Bestia',
+    espectral: 'Espectral',
+    golem: 'Golem',
+  }[nft.traits.bodyType];
   const stats = totalStats(nft);
-  nftStatsEl.innerHTML = (['atk', 'def', 'spd', 'hp', 'ability'] as const).map(
-    (s) => `<span>${statIcon(s)} ${statLabel(s)} <b>${stats[s]}</b></span>`
-  ).join('');
+  nftStatsEl.innerHTML = (['atk', 'def', 'spd', 'hp', 'ability'] as const)
+    .map((s) => `<span>${statIcon(s)} ${statLabel(s)} <b>${stats[s]}</b></span>`)
+    .join('');
 }
 
 function initPreview() {
@@ -142,7 +207,11 @@ function initPreview() {
   const w = nftPreview.clientWidth || 280;
   const h = nftPreview.clientHeight || 300;
   if (!previewRenderer) {
-    previewRenderer = new WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'low-power' });
+    previewRenderer = new WebGLRenderer({
+      antialias: false,
+      alpha: true,
+      powerPreference: 'low-power',
+    });
     previewRenderer.setPixelRatio(Math.min(devicePixelRatio, 1));
     previewRenderer.outputColorSpace = 'srgb';
     nftPreview.appendChild(previewRenderer.domElement);
@@ -163,12 +232,14 @@ function initPreview() {
   function animate() {
     previewFrame = requestAnimationFrame(animate);
     if (previewModel) previewModel.rotation.y += 0.012;
-    if (previewRenderer && previewScene && previewCamera) previewRenderer.render(previewScene, previewCamera);
+    if (previewRenderer && previewScene && previewCamera)
+      previewRenderer.render(previewScene, previewCamera);
   }
   animate();
 }
 
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+if ('serviceWorker' in navigator)
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
 
 if (isLoggedIn()) {
   onAuthSuccess();

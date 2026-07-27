@@ -1,17 +1,39 @@
 import {
-  BoxGeometry, CapsuleGeometry, Color, ConeGeometry, CylinderGeometry, DirectionalLight, Fog,
-  Group, HemisphereLight, Mesh, MeshLambertMaterial, PlaneGeometry, Scene,
-  SphereGeometry, TorusGeometry, Vector3,
+  BoxGeometry,
+  CapsuleGeometry,
+  Color,
+  ConeGeometry,
+  CylinderGeometry,
+  DirectionalLight,
+  Fog,
+  Group,
+  HemisphereLight,
+  Mesh,
+  MeshLambertMaterial,
+  PlaneGeometry,
+  Scene,
+  SphereGeometry,
+  TorusGeometry,
+  Vector3,
 } from 'three';
 import type { ZoneId } from './profile';
 import { TRADES, type LootEntry, type LootResource } from './profile';
 import { zoneConfig, type ZoneWorld, type Npc, type CraftingStation } from './zones';
 
-export const LOOT_TABLE: Record<string, { resource: LootResource; min: number; max: number; chance: number }[]> = {
+export const LOOT_TABLE: Record<
+  string,
+  { resource: LootResource; min: number; max: number; chance: number }[]
+> = {
   wolf: [{ resource: 'hierba', min: 1, max: 2, chance: 0.6 }],
   spirit: [{ resource: 'esencia', min: 1, max: 2, chance: 0.7 }],
-  skeleton: [{ resource: 'mineral', min: 1, max: 2, chance: 0.5 }, { resource: 'madera', min: 1, max: 1, chance: 0.3 }],
-  golem: [{ resource: 'mineral', min: 2, max: 4, chance: 0.9 }, { resource: 'esencia', min: 1, max: 3, chance: 0.6 }],
+  skeleton: [
+    { resource: 'mineral', min: 1, max: 2, chance: 0.5 },
+    { resource: 'madera', min: 1, max: 1, chance: 0.3 },
+  ],
+  golem: [
+    { resource: 'mineral', min: 2, max: 4, chance: 0.9 },
+    { resource: 'esencia', min: 1, max: 3, chance: 0.6 },
+  ],
 };
 
 export function rollLoot(creatureKind: string): LootEntry[] {
@@ -29,7 +51,20 @@ export function rollLoot(creatureKind: string): LootEntry[] {
 
 const material = (color: number) => new MeshLambertMaterial({ color, flatShading: true });
 
-export type Enemy = { mesh: Group; health: number; maxHealth: number; alive: boolean; name: string; damage: number; speed: number; spawnPosition: Vector3; kind: 'wolf' | 'spirit' | 'skeleton' | 'golem'; zone: ZoneId; hpBar: Mesh; hpBarBg: Mesh };
+export type Enemy = {
+  mesh: Group;
+  health: number;
+  maxHealth: number;
+  alive: boolean;
+  name: string;
+  damage: number;
+  speed: number;
+  spawnPosition: Vector3;
+  kind: 'wolf' | 'spirit' | 'skeleton' | 'golem';
+  zone: ZoneId;
+  hpBar: Mesh;
+  hpBarBg: Mesh;
+};
 export type ResourceKind = 'trigo' | 'mineral' | 'esencia' | 'madera' | 'hierba';
 export type ResourceNode = { mesh: Group; kind: ResourceKind; active: boolean };
 export type World = { enemies: Enemy[]; resources: ResourceNode[] };
@@ -39,7 +74,10 @@ export function createWorld(scene: Scene, zone: ZoneId): ZoneWorld {
   scene.background = new Color(cfg.fogColor);
   scene.fog = new Fog(cfg.fogColor, cfg.fogNear, cfg.fogFar);
 
-  const ground = new Mesh(new PlaneGeometry(cfg.groundSize, cfg.groundSize), material(cfg.groundColor));
+  const ground = new Mesh(
+    new PlaneGeometry(cfg.groundSize, cfg.groundSize),
+    material(cfg.groundColor)
+  );
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
 
@@ -48,29 +86,55 @@ export function createWorld(scene: Scene, zone: ZoneId): ZoneWorld {
   sun.position.set(8, 14, 5);
   scene.add(sun);
 
-  const resources = zone === 'aldea' ? createAldeaResources(scene) : zone === 'bosque' ? createBosqueResources(scene) : createRuinasResources(scene);
-  const enemies = zone === 'aldea' ? createAldeaEnemies() : zone === 'bosque' ? createBosqueEnemies() : createRuinasEnemies();
+  const resources =
+    zone === 'aldea'
+      ? createAldeaResources(scene)
+      : zone === 'bosque'
+        ? createBosqueResources(scene)
+        : createRuinasResources(scene);
+  const enemies =
+    zone === 'aldea'
+      ? createAldeaEnemies()
+      : zone === 'bosque'
+        ? createBosqueEnemies()
+        : createRuinasEnemies();
   enemies.forEach((e) => scene.add(e.mesh));
   const npcs = createNpcs(scene, zone);
   const stations = createStations(scene, zone);
   const portals = addPortals(scene, zone);
 
-  return { enemies, resources, npcs, stations, portals, groundColor: cfg.groundColor, fogColor: cfg.fogColor, fogNear: cfg.fogNear, fogFar: cfg.fogFar, groundSize: cfg.groundSize };
+  return {
+    enemies,
+    resources,
+    npcs,
+    stations,
+    portals,
+    groundColor: cfg.groundColor,
+    fogColor: cfg.fogColor,
+    fogNear: cfg.fogNear,
+    fogFar: cfg.fogFar,
+    groundSize: cfg.groundSize,
+  };
 }
 
 function createAldeaResources(scene: Scene): ResourceNode[] {
   const resources = [
-    createResource('trigo', -3.5, -1.8), createResource('trigo', -5.2, 1.5),
-    createResource('mineral', 5, 3.5), createResource('mineral', 7, 0.5),
+    createResource('trigo', -3.5, -1.8),
+    createResource('trigo', -5.2, 1.5),
+    createResource('mineral', 5, 3.5),
+    createResource('mineral', 7, 0.5),
     createResource('esencia', 1.5, 6),
-    createResource('madera', -8, 4), createResource('madera', 8, -6),
-    createResource('hierba', -2, 7), createResource('hierba', 6, -4),
+    createResource('madera', -8, 4),
+    createResource('madera', 8, -6),
+    createResource('hierba', -2, 7),
+    createResource('hierba', 6, -4),
   ];
   resources.forEach((r) => scene.add(r.mesh));
 
   for (let x = -5; x <= 5; x++) {
     for (let z = -5; z <= 5; z++) {
-      if ((x * 7 + z * 3) % 4 === 0 && !(x === 0 && z === 0)) addTree(scene, x * 4 + (z % 2), z * 4);
+      if ((x * 7 + z * 3) % 4 === 0 && !(x === 0 && z === 0))
+        addTree(scene, x * 4 + (z % 2), z * 4);
     }
   }
   addRuin(scene, -6, -5);
@@ -82,17 +146,24 @@ function createAldeaResources(scene: Scene): ResourceNode[] {
 
 function createBosqueResources(scene: Scene): ResourceNode[] {
   const resources = [
-    createResource('trigo', -6, -4), createResource('trigo', 4, -7),
-    createResource('mineral', 7, 2), createResource('mineral', -8, 1),
-    createResource('esencia', 0, -5), createResource('esencia', 3, 4),
-    createResource('madera', -5, -8), createResource('madera', 6, -2),
-    createResource('hierba', 2, 7), createResource('hierba', -3, 3), createResource('hierba', 8, -5),
+    createResource('trigo', -6, -4),
+    createResource('trigo', 4, -7),
+    createResource('mineral', 7, 2),
+    createResource('mineral', -8, 1),
+    createResource('esencia', 0, -5),
+    createResource('esencia', 3, 4),
+    createResource('madera', -5, -8),
+    createResource('madera', 6, -2),
+    createResource('hierba', 2, 7),
+    createResource('hierba', -3, 3),
+    createResource('hierba', 8, -5),
   ];
   resources.forEach((r) => scene.add(r.mesh));
 
   for (let x = -6; x <= 6; x++) {
     for (let z = -6; z <= 6; z++) {
-      if ((x * 5 + z * 7) % 3 === 0 && !(x === 0 && z === 8)) addTree(scene, x * 3.5 + (z % 2), z * 3.5);
+      if ((x * 5 + z * 7) % 3 === 0 && !(x === 0 && z === 8))
+        addTree(scene, x * 3.5 + (z % 2), z * 3.5);
     }
   }
   addForestShrine(scene, 0, -8);
@@ -128,11 +199,16 @@ function createBosqueEnemies(): Enemy[] {
 
 function createRuinasResources(scene: Scene): ResourceNode[] {
   const resources = [
-    createResource('mineral', -5, -3), createResource('mineral', 6, 1),
-    createResource('esencia', -2, -6), createResource('esencia', 4, -4),
-    createResource('madera', -7, 3), createResource('madera', 3, 6),
-    createResource('hierba', 1, -3), createResource('hierba', -4, 5),
-    createResource('trigo', -6, -5), createResource('trigo', 5, -6),
+    createResource('mineral', -5, -3),
+    createResource('mineral', 6, 1),
+    createResource('esencia', -2, -6),
+    createResource('esencia', 4, -4),
+    createResource('madera', -7, 3),
+    createResource('madera', 3, 6),
+    createResource('hierba', 1, -3),
+    createResource('hierba', -4, 5),
+    createResource('trigo', -6, -5),
+    createResource('trigo', 5, -6),
   ];
   resources.forEach((r) => scene.add(r.mesh));
   addRuin(scene, -3, -4);
@@ -161,37 +237,69 @@ function createNpcs(scene: Scene, zone: ZoneId): Npc[] {
     const merchant = createNpcMesh(0xc9a44a);
     merchant.position.set(3, 0, 2);
     scene.add(merchant);
-    npcs.push({ mesh: merchant, name: 'Mercader del pueblo', dialogue: 'Bienvenido, viajero. Puedo intercambiar recursos por otros.', tradeOffers: TRADES });
+    npcs.push({
+      mesh: merchant,
+      name: 'Mercader del pueblo',
+      dialogue: 'Bienvenido, viajero. Puedo intercambiar recursos por otros.',
+      tradeOffers: TRADES,
+    });
 
     const elder = createNpcMesh(0x8a7560);
     elder.position.set(-3, 0, 3);
     scene.add(elder);
-    npcs.push({ mesh: elder, name: 'Sabio de la aldea', dialogue: 'El bosque al norte esta infestado de criaturas. Completa la mision inicial para desbloquearlo.' });
+    npcs.push({
+      mesh: elder,
+      name: 'Sabio de la aldea',
+      dialogue:
+        'El bosque al norte esta infestado de criaturas. Completa la mision inicial para desbloquearlo.',
+    });
 
     const smith = createNpcMesh(0x6b6b6b);
     smith.position.set(6, 0, -1);
     scene.add(smith);
-    npcs.push({ mesh: smith, name: 'Herrero local', dialogue: 'Traeme mineral y te fare un arma. O usa la fragua para fabricar.' });
+    npcs.push({
+      mesh: smith,
+      name: 'Herrero local',
+      dialogue: 'Traeme mineral y te fare un arma. O usa la fragua para fabricar.',
+    });
   } else if (zone === 'bosque') {
     const mystic = createNpcMesh(0x7a6fbf);
     mystic.position.set(2, 0, 10);
     scene.add(mystic);
-    npcs.push({ mesh: mystic, name: 'Mistico del bosque', dialogue: 'Este bosque guarda secretos antiguos. Derrota al espiritu para progresar.' });
+    npcs.push({
+      mesh: mystic,
+      name: 'Mistico del bosque',
+      dialogue: 'Este bosque guarda secretos antiguos. Derrota al espiritu para progresar.',
+    });
 
     const trader = createNpcMesh(0xbfa46a);
     trader.position.set(-2, 0, 12);
     scene.add(trader);
-    npcs.push({ mesh: trader, name: 'Comerciante errante', dialogue: 'Compro hierbas y esencias a buen precio.', tradeOffers: TRADES.filter((t) => t.give === 'hierba' || t.give === 'esencia') });
+    npcs.push({
+      mesh: trader,
+      name: 'Comerciante errante',
+      dialogue: 'Compro hierbas y esencias a buen precio.',
+      tradeOffers: TRADES.filter((t) => t.give === 'hierba' || t.give === 'esencia'),
+    });
   } else {
     const keeper = createNpcMesh(0x9a7a4a);
     keeper.position.set(3, 0, 5);
     scene.add(keeper);
-    npcs.push({ mesh: keeper, name: 'Guardian de las ruinas', dialogue: 'Estas ruinas guardan un poder antiguo. Derrota a los golem para reclamarlo.' });
+    npcs.push({
+      mesh: keeper,
+      name: 'Guardian de las ruinas',
+      dialogue: 'Estas ruinas guardan un poder antiguo. Derrota a los golem para reclamarlo.',
+    });
 
     const merchant = createNpcMesh(0xc9a44a);
     merchant.position.set(-4, 0, 2);
     scene.add(merchant);
-    npcs.push({ mesh: merchant, name: 'Colector de reliquias', dialogue: 'Traeme minerales y esencias de los golem. Pago bien por ellos.', tradeOffers: TRADES.filter((t) => t.give === 'mineral' || t.give === 'esencia') });
+    npcs.push({
+      mesh: merchant,
+      name: 'Colector de reliquias',
+      dialogue: 'Traeme minerales y esencias de los golem. Pago bien por ellos.',
+      tradeOffers: TRADES.filter((t) => t.give === 'mineral' || t.give === 'esencia'),
+    });
   }
   return npcs;
 }
@@ -266,14 +374,29 @@ function addPortals(scene: Scene, zone: ZoneId): import('./zones').ZonePortal[] 
     buildRuinsPortal(0, 14);
   }
 
-  const portals: import('./zones').ZonePortal[] = zone === 'aldea'
-    ? [{ position: { x: 0, z: -18 }, targetZone: 'bosque' as ZoneId, label: 'Bosque Ancestral' }]
-    : zone === 'bosque'
-    ? [
-      { position: { x: 0, z: 18 }, targetZone: 'aldea' as ZoneId, label: 'Volver a la Aldea' },
-      { position: { x: -10, z: -14 }, targetZone: 'ruinas' as ZoneId, label: 'Ruinas Antiguas' },
-    ]
-    : [{ position: { x: 0, z: 14 }, targetZone: 'bosque' as ZoneId, label: 'Volver al Bosque' }];
+  const portals: import('./zones').ZonePortal[] =
+    zone === 'aldea'
+      ? [{ position: { x: 0, z: -18 }, targetZone: 'bosque' as ZoneId, label: 'Bosque Ancestral' }]
+      : zone === 'bosque'
+        ? [
+            {
+              position: { x: 0, z: 18 },
+              targetZone: 'aldea' as ZoneId,
+              label: 'Volver a la Aldea',
+            },
+            {
+              position: { x: -10, z: -14 },
+              targetZone: 'ruinas' as ZoneId,
+              label: 'Ruinas Antiguas',
+            },
+          ]
+        : [
+            {
+              position: { x: 0, z: 14 },
+              targetZone: 'bosque' as ZoneId,
+              label: 'Volver al Bosque',
+            },
+          ];
   return portals;
 }
 
@@ -302,7 +425,9 @@ function addRuin(scene: Scene, x: number, z: number) {
   }
   const lintel = new Mesh(new BoxGeometry(3.8, 0.55, 0.8), material(0x8c927b));
   lintel.position.y = 2.8;
-  ruin.add(lintel); ruin.position.set(x, 0, z); scene.add(ruin);
+  ruin.add(lintel);
+  ruin.position.set(x, 0, z);
+  scene.add(ruin);
 }
 
 function addHouse(scene: Scene, x: number, z: number) {
@@ -352,9 +477,16 @@ function createStationMesh(baseColor: number, accentColor: number): Group {
   return station;
 }
 
-function createCreature(name: string, maxHealth: number, color: number, kind: 'wolf' | 'spirit' | 'skeleton' | 'golem', zone: ZoneId): Enemy {
+function createCreature(
+  name: string,
+  maxHealth: number,
+  color: number,
+  kind: 'wolf' | 'spirit' | 'skeleton' | 'golem',
+  zone: ZoneId
+): Enemy {
   const mesh = new Group();
-  const hpHeight = kind === 'golem' ? 4.8 : kind === 'skeleton' ? 4.0 : kind === 'spirit' ? 3.8 : 3.0;
+  const hpHeight =
+    kind === 'golem' ? 4.8 : kind === 'skeleton' ? 4.0 : kind === 'spirit' ? 3.8 : 3.0;
   const hpBarBg = new Mesh(new BoxGeometry(1.4, 0.14, 0.05), material(0x111111));
   const hpBar = new Mesh(new BoxGeometry(1.4, 0.14, 0.06), material(0xcc3333));
   hpBarBg.position.y = hpHeight;
@@ -366,11 +498,29 @@ function createCreature(name: string, maxHealth: number, color: number, kind: 'w
   else if (kind === 'skeleton') buildSkeleton(mesh, color);
   else buildGolem(mesh, color, maxHealth);
 
-  const damageMap: Record<string, number> = { wolf: maxHealth * 2.5, spirit: maxHealth * 2.2, skeleton: maxHealth * 2, golem: maxHealth * 3 };
+  const damageMap: Record<string, number> = {
+    wolf: maxHealth * 2.5,
+    spirit: maxHealth * 2.2,
+    skeleton: maxHealth * 2,
+    golem: maxHealth * 3,
+  };
   const speedMap: Record<string, number> = { wolf: 1.3, spirit: 0.9, skeleton: 1.1, golem: 0.6 };
 
   mesh.add(hpBarBg, hpBar);
-  return { mesh, health: maxHealth, maxHealth, alive: true, name, damage: damageMap[kind], speed: speedMap[kind], spawnPosition: new Vector3(), kind, zone, hpBar, hpBarBg };
+  return {
+    mesh,
+    health: maxHealth,
+    maxHealth,
+    alive: true,
+    name,
+    damage: damageMap[kind],
+    speed: speedMap[kind],
+    spawnPosition: new Vector3(),
+    kind,
+    zone,
+    hpBar,
+    hpBarBg,
+  };
 }
 
 function buildWolf(mesh: Group, color: number, hp: number) {
@@ -428,7 +578,22 @@ function buildWolf(mesh: Group, color: number, hp: number) {
   const mane = new Mesh(new BoxGeometry(0.4, 0.35, 1.0), darkFur);
   mane.position.set(0.9, 2.05, 0);
 
-  mesh.add(torso, chest, head, snout, jaw, ear1, ear2, eye1, eye2, fang1, fang2, tail, tailTip, mane);
+  mesh.add(
+    torso,
+    chest,
+    head,
+    snout,
+    jaw,
+    ear1,
+    ear2,
+    eye1,
+    eye2,
+    fang1,
+    fang2,
+    tail,
+    tailTip,
+    mane
+  );
 }
 
 function buildSpirit(mesh: Group, color: number) {
@@ -549,8 +714,31 @@ function buildSkeleton(mesh: Group, color: number) {
   const cape = new Mesh(new BoxGeometry(0.5, 0.8, 0.08), material(0x332244));
   cape.position.set(0, 1.8, -0.25);
 
-  mesh.add(pelvis, rib1, rib2, rib3, spine, skull, jawBone, eyeSocket1, eyeGlow1, eyeSocket2, eyeGlow2, noseHole,
-    shoulderL, shoulderR, armL, handL, armR, swordBlade, swordHilt, swordGuard, shield, shieldBoss, cape);
+  mesh.add(
+    pelvis,
+    rib1,
+    rib2,
+    rib3,
+    spine,
+    skull,
+    jawBone,
+    eyeSocket1,
+    eyeGlow1,
+    eyeSocket2,
+    eyeGlow2,
+    noseHole,
+    shoulderL,
+    shoulderR,
+    armL,
+    handL,
+    armR,
+    swordBlade,
+    swordHilt,
+    swordGuard,
+    shield,
+    shieldBoss,
+    cape
+  );
 }
 
 function buildGolem(mesh: Group, color: number, hp: number) {
@@ -619,15 +807,46 @@ function buildGolem(mesh: Group, color: number, hp: number) {
     mesh.add(shard);
   }
 
-  mesh.add(pelvis, torso, chestPlate, core, head, brow, eye1, eye2,
-    shoulderL, shoulderR, armL, fistL, armR, fistR);
+  mesh.add(
+    pelvis,
+    torso,
+    chestPlate,
+    core,
+    head,
+    brow,
+    eye1,
+    eye2,
+    shoulderL,
+    shoulderR,
+    armL,
+    fistL,
+    armR,
+    fistR
+  );
 }
 
 function createResource(kind: ResourceKind, x: number, z: number): ResourceNode {
   const mesh = new Group();
-  const colors: Record<ResourceKind, number> = { trigo: 0xd8bc4f, mineral: 0x788c9a, esencia: 0x9c70cb, madera: 0x71472e, hierba: 0x75b954 };
-  const glowColors: Record<ResourceKind, number> = { trigo: 0xffee88, mineral: 0xaabbcc, esencia: 0xbb99ee, madera: 0x996644, hierba: 0x88dd66 };
-  const geometry = kind === 'trigo' ? new ConeGeometry(0.5, 2.0, 5) : kind === 'madera' ? new BoxGeometry(0.7, 1.0, 0.7) : new SphereGeometry(0.6, 6, 4);
+  const colors: Record<ResourceKind, number> = {
+    trigo: 0xd8bc4f,
+    mineral: 0x788c9a,
+    esencia: 0x9c70cb,
+    madera: 0x71472e,
+    hierba: 0x75b954,
+  };
+  const glowColors: Record<ResourceKind, number> = {
+    trigo: 0xffee88,
+    mineral: 0xaabbcc,
+    esencia: 0xbb99ee,
+    madera: 0x996644,
+    hierba: 0x88dd66,
+  };
+  const geometry =
+    kind === 'trigo'
+      ? new ConeGeometry(0.5, 2.0, 5)
+      : kind === 'madera'
+        ? new BoxGeometry(0.7, 1.0, 0.7)
+        : new SphereGeometry(0.6, 6, 4);
   const item = new Mesh(geometry, material(colors[kind]));
   item.position.y = kind === 'trigo' ? 1.0 : 0.55;
   const glow = new Mesh(new SphereGeometry(0.35, 5, 4), material(glowColors[kind]));

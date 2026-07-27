@@ -30,6 +30,7 @@
       <section class="target-card" id="target-card" hidden><span id="target-name">Criatura</span><i><b id="target-health"></b></i></section>
       <section class="controls" aria-label="Controles tactiles">
         <div class="joystick-area" id="joystick" aria-label="Joystick para moverse"><span id="joystick-knob"></span></div>
+        <div id="ability-buttons" class="ability-buttons"></div>
         <div class="action-buttons"><button id="interact-button" aria-label="Interactuar">+<small>USAR</small></button><button id="attack-button" aria-label="Atacar">X<small>ATACAR</small></button></div>
       </section>
       <div class="hint" id="hint">Camina para moverte. Los recursos se recolectan al tocarlos.</div>
@@ -43,14 +44,30 @@
           <span>⚔ Ataque <b id="atk-value">1</b><button data-attribute="atk">+</button></span><span>🛡 Defensa <b id="def-value">1</b><button data-attribute="def">+</button></span><span>💨 Velocidad <b id="spd-value">1</b><button data-attribute="spd">+</button></span><span>❤ Vida <b id="hp-value">1</b><button data-attribute="hp">+</button></span><span>✦ Habilidad <b id="ability-value">1</b><button data-attribute="ability">+</button></span>
         </div>
         <p class="eyebrow craft-title">CONSUMIBLES</p>
-        <div class="consumables"><button data-use="racion">Usar racion <b id="racion-use-count">0</b></button><button data-use="pocion">Usar pocion <b id="pocion-use-count">0</b></button><button data-use="unguento">Usar unguento <b id="unguento-use-count">0</b></button></div>
+        <div class="consumables">
+          <button data-use="racion">Racion <b id="racion-count">0</b></button>
+          <button data-use="pocion">Pocion <b id="pocion-count">0</b></button>
+          <button data-use="unguento">Unguento <b id="unguento-count">0</b></button>
+          <button data-use="gran_pocion">Gran Pocion <b id="gran_pocion-count">0</b></button>
+          <button data-use="elixir">Elixir <b id="elixir-count">0</b></button>
+          <button data-use="pocion_fuerza">Fuerza <b id="pocion_fuerza-count">0</b></button>
+          <button data-use="pocion_velocidad">Velocidad <b id="pocion_velocidad-count">0</b></button>
+          <button data-use="antidoto">Antidoto <b id="antidoto-count">0</b></button>
+        </div>
         <p class="eyebrow craft-title">FABRICACION</p>
         <div class="recipes">
-          <button data-recipe="racion">Racion <small>2 trigo: +40 energia</small><b id="racion-count">0</b></button>
-          <button data-recipe="espada">Espada <small>2 mineral: dano x2</small><b id="espada-count">0</b></button>
+          <button data-recipe="racion">Racion <small>1 trigo: +40 energia</small><b id="racion-count">0</b></button>
+          <button data-recipe="espada">Espada <small>2 mineral: +2 dano</small><b id="espada-count">0</b></button>
           <button data-recipe="pocion">Pocion <small>2 esencia: +45 vida</small><b id="pocion-count">0</b></button>
           <button data-recipe="escudo">Escudo <small>2 madera: reduce dano</small><b id="escudo-count">0</b></button>
           <button data-recipe="unguento">Unguento <small>2 hierba: +25 vida</small><b id="unguento-count">0</b></button>
+          <button data-recipe="armadura">Armadura <small>3 mineral: +3 defensa</small><b id="armadura-count">0</b></button>
+          <button data-recipe="amuleto">Amuleto <small>2 esencia: +2 habilidad</small><b id="amuleto-count">0</b></button>
+          <button data-recipe="pocion_fuerza">Pocion Fuerza <small>2 mineral: +2 ataque</small><b id="pocion_fuerza-count">0</b></button>
+          <button data-recipe="pocion_velocidad">Pocion Velocidad <small>2 hierba: +3 velocidad</small><b id="pocion_velocidad-count">0</b></button>
+          <button data-recipe="antidoto">Antidoto <small>1 hierba: cura +20</small><b id="antidoto-count">0</b></button>
+          <button data-recipe="gran_pocion">Gran Pocion <small>3 esencia: +80 vida</small><b id="gran_pocion-count">0</b></button>
+          <button data-recipe="elixir">Elixir <small>4 esencia: +100 vida +50 energia</small><b id="elixir-count">0</b></button>
         </div>
       </aside>
       <aside class="reward-panel" id="reward-panel" hidden>

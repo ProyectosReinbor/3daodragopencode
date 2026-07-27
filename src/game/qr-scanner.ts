@@ -8,21 +8,39 @@ export class QrScanner {
   private active = false;
   private readonly detector?: BarcodeDetectorLike;
 
-  constructor(private readonly video: HTMLVideoElement, private readonly status: HTMLElement, private readonly onCode: (code: string) => void) {
-    const factory = (window as Window & { BarcodeDetector?: BarcodeDetectorFactory }).BarcodeDetector;
+  constructor(
+    private readonly video: HTMLVideoElement,
+    private readonly status: HTMLElement,
+    private readonly onCode: (code: string) => void
+  ) {
+    const factory = (window as Window & { BarcodeDetector?: BarcodeDetectorFactory })
+      .BarcodeDetector;
     if (factory) this.detector = new factory({ formats: ['qr_code'] });
   }
 
   async start() {
-    if (!this.detector) { this.status.textContent = 'QR camera scan is not supported on this browser. Use the code field.'; return; }
+    if (!this.detector) {
+      this.status.textContent =
+        'QR camera scan is not supported on this browser. Use the code field.';
+      return;
+    }
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+        audio: false,
+      });
       this.video.srcObject = this.stream;
       await this.video.play();
       this.active = true;
       this.status.textContent = 'Point the camera at the invoice QR code.';
       this.readFrame();
-    } catch { this.status.textContent = 'Camera permission was not granted. Use the code field.'; }
+    } catch {
+      this.status.textContent = 'Camera permission was not granted. Use the code field.';
+    }
   }
 
   stop() {
@@ -36,8 +54,14 @@ export class QrScanner {
     if (!this.active || !this.detector) return;
     try {
       const codes = await this.detector.detect(this.video);
-      if (codes[0]?.rawValue) { this.onCode(codes[0].rawValue); this.stop(); return; }
-    } catch { /* A frame can be unreadable while the camera starts. */ }
+      if (codes[0]?.rawValue) {
+        this.onCode(codes[0].rawValue);
+        this.stop();
+        return;
+      }
+    } catch {
+      /* A frame can be unreadable while the camera starts. */
+    }
     requestAnimationFrame(this.readFrame);
   };
 }

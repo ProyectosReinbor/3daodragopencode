@@ -5,15 +5,31 @@ export class InputController {
   private readonly pressed = new Set<string>();
   private touchActive = false;
 
-  constructor(joystick: HTMLElement, knob: HTMLElement, onAttack: () => void, onInteract: () => void) {
+  constructor(
+    joystick: HTMLElement,
+    knob: HTMLElement,
+    onAttack: () => void,
+    onInteract: () => void
+  ) {
     window.addEventListener('keydown', (event) => {
       this.pressed.add(event.key.toLowerCase());
-      if (event.code === 'Space') { event.preventDefault(); onAttack(); }
+      if (event.code === 'Space') {
+        event.preventDefault();
+        onAttack();
+      }
       if (event.key.toLowerCase() === 'e') onInteract();
     });
     window.addEventListener('keyup', (event) => this.pressed.delete(event.key.toLowerCase()));
-    document.querySelector('#attack-button')?.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); onAttack(); });
-    document.querySelector('#interact-button')?.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); onInteract(); });
+    document.querySelector('#attack-button')?.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onAttack();
+    });
+    document.querySelector('#interact-button')?.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onInteract();
+    });
 
     const updateTouch = (event: PointerEvent) => {
       const box = joystick.getBoundingClientRect();
@@ -26,18 +42,28 @@ export class InputController {
       this.movement.set(offset.x / radius, offset.y / radius);
     };
 
-    joystick.addEventListener('pointerdown', (event) => { this.touchActive = true; joystick.setPointerCapture(event.pointerId); updateTouch(event); });
-    joystick.addEventListener('pointermove', (event) => { if (this.touchActive) updateTouch(event); });
+    joystick.addEventListener('pointerdown', (event) => {
+      this.touchActive = true;
+      joystick.setPointerCapture(event.pointerId);
+      updateTouch(event);
+    });
+    joystick.addEventListener('pointermove', (event) => {
+      if (this.touchActive) updateTouch(event);
+    });
     joystick.addEventListener('pointerup', () => this.resetTouch(knob));
     joystick.addEventListener('pointercancel', () => this.resetTouch(knob));
   }
 
   update(): Vector2 {
     if (this.touchActive) return this.movement;
-    this.movement.set(
-      Number(this.pressed.has('d') || this.pressed.has('arrowright')) - Number(this.pressed.has('a') || this.pressed.has('arrowleft')),
-      Number(this.pressed.has('s') || this.pressed.has('arrowdown')) - Number(this.pressed.has('w') || this.pressed.has('arrowup')),
-    ).normalize();
+    this.movement
+      .set(
+        Number(this.pressed.has('d') || this.pressed.has('arrowright')) -
+          Number(this.pressed.has('a') || this.pressed.has('arrowleft')),
+        Number(this.pressed.has('s') || this.pressed.has('arrowdown')) -
+          Number(this.pressed.has('w') || this.pressed.has('arrowup'))
+      )
+      .normalize();
     return this.movement;
   }
 

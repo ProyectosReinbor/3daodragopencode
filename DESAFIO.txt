@@ -1,0 +1,364 @@
+================================================================================
+                        REINOS ANCESTRALES - 3DAODRAG
+                     Guia de Desarrollo y Funciones Pendientes
+================================================================================
+
+PROYECTO: Reinos Ancestrales (3daodrag)
+TIPO: RPG 3D Browser Game (PWA)
+STACK: Three.js + TypeScript + Vite + Express + JWT
+IDIOMA: Todo el contenido en ESPAÑOL
+ESTADO: Fase 1 y 2 completadas - Seguridad e Infraestructura
+
+================================================================================
+                        ARQUITECTURA DEL SISTEMA
+================================================================================
+
+Frontend (src/):
+  - main.ts          → Login, creacion de NFT, flujo de autenticacion
+  - game/game.ts     → Core Game: loop, combate, UI, interacciones
+  - game/world.ts    → Generacion del mundo: zonas, enemigos, recursos, NPCs
+  - game/nft.ts      → Sistema de personajes NFT: generacion procedural, traits
+  - game/profile.ts  → Perfil del jugador, inventario, quests, crafting
+  - game/input.ts    → Controlador de entrada: teclado + joystick tactil
+  - game/api.ts      → Cliente HTTP para auth y perfil API
+  - game/zones.ts    → Configuracion de zonas y deteccion de proximidad
+  - game/rewards.ts  → Sistema de recompensas QR
+  - game/qr-scanner.ts → Scanner QR con Barcode Detection API
+  - game/quality.ts  → Deteccion automatica de calidad grafica
+
+Backend (server/):
+  - index.js         → Express server con JWT auth, CRUD de perfiles
+  - data/db.json     → Base de datos JSON flat-file (2 usuarios registrados)
+
+================================================================================
+                        SISTEMAS ACTUALES IMPLEMENTADOS
+================================================================================
+
+1. SISTEMA DE PERSONAJES NFT
+   - Generacion deterministica desde hash de numero de telefono
+   - PRNG seeded (mulberry32) para traits unicos
+   - Elementos: fuego, agua, tierra, aire, sombra, luz
+   - Rareza: comun, raro, epico, legendario (con pesos de probabilidad)
+   - Tipo de cuerpo: humanoide, bestia, espectral, golem
+   - 5 stats: ATK, DEF, SPD, HP, Habilidad
+   - Modelo 3D procedural con Three.js primitives
+
+2. SISTEMA DE COMBATE
+   - Accion: ataque automatico al enemigo mas cercano (400ms cooldown)
+   - IA enemiga: persecucion, rango de ataque, calculo de dano
+   - 4 tipos de enemigos: lobos, espirites, esqueletos, golems
+   - Loot drops con tablas de probabilidad
+   - Sistema de vida/energia, respawn al morir
+
+3. ZONAS (3 actuales)
+   - Aldea: zona inicial, NPCs basicos
+   - Bosque Ancestral: recursos, enemigos medios
+   - Ruinas Antiguas: enemigos dificiles, crafting avanzado
+   - Desbloqueo progresivo via quests
+
+4. SISTEMA DE QUESTS (7 misiones)
+   - Recoleccion de recursos + eliminacion de criaturas
+   - Recompensas XP y items
+   - Desbloqueo de zonas al completar
+
+5. SISTEMA DE CRAFTING (5 recetas)
+   - Racion (1 trigo), Espada (2 mineral), Pocion (2 esencia)
+   - Escudo (2 madera), Unguento (2 hierba)
+   - Consumibles con valores basados en stats
+
+6. NPCs
+   - Dialogos por zona
+   - Sistema de trade/intercambio
+
+7. SISTEMA QR
+   - Escaneo de camara para codigos de factura
+   - Codigos demo: TABERNA, PANADERIA, FOGATA, MERCADO
+   - Puente comercio fisico → juego
+
+8. OPTIMIZACION
+   - 3 niveles de calidad: baja, media, alta
+   - Auto-deteccion segun dispositivo
+   - Frame rate caps: 30/45/60 FPS
+
+9. PWA
+   - Service Worker para offline
+   - Instalable como app movil
+
+================================================================================
+                     FUNCIONES A IMPLEMENTAR (ROADMAP)
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 1: SEGURIDAD Y ESTABILIDAD [PRIORIDAD ALTA]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[x] 1.1 SEGURIDAD DE CONTRASEÑAS
+    - Reemplazar hash FNV-1a por bcrypt (12 rounds)
+    - Migracion automatica de passwords legacy
+    - Archivo: server/index.js
+
+[x] 1.2 JWT SECRETO SEGURO
+    - Requiere JWT_SECRET en produccion
+    - Fallback a secret hardcoded solo en desarrollo
+    - Eliminar hardcoded JWT_SECRET
+    - Requerir JWT_SECRET en .env para produccion
+    - Validar que exista al iniciar server
+
+[x] 1.3 RATE LIMITING
+    - 100 req/min general, 5 intentos/min para auth
+    - Limpieza automatica de entradas expiradas
+
+[x] 1.4 SANITIZACION DE INPUT
+    - Validacion telefono: 6-15 digitos
+    - Validacion password: 4-100 caracteres
+    - Validacion de zones y attributePoints
+
+[x] 1.5 MANEJO DE ERRORES
+    - Retry automatico en apiSaveProfile (3 intentos)
+    - Toast notifications para errores
+    - Manejo de sesion expirada (401 → reload)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 2: INFRAESTRUCTURA Y CALIDAD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[x] 2.1 DOCUMENTACION
+    - README.md con setup, arquitectura, scripts
+
+[x] 2.2 TESTING
+    - Vitest configurado
+    - Tests para nft.ts (24 tests) y profile.ts (11 tests)
+    - Coverage con v8
+
+[x] 2.3 LINTING Y FORMATEO
+    - ESLint + Prettier configurados
+    - Scripts: lint, format, check
+
+[x] 2.4 BASE DE DATOS
+    - Migrado de db.json a SQLite (better-sqlite3)
+    - WAL mode para mejor rendimiento
+    - Tablas: users, profiles con foreign keys
+
+[x] 2.5 CI/CD
+    - GitHub Actions configurado (.github/workflows/ci.yml)
+    - Jobs: lint, format, test, build
+    - Upload de dist como artifact
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 3: GAMEPLAY NUEVO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[x] 3.1 SISTEMA DE HABILIDADES
+    - 2 habilidades por elemento (Q, W)
+    - Habilidades basadas en elemento del NFT
+    - Cooldowns y costos de energia
+    - Tipos: dano, curacion, escudo, dash, stun, lifesteal
+    - UI con botones y teclas Q/W
+
+[ ] 3.2 BOSS BATTLES
+    - 1 boss por zona (3 bosses totales)
+    - Mecanicas de boss:
+      * Fases de ataque con patrones
+      * Invocacion de minions
+      * Ataques area (AoE)
+      * Enrage timer
+    - Loot exclusivo de boss
+    - Cutscene introductoria simple
+
+[ ] 3.3 SISTEMA PVP (ARENA)
+    - Arena 1v1 desbloqueada al nivel 10
+    - Matchmaking por nivel/rareza
+    - Sistema de ranking (ELO)
+    - Recompensas de temporada
+    - Leaderboard global
+
+[x] 3.4 EXPANDIR CRAFTING
+    - 12 recetas implementadas:
+      * Racion, Espada, Pocion, Escudo, Unguento (originales)
+      * Armadura (3 mineral: +3 defensa)
+      * Amuleto (2 esencia: +2 habilidad)
+      * Pocion de Fuerza (2 mineral: +2 ataque temporal)
+      * Pocion de Velocidad (2 hierba: +3 velocidad temporal)
+      * Antidoto (1 hierba: cura +20)
+      * Gran Pocion (3 esencia: +80 vida)
+      * Elixir (4 esencia: +100 vida +50 energia)
+
+[x] 3.5 NUEVAS ZONAS
+    - Desierto Ardiente: nivel 15-25
+    - Cueva Profunda: nivel 25-40
+    - Configuracion de terreno y niebla
+
+[ ] 3.6 SISTEMA DE GUILDS
+    - Crear/unirse a guild (max 30 miembros)
+    - Guild bank compartido
+    - Guild quests (misiones grupales)
+    - Guild wars (guild vs guild)
+    - Chat de guild
+
+[x] 3.7 SISTEMA DE LOGROS
+    - 20 logros implementados en 5 categorias:
+      * Exploracion: visitar zonas, completar quests
+      * Combate: matar criaturas, subir nivel
+      * Coleccion: recolectar recursos
+      * Social: (pendiente guilds)
+      * Crafting: fabricar objetos
+    - Sistema de progreso por logro
+    - Recompensas XP por completar
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 4: UX/UI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ ] 4.1 AUDIO
+    - Efectos de sonido:
+      * Ataque golpe
+      * Recibir dano
+      * Recoger recurso
+      * Completar quest
+      * Subir de nivel
+    - Musica ambiental por zona (Web Audio API)
+    - Boton de mute/volumen en settings
+    - Formato: OGG (compress mejor que MP3)
+
+[ ] 4.2 ANIMACIONES MEJORADAS
+    - Animacion de ataque (swing del modelo)
+    - Animacion de recibir dano (flash rojo)
+    - Animacion de muerte (caida + fade)
+    - Particulas de efectos de habilidades
+    - Sombra dinamica del jugador
+
+[ ] 4.3 MINIMAPA
+    - Minimapa en esquina superior derecha
+    - Iconos: jugador, enemigos, NPCs, portales
+    - Fog of war (solo areas exploradas)
+    - Click para marcar waypoints
+
+[ ] 4.4 SISTEMA DE MENSAJES
+    - Notificaciones toast (no intrusivas)
+    - Historial de mensajes recientes
+    - Mensajes de sistema (logros, level up)
+    - Mensajes de combate (criticos, misses)
+
+[ ] 4.5 CHAT GLOBAL
+    - Chat en tiempo real (WebSocket)
+    - Canales: Global, Guild, Party
+    - Filtro de spam y bad words
+    - Emotes/emojis basicos
+
+[ ] 4.6 MEJORAS VISUALES
+    - Iluminacion dinamica por zona
+    - Efectos de clima (lluvia, nieve, viento)
+    - Sombras mejoradas (shadow maps)
+    - Post-processing: bloom, vignette
+    - LOD (Level of Detail) para enemigos lejanos
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 5: MONETIZACION Y RETENCION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ ] 5.1 MARKETPLACE DE NFTs
+    - Listar NFT en venta (fijar precio)
+    - Buscar/comprar NFT de otros jugadores
+    - Sistema de ofertas
+    - Historial de transacciones
+    - Fee del 5% por venta
+
+[ ] 5.2 BATTLE PASS
+    - Pase gratuito (50 niveles)
+    - Pase premium (50 niveles + rewards exclusivos)
+    - XP adicional por quests diarias
+    - Cosmetics exclusivos ( skins, efectos )
+
+[ ] 5.3 TIENDA DE COSMETICS
+    - Skins de personaje (cambiar apariencia)
+    - Efectos de ataque (particulas)
+    - Animaciones de emote
+    - Títulos y badges
+
+[ ] 5.4 QUESTS DIARIAS
+    - 3 quests diarias aleatorias
+    - Recompensas de login diario (7 dias)
+    - Streak bonus (consecutivos)
+    - Reset a medianoche UTC
+
+[ ] 5.5 EVENTOS TEMPORADA
+    - Eventos de temporada (Halloween, Navidad, etc.)
+    - Enemigos especiales con loot exclusivo
+    - Bosses de evento limitados
+    - Cosmetics de temporada
+
+[ ] 5.6 SISTEMA DE AMIGOS
+    - Lista de amigos
+    - Estado online/offline
+    - Invitar a party (2-4 jugadores)
+    - Chat privado
+
+[ ] 5.7 LEADERBOARD GLOBAL
+    - Ranking por nivel
+    - Ranking por PVP
+    - Ranking por guild
+    - Recompensas por temporada
+
+================================================================================
+                        NOTAS TECNICAS IMPORTANTES
+================================================================================
+
+ARCHIVOS CLAVE PARA MODIFICAR:
+  - server/index.js        → Backend principal (auth, API)
+  - src/game/game.ts       → Core del juego (554 lineas)
+  - src/game/nft.ts        → Sistema NFT (252 lineas)
+  - src/game/world.ts      → Generacion del mundo (638 lineas)
+  - src/game/profile.ts    → Perfil jugador (78 lineas)
+  - src/main.ts            → UI principal (177 lineas)
+
+DEPENDENCIAS ACTUALES:
+  Frontend: three@0.179, typescript@5.8, vite@7.1
+  Backend: express@4.21, jsonwebtoken@9.0, cors@2.85
+
+COMANDOS DISPONIBLES:
+  npm run dev      → Iniciar frontend con Vite
+  npm run server   → Iniciar backend Express
+  npm run start    → Iniciar ambos (concurrently)
+  npm run build    → Build de produccion (tsc + vite build)
+  npm run preview  → Preview del build
+
+VARIABLES DE ENTorno REQUERIDAS (server):
+  JWT_SECRET       → Secreto para JWT (requerido en produccion)
+  PORT             → Puerto del server (default: 3000)
+
+BUGS CONOCIDOS:
+  - apiSaveProfile no tiene retry en caso de fallo
+  - No hay manejo de sesion expirada en frontend
+  - db.json se corrompe si hay escritura concurrente
+  - FNV-1a hash no es seguro para contraseñas
+
+OPTIMIZACIONES PENDIENTES:
+  - Object pooling para enemigos
+  - Frustum culling manual
+  - Compresion de assets (textures, models)
+  - Lazy loading de zonas no visitadas
+
+================================================================================
+                    PRIORIDAD DE IMPLEMENTACION
+================================================================================
+
+SEMANA 1-2: Seguridad (Fase 1)
+SEMANA 3-4: Testing + CI/CD (Fase 2)
+SEMANA 5-8: Habilidades + Bosses + PVP (Fase 3.1-3.3)
+SEMANA 9-10: Nuevas zonas (Fase 3.5)
+SEMANA 11-12: Audio + Minimapa (Fase 4.1, 4.3)
+SEMANA 13-16: Guilds + Chat (Fase 3.6, 4.5)
+SEMANA 17-20: Monetizacion (Fase 5)
+
+================================================================================
+                        ULTIMA ACTUALIZACION
+================================================================================
+
+Fecha: 2026-07-22
+Version: 0.3.0 (Gameplay)
+Commits: Pendiente
+Tests: 35 pasando
+Fases completadas: 1 (Seguridad) + 2 (Infraestructura) + 3 (Gameplay parcial)
+Siguiente: Boss battles, PVP, Guilds
+
+================================================================================

@@ -3,3 +3,7 @@ node_modules/
 dist/
 build/
 vendor/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

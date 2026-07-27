@@ -1,13 +1,39 @@
 import { Clock, Group, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
 import { InputController } from './input';
-import { saveProfile, type PlayerProfile, type ZoneId, currentQuestDef, advanceQuest } from './profile';
+import {
+  saveProfile,
+  type PlayerProfile,
+  type ZoneId,
+  currentQuestDef,
+  advanceQuest,
+} from './profile';
 import { createWorld, type Enemy, type ResourceNode, rollLoot } from './world';
-import { type Npc, type CraftingStation, type ZonePortal, isNearPortal, isNearNpc, isNearStation, zoneConfig } from './zones';
+import {
+  type Npc,
+  type CraftingStation,
+  type ZonePortal,
+  isNearPortal,
+  isNearNpc,
+  isNearStation,
+  zoneConfig,
+} from './zones';
 import { validateRewardCode } from './rewards';
 import { QrScanner } from './qr-scanner';
-import { frameIntervalFor, getQuality, pixelRatioFor, saveQuality, type QualityLevel } from './quality';
+import {
+  frameIntervalFor,
+  getQuality,
+  pixelRatioFor,
+  saveQuality,
+  type QualityLevel,
+} from './quality';
 import { buildNftModel, totalStats, xpForLevel } from './nft';
 import { apiSaveProfile, isLoggedIn } from './api';
+import {
+  createActiveAbilities,
+  calculateAbilityEffect,
+  type ActiveAbility,
+  type AbilityEffect,
+} from './abilities';
 
 export class Game {
   private readonly scene = new Scene();
@@ -38,8 +64,17 @@ export class Game {
   private levelupFlashTimer = 0;
   private lastServerSave = 0;
   private readonly SAVE_INTERVAL = 30000;
+  private abilities: ActiveAbility[] = [];
+  private shieldActive = false;
+  private shieldHp = 0;
+  private stunTimer = 0;
+  private dashTimer = 0;
+  private dashDirection = new Vector3();
 
-  constructor(canvas: HTMLCanvasElement, private readonly profile: PlayerProfile) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    private readonly profile: PlayerProfile
+  ) {
     this.player = buildNftModel(this.profile.nft);
     this.renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: 'low-power' });
     this.renderer.setPixelRatio(pixelRatioFor(this.quality));
@@ -50,37 +85,87 @@ export class Game {
     this.loadZone(this.currentZone);
     this.health = this.maxHealth();
     this.camera.position.set(0, 7.5, 9);
-    this.input = new InputController(this.element('#joystick'), this.element('#joystick-knob'), () => this.attack(), () => this.interact());
+    this.input = new InputController(
+      this.element('#joystick'),
+      this.element('#joystick-knob'),
+      () => this.attack(),
+      () => this.interact()
+    );
     window.addEventListener('resize', () => this.resize());
     document.addEventListener('visibilitychange', () => this.clock.getDelta());
     this.element('#inventory-button').addEventListener('click', () => this.toggleInventory());
     this.element('#close-inventory').addEventListener('click', () => this.toggleInventory(true));
     this.element('#reward-button').addEventListener('click', () => this.toggleRewards());
     this.element('#close-rewards').addEventListener('click', () => this.toggleRewards(true));
-    this.element<HTMLFormElement>('#reward-form').addEventListener('submit', (event) => { event.preventDefault(); void this.redeemReward(); });
-    this.qrScanner = new QrScanner(this.element('#qr-video'), this.element('#scan-status'), (code) => { this.element<HTMLInputElement>('#reward-code').value = code; void this.redeemReward(); });
-    this.element('#scan-qr-button').addEventListener('click', () => { this.element('#qr-video').hidden = false; void this.qrScanner.start(); });
+    this.element<HTMLFormElement>('#reward-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      void this.redeemReward();
+    });
+    this.qrScanner = new QrScanner(
+      this.element('#qr-video'),
+      this.element('#scan-status'),
+      (code) => {
+        this.element<HTMLInputElement>('#reward-code').value = code;
+        void this.redeemReward();
+      }
+    );
+    this.element('#scan-qr-button').addEventListener('click', () => {
+      this.element('#qr-video').hidden = false;
+      void this.qrScanner.start();
+    });
     this.element('#settings-button').addEventListener('click', () => this.toggleSettings());
     this.element('#close-settings').addEventListener('click', () => this.toggleSettings(true));
     const qualitySelect = this.element<HTMLSelectElement>('#quality-select');
     qualitySelect.value = this.quality;
-    qualitySelect.addEventListener('change', () => this.setQuality(qualitySelect.value as QualityLevel));
-    document.querySelectorAll<HTMLButtonElement>('[data-recipe]').forEach((button) => button.addEventListener('click', () => this.craft(button.dataset.recipe as keyof PlayerProfile['crafted'])));
-    document.querySelectorAll<HTMLButtonElement>('[data-attribute]').forEach((button) => button.addEventListener('click', () => this.increaseAttribute(button.dataset.attribute as import('./nft').StatName)));
-    document.querySelectorAll<HTMLButtonElement>('[data-use]').forEach((button) => button.addEventListener('click', () => this.useConsumable(button.dataset.use as 'racion' | 'pocion' | 'unguento')));
+    qualitySelect.addEventListener('change', () =>
+      this.setQuality(qualitySelect.value as QualityLevel)
+    );
+    document
+      .querySelectorAll<HTMLButtonElement>('[data-recipe]')
+      .forEach((button) =>
+        button.addEventListener('click', () =>
+          this.craft(button.dataset.recipe as keyof PlayerProfile['crafted'])
+        )
+      );
+    document
+      .querySelectorAll<HTMLButtonElement>('[data-attribute]')
+      .forEach((button) =>
+        button.addEventListener('click', () =>
+          this.increaseAttribute(button.dataset.attribute as import('./nft').StatName)
+        )
+      );
+    document
+      .querySelectorAll<HTMLButtonElement>('[data-use]')
+      .forEach((button) =>
+        button.addEventListener('click', () =>
+          this.useConsumable(button.dataset.use as 'racion' | 'pocion' | 'unguento')
+        )
+      );
     this.element('#close-dialog')?.addEventListener('click', () => this.closeDialog());
     this.element('#close-trade')?.addEventListener('click', () => this.closeTrade());
+    this.abilities = createActiveAbilities(this.profile.nft);
+    this.setupAbilityButtons();
     this.updateProfilePanel();
     this.updateQuest();
     this.updateZoneLabel();
   }
 
-  start() { this.clock.start(); this.loop(); }
+  start() {
+    this.clock.start();
+    this.loop();
+  }
 
   private loop = (timestamp = performance.now()) => {
-    if (!document.hidden && timestamp - this.lastRenderAt < frameIntervalFor(this.quality)) { requestAnimationFrame(this.loop); return; }
+    if (!document.hidden && timestamp - this.lastRenderAt < frameIntervalFor(this.quality)) {
+      requestAnimationFrame(this.loop);
+      return;
+    }
     const delta = Math.min(this.clock.getDelta(), 0.05);
-    if (!document.hidden) { this.update(delta); this.renderer.render(this.scene, this.camera); this.lastRenderAt = timestamp; }
+    if (!document.hidden) {
+      this.update(delta);
+      this.renderer.render(this.scene, this.camera);
+      this.lastRenderAt = timestamp;
+    }
     requestAnimationFrame(this.loop);
   };
 
@@ -88,7 +173,10 @@ export class Game {
     const direction = this.input.update();
     const stats = totalStats(this.profile.nft);
     const now = performance.now();
-    if (isLoggedIn() && now - this.lastServerSave > this.SAVE_INTERVAL) { this.lastServerSave = now; apiSaveProfile(this.profile).catch(() => {}); }
+    if (isLoggedIn() && now - this.lastServerSave > this.SAVE_INTERVAL) {
+      this.lastServerSave = now;
+      apiSaveProfile(this.profile).catch(() => {});
+    }
     const spdMul = 1 + (stats.spd - 5) * 0.04;
     if (direction.lengthSq() > 0) {
       const speed = 4.2 * spdMul;
@@ -109,6 +197,11 @@ export class Game {
       if (children[1]) children[1].position.y += Math.sin(this.bobPhase) * 0.004;
     }
     const halfGround = 42;
+    if (this.dashTimer > 0) {
+      this.player.position.x += this.dashDirection.x * 20 * delta;
+      this.player.position.z += this.dashDirection.z * 20 * delta;
+      this.dashTimer -= delta;
+    }
     this.player.position.x = Math.max(-halfGround, Math.min(halfGround, this.player.position.x));
     this.player.position.z = Math.max(-halfGround, Math.min(halfGround, this.player.position.z));
     this.updateEnemies(delta);
@@ -116,24 +209,34 @@ export class Game {
     this.checkInteractProximity();
     this.updateCompass();
     this.updateAnimations(delta);
+    this.updateAbilityCooldowns();
     this.cameraTarget.set(this.player.position.x, 0.5, this.player.position.z);
-    this.camera.position.lerp(this.cameraTarget.clone().add(new Vector3(0, 7.5, 9)), 1 - Math.exp(-delta * 5));
+    this.camera.position.lerp(
+      this.cameraTarget.clone().add(new Vector3(0, 7.5, 9)),
+      1 - Math.exp(-delta * 5)
+    );
     this.camera.lookAt(this.cameraTarget);
     this.updateHud();
     this.updateTarget();
   }
 
   private autoCollect() {
-    const node = this.resources.find((r) => r.active && r.mesh.position.distanceTo(this.player.position) < 1.8);
+    const node = this.resources.find(
+      (r) => r.active && r.mesh.position.distanceTo(this.player.position) < 1.8
+    );
     if (!node) return;
-    node.active = false; node.mesh.visible = false;
+    node.active = false;
+    node.mesh.visible = false;
     const amount = 1;
     this.profile.inventory[node.kind] += amount;
     this.addExperience(5);
     this.profile.quest.resources += amount;
     this.updateQuest();
     this.hint(`+${amount} ${node.kind}`);
-    window.setTimeout(() => { node.active = true; node.mesh.visible = true; }, 15000);
+    window.setTimeout(() => {
+      node.active = true;
+      node.mesh.visible = true;
+    }, 15000);
   }
 
   private checkInteractProximity() {
@@ -168,17 +271,30 @@ export class Game {
     this.attackAnimTimer = 0.25;
     this.player.scale.setScalar(1.12);
     const stats = totalStats(this.profile.nft);
-    const enemy = this.enemies.filter((candidate) => candidate.alive).sort((a, b) => this.player.position.distanceTo(a.mesh.position) - this.player.position.distanceTo(b.mesh.position))[0];
-    if (!enemy) { this.hint('No hay criaturas cerca.'); return; }
+    const enemy = this.enemies
+      .filter((candidate) => candidate.alive)
+      .sort(
+        (a, b) =>
+          this.player.position.distanceTo(a.mesh.position) -
+          this.player.position.distanceTo(b.mesh.position)
+      )[0];
+    if (!enemy) {
+      this.hint('No hay criaturas cerca.');
+      return;
+    }
     const attackRange = enemy.kind === 'golem' ? 4.5 : enemy.kind === 'spirit' ? 4.0 : 4.2;
-    if (this.player.position.distanceTo(enemy.mesh.position) >= attackRange) { this.hint('Acercate mas para atacar.'); return; }
+    if (this.player.position.distanceTo(enemy.mesh.position) >= attackRange) {
+      this.hint('Acercate mas para atacar.');
+      return;
+    }
     const dmg = 1 + Math.floor(stats.atk / 3) + (this.profile.crafted.espada > 0 ? 2 : 0);
     enemy.health -= dmg;
     enemy.mesh.scale.setScalar(0.85);
     setTimeout(() => enemy.mesh.scale.setScalar(1), 100);
     this.updateEnemyHpBar(enemy);
     if (enemy.health <= 0) {
-      enemy.alive = false; enemy.mesh.visible = false;
+      enemy.alive = false;
+      enemy.mesh.visible = false;
       this.addExperience(15);
       this.profile.quest.creatures += 1;
       this.trackQuestKill(enemy);
@@ -216,13 +332,20 @@ export class Game {
       if (!qs) return;
       qs.completed = true;
       this.profile.nft.xp += qdef.rewardExp;
-      if (qdef.rewardResource && qdef.rewardAmount) this.profile.inventory[qdef.rewardResource] += qdef.rewardAmount;
+      if (qdef.rewardResource && qdef.rewardAmount)
+        this.profile.inventory[qdef.rewardResource] += qdef.rewardAmount;
       this.profile.quest.resources = 0;
       this.profile.quest.creatures = 0;
       const nextDef = advanceQuest(this.profile);
-      if (nextDef && nextDef.unlockZone && !this.profile.unlockedZones.includes(nextDef.unlockZone)) {
+      if (
+        nextDef &&
+        nextDef.unlockZone &&
+        !this.profile.unlockedZones.includes(nextDef.unlockZone)
+      ) {
         this.profile.unlockedZones.push(nextDef.unlockZone);
-        this.hint(`Zona desbloqueada: ${nextDef.unlockZone === 'bosque' ? 'Bosque Ancestral' : nextDef.unlockZone}`);
+        this.hint(
+          `Zona desbloqueada: ${nextDef.unlockZone === 'bosque' ? 'Bosque Ancestral' : nextDef.unlockZone}`
+        );
       }
       this.hint(`Mision "${qdef.title}" completada. +${qdef.rewardExp} EXP`);
       if (isLoggedIn()) apiSaveProfile(this.profile).catch(() => {});
@@ -294,12 +417,17 @@ export class Game {
       btn.className = canTrade ? '' : 'disabled';
       btn.textContent = `${offer.giveAmount} ${offer.give} → ${offer.receiveAmount} ${offer.receive}`;
       btn.addEventListener('click', () => {
-        if (this.profile.inventory[offer.give] < offer.giveAmount) { this.hint('No tienes suficientes recursos.'); return; }
+        if (this.profile.inventory[offer.give] < offer.giveAmount) {
+          this.hint('No tienes suficientes recursos.');
+          return;
+        }
         this.profile.inventory[offer.give] -= offer.giveAmount;
         this.profile.inventory[offer.receive] += offer.receiveAmount;
         saveProfile(this.profile);
         this.updateProfilePanel();
-        this.hint(`Intercambiaste ${offer.giveAmount} ${offer.give} por ${offer.receiveAmount} ${offer.receive}.`);
+        this.hint(
+          `Intercambiaste ${offer.giveAmount} ${offer.give} por ${offer.receiveAmount} ${offer.receive}.`
+        );
         this.openTrade(npc);
       });
       container.appendChild(btn);
@@ -330,28 +458,43 @@ export class Game {
   private updateEnemies(delta: number) {
     const now = performance.now();
     const stats = totalStats(this.profile.nft);
-    this.enemies.filter((enemy) => enemy.alive).forEach((enemy) => {
-      const direction = this.player.position.clone().sub(enemy.mesh.position);
-      direction.y = 0;
-      const distance = direction.length();
-      const chaseRange = enemy.kind === 'golem' ? 8 : enemy.kind === 'spirit' ? 9 : 11;
-      const attackRange = enemy.kind === 'golem' ? 3.2 : enemy.kind === 'spirit' ? 2.8 : 2.5;
-      if (distance > attackRange && distance < chaseRange) {
-        enemy.mesh.position.addScaledVector(direction.normalize(), enemy.speed * delta);
-        enemy.mesh.rotation.y = Math.atan2(direction.x, direction.z);
-      }
-      enemy.hpBarBg.lookAt(this.camera.position);
-      enemy.hpBar.lookAt(this.camera.position);
-      const lastAttack = this.lastEnemyAttacks.get(enemy) ?? 0;
-      if (distance <= attackRange && now - lastAttack > 1300) {
-        this.lastEnemyAttacks.set(enemy, now);
-        const damage = Math.max(2, enemy.damage - stats.def * 0.7 - (this.profile.crafted.escudo > 0 ? 3 : 0));
-        this.health = Math.max(0, this.health - damage);
-        this.showDamageNumber(Math.round(damage));
-        this.hint(`${enemy.name} te ha causado ${Math.round(damage)} de dano.`);
-        if (this.health <= 0) this.respawnPlayer();
-      }
-    });
+    this.enemies
+      .filter((enemy) => enemy.alive)
+      .forEach((enemy) => {
+        const direction = this.player.position.clone().sub(enemy.mesh.position);
+        direction.y = 0;
+        const distance = direction.length();
+        const chaseRange = enemy.kind === 'golem' ? 8 : enemy.kind === 'spirit' ? 9 : 11;
+        const attackRange = enemy.kind === 'golem' ? 3.2 : enemy.kind === 'spirit' ? 2.8 : 2.5;
+        if (distance > attackRange && distance < chaseRange) {
+          enemy.mesh.position.addScaledVector(direction.normalize(), enemy.speed * delta);
+          enemy.mesh.rotation.y = Math.atan2(direction.x, direction.z);
+        }
+        enemy.hpBarBg.lookAt(this.camera.position);
+        enemy.hpBar.lookAt(this.camera.position);
+        const lastAttack = this.lastEnemyAttacks.get(enemy) ?? 0;
+        if (distance <= attackRange && now - lastAttack > 1300) {
+          this.lastEnemyAttacks.set(enemy, now);
+          let damage = Math.max(
+            2,
+            enemy.damage - stats.def * 0.7 - (this.profile.crafted.escudo > 0 ? 3 : 0)
+          );
+          if (this.shieldActive && this.shieldHp > 0) {
+            const absorbed = Math.min(this.shieldHp, damage);
+            this.shieldHp -= absorbed;
+            damage -= absorbed;
+            if (this.shieldHp <= 0) this.shieldActive = false;
+          }
+          if (damage > 0) {
+            this.health = Math.max(0, this.health - damage);
+            this.showDamageNumber(Math.round(damage));
+            this.hint(`${enemy.name} te ha causado ${Math.round(damage)} de dano.`);
+            if (this.health <= 0) this.respawnPlayer();
+          } else {
+            this.hint(`${enemy.name} ataco pero tu escudo lo bloqueo!`);
+          }
+        }
+      });
   }
 
   private respawnPlayer() {
@@ -394,57 +537,328 @@ export class Game {
     this.element('#quest-title').textContent = qdef.title;
     const resources = Math.min(this.profile.quest.resources, qdef.requiredResources);
     const creatures = Math.min(this.profile.quest.creatures, qdef.requiredCreatures);
-    this.element('#quest-description').textContent = `${qdef.description} (Recursos: ${resources}/${qdef.requiredResources}, Criaturas: ${creatures}/${qdef.requiredCreatures})`;
+    this.element('#quest-description').textContent =
+      `${qdef.description} (Recursos: ${resources}/${qdef.requiredResources}, Criaturas: ${creatures}/${qdef.requiredCreatures})`;
     saveProfile(this.profile);
   }
 
   private craft(recipe: keyof PlayerProfile['crafted'], stationName?: string) {
-    const ingredients: Record<keyof PlayerProfile['crafted'], keyof PlayerProfile['inventory']> = { racion: 'trigo', espada: 'mineral', pocion: 'esencia', escudo: 'madera', unguento: 'hierba' };
-    const ingredient = ingredients[recipe];
-    const cost = recipe === 'racion' ? 1 : 2;
-    if (this.profile.inventory[ingredient] < cost) { this.hint(`Necesitas ${cost} de ${ingredient} para fabricar${stationName ? ` en ${stationName}` : ''}.`); return; }
+    const recipes: Record<
+      keyof PlayerProfile['crafted'],
+      { ingredient: keyof PlayerProfile['inventory']; cost: number; name: string }
+    > = {
+      racion: { ingredient: 'trigo', cost: 1, name: 'Racion' },
+      espada: { ingredient: 'mineral', cost: 2, name: 'Espada' },
+      pocion: { ingredient: 'esencia', cost: 2, name: 'Pocion' },
+      escudo: { ingredient: 'madera', cost: 2, name: 'Escudo' },
+      unguento: { ingredient: 'hierba', cost: 2, name: 'Unguento' },
+      armadura: { ingredient: 'mineral', cost: 3, name: 'Armadura' },
+      amuleto: { ingredient: 'esencia', cost: 2, name: 'Amuleto' },
+      pocion_fuerza: { ingredient: 'mineral', cost: 2, name: 'Pocion de Fuerza' },
+      pocion_velocidad: { ingredient: 'hierba', cost: 2, name: 'Pocion de Velocidad' },
+      antidoto: { ingredient: 'hierba', cost: 1, name: 'Antidoto' },
+      gran_pocion: { ingredient: 'esencia', cost: 3, name: 'Gran Pocion' },
+      elixir: { ingredient: 'esencia', cost: 4, name: 'Elixir' },
+    };
+    const recipeData = recipes[recipe];
+    if (!recipeData) return;
+
+    const { ingredient, cost, name } = recipeData;
+    if (this.profile.inventory[ingredient] < cost) {
+      this.hint(
+        `Necesitas ${cost} de ${ingredient} para fabricar ${name}${stationName ? ` en ${stationName}` : ''}.`
+      );
+      return;
+    }
     this.profile.inventory[ingredient] -= cost;
     this.profile.crafted[recipe] += 1;
     this.addExperience(4);
-    this.hint(`${recipe} fabricado${stationName ? ` en ${stationName}` : ''}.`);
+    this.hint(`${name} fabricado${stationName ? ` en ${stationName}` : ''}.`);
     this.updateProfilePanel();
   }
 
   private increaseAttribute(stat: import('./nft').StatName) {
     const nft = this.profile.nft;
-    if (this.profile.attributePoints <= 0) { this.hint('Sube de nivel para obtener puntos de atributo.'); return; }
+    if (this.profile.attributePoints <= 0) {
+      this.hint('Sube de nivel para obtener puntos de atributo.');
+      return;
+    }
     this.profile.attributePoints -= 1;
     nft.baseStats[stat] += 1;
-    saveProfile(this.profile); this.updateProfilePanel();
+    saveProfile(this.profile);
+    this.updateProfilePanel();
     this.hint(`${stat} ha aumentado.`);
   }
 
-  private useConsumable(item: 'racion' | 'pocion' | 'unguento') {
-    if (this.profile.crafted[item] <= 0) { this.hint(`No tienes ${item}.`); return; }
+  private useConsumable(
+    item:
+      | 'racion'
+      | 'pocion'
+      | 'unguento'
+      | 'pocion_fuerza'
+      | 'pocion_velocidad'
+      | 'antidoto'
+      | 'gran_pocion'
+      | 'elixir'
+  ) {
+    if (this.profile.crafted[item] <= 0) {
+      this.hint(`No tienes ${item}.`);
+      return;
+    }
     this.profile.crafted[item] -= 1;
     const stats = totalStats(this.profile.nft);
-    if (item === 'racion') this.energy = Math.min(100, this.energy + 50);
-    if (item === 'pocion') this.health = Math.min(this.maxHealth(), this.health + 45 + stats.ability * 2);
-    if (item === 'unguento') this.health = Math.min(this.maxHealth(), this.health + 25 + stats.ability);
-    saveProfile(this.profile); this.updateProfilePanel();
+
+    switch (item) {
+      case 'racion':
+        this.energy = Math.min(100, this.energy + 50);
+        break;
+      case 'pocion':
+        this.health = Math.min(this.maxHealth(), this.health + 45 + stats.ability * 2);
+        break;
+      case 'unguento':
+        this.health = Math.min(this.maxHealth(), this.health + 25 + stats.ability);
+        break;
+      case 'gran_pocion':
+        this.health = Math.min(this.maxHealth(), this.health + 80 + stats.ability * 3);
+        break;
+      case 'elixir':
+        this.health = Math.min(this.maxHealth(), this.health + 100 + stats.ability * 4);
+        this.energy = Math.min(100, this.energy + 50);
+        break;
+      case 'pocion_fuerza':
+        this.profile.nft.baseStats.atk += 2;
+        this.hint('Ataque +2 por 60 segundos.');
+        window.setTimeout(() => {
+          this.profile.nft.baseStats.atk -= 2;
+        }, 60000);
+        break;
+      case 'pocion_velocidad':
+        this.profile.nft.baseStats.spd += 3;
+        this.hint('Velocidad +3 por 45 segundos.');
+        window.setTimeout(() => {
+          this.profile.nft.baseStats.spd -= 3;
+        }, 45000);
+        break;
+      case 'antidoto':
+        this.health = Math.min(this.maxHealth(), this.health + 20);
+        this.hint('Efectos negativos removidos.');
+        break;
+    }
+
+    saveProfile(this.profile);
+    this.updateProfilePanel();
     this.hint(`${item} usado.`);
+  }
+
+  private setupAbilityButtons() {
+    const container = this.element('#ability-buttons');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const keys = ['q', 'w'];
+    this.abilities.forEach((ability, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'ability-btn';
+      btn.dataset.abilityIndex = String(i);
+      btn.innerHTML = `
+        <span class="ability-icon">${ability.icon}</span>
+        <span class="ability-key">${keys[i]?.toUpperCase() || ''}</span>
+        <span class="ability-cooldown"></span>
+      `;
+      btn.addEventListener('click', () => this.useAbility(i));
+      btn.title = `${ability.name}: ${ability.description}`;
+      container.appendChild(btn);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'q') this.useAbility(0);
+      if (e.key.toLowerCase() === 'w' && !this.isMoving) this.useAbility(1);
+    });
+  }
+
+  private useAbility(index: number) {
+    const ability = this.abilities[index];
+    if (!ability) return;
+
+    const now = performance.now();
+    if (now - ability.lastUsed < ability.cooldown) {
+      this.hint(`${ability.name} en enfriamiento.`);
+      return;
+    }
+
+    if (this.energy < ability.energyCost) {
+      this.hint(`Energia insuficiente para ${ability.name}.`);
+      return;
+    }
+
+    const stats = totalStats(this.profile.nft);
+    const effect = calculateAbilityEffect(ability, stats, this.profile.nft.level);
+
+    this.energy -= ability.energyCost;
+    ability.lastUsed = now;
+    ability.currentCooldown = ability.cooldown;
+
+    this.applyAbilityEffect(ability, effect);
+    this.hint(`${ability.icon} ${ability.name} activado!`);
+
+    if (effect.type === 'dash') {
+      const direction = new Vector3();
+      this.camera.getWorldDirection(direction);
+      direction.y = 0;
+      direction.normalize();
+      this.dashDirection.copy(direction);
+      this.dashTimer = 0.2;
+    }
+  }
+
+  private applyAbilityEffect(ability: ActiveAbility, effect: AbilityEffect) {
+    const stats = totalStats(this.profile.nft);
+
+    switch (effect.type) {
+      case 'damage': {
+        const targets =
+          effect.targets === 'aoe'
+            ? this.enemies.filter(
+                (e) =>
+                  e.alive && e.mesh.position.distanceTo(this.player.position) < 6
+              )
+            : [this.nearestEnemy()];
+
+        for (const enemy of targets) {
+          if (!enemy) continue;
+          const dmg = effect.value;
+          enemy.health -= dmg;
+          this.updateEnemyHpBar(enemy);
+          this.showDamageNumber(dmg, true);
+
+          if (enemy.health <= 0) {
+            enemy.alive = false;
+            enemy.mesh.visible = false;
+            this.addExperience(15);
+            this.profile.quest.creatures += 1;
+            this.trackQuestKill(enemy);
+            const drops = rollLoot(enemy.kind);
+            if (drops.length > 0) {
+              for (const drop of drops) {
+                this.profile.inventory[drop.resource] += drop.amount;
+                this.profile.loot.push(drop);
+                this.profile.quest.resources += drop.amount;
+              }
+            }
+            window.setTimeout(() => this.respawnEnemy(enemy), 18000);
+          }
+        }
+        break;
+      }
+      case 'heal': {
+        const healAmount = effect.value;
+        this.health = Math.min(this.maxHealth(), this.health + healAmount);
+        this.showHealNumber(healAmount);
+        break;
+      }
+      case 'shield': {
+        this.shieldActive = true;
+        this.shieldHp = effect.value;
+        if (effect.duration && effect.duration > 0) {
+          window.setTimeout(() => {
+            this.shieldActive = false;
+            this.shieldHp = 0;
+          }, effect.duration * 1000);
+        }
+        break;
+      }
+      case 'stun': {
+        this.enemies
+          .filter(
+            (e) =>
+              e.alive && e.mesh.position.distanceTo(this.player.position) < 6
+          )
+          .forEach((e) => {
+            e.speed = 0;
+            window.setTimeout(() => {
+              e.speed = e.kind === 'golem' ? 1.2 : e.kind === 'spirit' ? 2.0 : 2.5;
+            }, effect.value * 1000);
+          });
+        break;
+      }
+      case 'lifesteal': {
+        const enemy = this.nearestEnemy();
+        if (enemy && enemy.alive) {
+          const dmg = effect.value;
+          enemy.health -= dmg;
+          this.updateEnemyHpBar(enemy);
+          this.showDamageNumber(dmg, true);
+          const heal = Math.round(dmg * 0.3);
+          this.health = Math.min(this.maxHealth(), this.health + heal);
+          this.showHealNumber(heal);
+
+          if (enemy.health <= 0) {
+            enemy.alive = false;
+            enemy.mesh.visible = false;
+            this.addExperience(15);
+            this.profile.quest.creatures += 1;
+            this.trackQuestKill(enemy);
+            window.setTimeout(() => this.respawnEnemy(enemy), 18000);
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  private updateAbilityCooldowns() {
+    const now = performance.now();
+    this.abilities.forEach((ability, i) => {
+      const elapsed = now - ability.lastUsed;
+      if (elapsed < ability.cooldown) {
+        ability.currentCooldown = ability.cooldown - elapsed;
+      } else {
+        ability.currentCooldown = 0;
+      }
+
+      const btn = this.element<HTMLButtonElement>(`[data-ability-index="${i}"]`);
+      if (btn) {
+        const cooldownEl = btn.querySelector('.ability-cooldown');
+        if (ability.currentCooldown > 0) {
+          btn.classList.add('on-cooldown');
+          if (cooldownEl) {
+            cooldownEl.textContent = `${Math.ceil(ability.currentCooldown / 1000)}s`;
+          }
+        } else {
+          btn.classList.remove('on-cooldown');
+          if (cooldownEl) cooldownEl.textContent = '';
+        }
+      }
+    });
   }
 
   private async redeemReward() {
     const field = this.element<HTMLInputElement>('#reward-code');
     const reward = await validateRewardCode(field.value);
-    if (!reward) { this.hint('Codigo de recompensa invalido.'); return; }
-    if (this.profile.redeemedRewards.includes(reward.id)) { this.hint('Esta recompensa ya fue canjeada.'); return; }
+    if (!reward) {
+      this.hint('Codigo de recompensa invalido.');
+      return;
+    }
+    if (this.profile.redeemedRewards.includes(reward.id)) {
+      this.hint('Esta recompensa ya fue canjeada.');
+      return;
+    }
     this.profile.redeemedRewards.push(reward.id);
     const stats = totalStats(this.profile.nft);
     this.health = Math.min(this.maxHealth(), this.health + reward.health + stats.ability * 2);
     this.energy = Math.min(100, this.energy + reward.energy + stats.ability);
     if (reward.resource && reward.amount) this.profile.inventory[reward.resource] += reward.amount;
-    saveProfile(this.profile); this.updateProfilePanel(); field.value = '';
+    saveProfile(this.profile);
+    this.updateProfilePanel();
+    field.value = '';
     this.hint(`${reward.label} recibido.`);
   }
 
-  private resize() { this.camera.aspect = innerWidth / innerHeight; this.camera.updateProjectionMatrix(); this.renderer.setSize(innerWidth, innerHeight, false); }
+  private resize() {
+    this.camera.aspect = innerWidth / innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(innerWidth, innerHeight, false);
+  }
   private setQuality(level: QualityLevel) {
     this.quality = level;
     saveQuality(level);
@@ -456,12 +870,12 @@ export class Game {
   }
   private updateHud() {
     const maxHealth = this.maxHealth();
-    this.element('#health-bar').style.width = `${this.health / maxHealth * 100}%`;
+    this.element('#health-bar').style.width = `${(this.health / maxHealth) * 100}%`;
     this.element('#health-value').textContent = `${Math.round(this.health)} / ${maxHealth}`;
     this.element('#energy-bar').style.width = `${this.energy}%`;
     this.element('#energy-value').textContent = `${Math.round(this.energy)} / 100`;
     const xpRequired = xpForLevel(this.profile.nft.level);
-    this.element('#xp-bar').style.width = `${this.profile.nft.xp / xpRequired * 100}%`;
+    this.element('#xp-bar').style.width = `${(this.profile.nft.xp / xpRequired) * 100}%`;
     this.element('#xp-value').textContent = `${this.profile.nft.xp} / ${xpRequired}`;
   }
   private updateTarget() {
@@ -471,21 +885,31 @@ export class Game {
     card.hidden = !visible;
     if (!enemy || !visible) return;
     this.element('#target-name').textContent = enemy.name;
-    this.element('#target-health').style.width = `${enemy.health / enemy.maxHealth * 100}%`;
+    this.element('#target-health').style.width = `${(enemy.health / enemy.maxHealth) * 100}%`;
   }
   private nearestEnemy() {
-    return this.enemies.filter((candidate) => candidate.alive).sort((a, b) => this.player.position.distanceTo(a.mesh.position) - this.player.position.distanceTo(b.mesh.position))[0];
+    return this.enemies
+      .filter((candidate) => candidate.alive)
+      .sort(
+        (a, b) =>
+          this.player.position.distanceTo(a.mesh.position) -
+          this.player.position.distanceTo(b.mesh.position)
+      )[0];
   }
   private updateProfilePanel() {
     const nft = this.profile.nft;
     const stats = totalStats(nft);
     this.element('#profession-name').textContent = `${nft.name} (Lv.${nft.level})`;
     this.element('#level-value').textContent = `${nft.xp} / ${xpForLevel(nft.level)} EXP`;
-    (Object.keys(this.profile.inventory) as Array<keyof PlayerProfile['inventory']>).forEach((key) => { this.element(`#${key}-count`).textContent = String(this.profile.inventory[key]); });
-    (Object.keys(this.profile.crafted) as Array<keyof PlayerProfile['crafted']>).forEach((key) => { this.element(`#${key}-count`).textContent = String(this.profile.crafted[key]); });
-    this.element('#racion-use-count').textContent = String(this.profile.crafted.racion);
-    this.element('#pocion-use-count').textContent = String(this.profile.crafted.pocion);
-    this.element('#unguento-use-count').textContent = String(this.profile.crafted.unguento);
+    (Object.keys(this.profile.inventory) as Array<keyof PlayerProfile['inventory']>).forEach(
+      (key) => {
+        this.element(`#${key}-count`).textContent = String(this.profile.inventory[key]);
+      }
+    );
+    (Object.keys(this.profile.crafted) as Array<keyof PlayerProfile['crafted']>).forEach((key) => {
+      const el = this.element<HTMLElement>(`#${key}-count`);
+      if (el) el.textContent = String(this.profile.crafted[key]);
+    });
     this.element('#attribute-points').textContent = String(this.profile.attributePoints);
     const statKeys = ['atk', 'def', 'spd', 'hp', 'ability'] as const;
     for (const key of statKeys) {
@@ -494,21 +918,41 @@ export class Game {
     }
   }
   private updateZoneLabel() {
-    const labels: Record<string, string> = { aldea: 'Aldea', bosque: 'Bosque Ancestral', ruinas: 'Ruinas Antiguas' };
+    const labels: Record<string, string> = {
+      aldea: 'Aldea',
+      bosque: 'Bosque Ancestral',
+      ruinas: 'Ruinas Antiguas',
+      desierto: 'Desierto Ardiente',
+      cueva: 'Cueva Profunda',
+    };
     this.element('#zone-label').textContent = labels[this.currentZone] ?? this.currentZone;
   }
-  private toggleInventory(force?: boolean) { const panel = this.element('#inventory-panel'); panel.hidden = force ?? !panel.hidden; }
+  private toggleInventory(force?: boolean) {
+    const panel = this.element('#inventory-panel');
+    panel.hidden = force ?? !panel.hidden;
+  }
   private toggleRewards(force?: boolean) {
     const panel = this.element('#reward-panel');
     panel.hidden = force ?? !panel.hidden;
-    if (panel.hidden) { this.qrScanner.stop(); this.element('#qr-video').hidden = true; }
+    if (panel.hidden) {
+      this.qrScanner.stop();
+      this.element('#qr-video').hidden = true;
+    }
   }
-  private toggleSettings(force?: boolean) { const panel = this.element('#settings-panel'); panel.hidden = force ?? !panel.hidden; }
-  private hint(message: string) { this.element('#hint').textContent = message; }
+  private toggleSettings(force?: boolean) {
+    const panel = this.element('#settings-panel');
+    panel.hidden = force ?? !panel.hidden;
+  }
+  private hint(message: string) {
+    this.element('#hint').textContent = message;
+  }
   private updateAnimations(delta: number) {
     if (this.attackAnimTimer > 0) {
       this.attackAnimTimer -= delta;
-      if (this.attackAnimTimer <= 0) { this.player.scale.setScalar(1); this.attackAnimTimer = 0; }
+      if (this.attackAnimTimer <= 0) {
+        this.player.scale.setScalar(1);
+        this.attackAnimTimer = 0;
+      }
     }
     if (this.levelupFlashTimer > 0) {
       this.levelupFlashTimer -= delta;
@@ -517,38 +961,74 @@ export class Game {
       else flash.classList.remove('active');
     }
   }
-  private showDamageNumber(amount: number) {
+  private showDamageNumber(amount: number, isAbility = false) {
     const container = this.element<HTMLElement>('#damage-numbers');
     const num = document.createElement('div');
     num.className = 'damage-num';
     num.textContent = `-${amount}`;
     num.style.left = `${50 + (Math.random() - 0.5) * 20}%`;
     num.style.top = '45%';
+    if (isAbility) {
+      num.style.color = '#ffaa00';
+      num.style.fontSize = '18px';
+    }
     container.appendChild(num);
     window.setTimeout(() => num.remove(), 900);
   }
-  private maxHealth() { return 100 + totalStats(this.profile.nft).hp * 8; }
+
+  private showHealNumber(amount: number) {
+    const container = this.element<HTMLElement>('#damage-numbers');
+    const num = document.createElement('div');
+    num.className = 'damage-num';
+    num.textContent = `+${amount}`;
+    num.style.left = `${50 + (Math.random() - 0.5) * 20}%`;
+    num.style.top = '45%';
+    num.style.color = '#44ff44';
+    num.style.fontSize = '16px';
+    container.appendChild(num);
+    window.setTimeout(() => num.remove(), 900);
+  }
+  private maxHealth() {
+    return 100 + totalStats(this.profile.nft).hp * 8;
+  }
   private updateCompass() {
     const arrow = this.element<HTMLElement>('#compass-arrow');
     const label = this.element<HTMLElement>('#compass-label');
     if (!arrow || !label) return;
-    if (this.portals.length === 0) { arrow.style.opacity = '0'; label.textContent = ''; return; }
+    if (this.portals.length === 0) {
+      arrow.style.opacity = '0';
+      label.textContent = '';
+      return;
+    }
     let nearest: import('./zones').ZonePortal | null = null;
     let minDist = Infinity;
     for (const p of this.portals) {
       const dx = p.position.x - this.player.position.x;
       const dz = p.position.z - this.player.position.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist < minDist) { minDist = dist; nearest = p; }
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = p;
+      }
     }
-    if (!nearest) { arrow.style.opacity = '0'; label.textContent = ''; return; }
+    if (!nearest) {
+      arrow.style.opacity = '0';
+      label.textContent = '';
+      return;
+    }
     const dx = nearest.position.x - this.player.position.x;
     const dz = nearest.position.z - this.player.position.z;
     const angle = Math.atan2(dx, dz) * (180 / Math.PI) + 180;
     arrow.style.transform = `rotate(${angle}deg)`;
     arrow.style.opacity = '1';
-    const zoneNames: Record<string, string> = { aldea: 'Aldea', bosque: 'Bosque', ruinas: 'Ruinas' };
+    const zoneNames: Record<string, string> = {
+      aldea: 'Aldea',
+      bosque: 'Bosque',
+      ruinas: 'Ruinas',
+    };
     label.textContent = zoneNames[nearest.targetZone] ?? nearest.targetZone;
   }
-  private element<T extends HTMLElement>(selector: string): T { return document.querySelector(selector) as T; }
+  private element<T extends HTMLElement>(selector: string): T {
+    return document.querySelector(selector) as T;
+  }
 }
