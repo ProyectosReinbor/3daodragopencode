@@ -173,6 +173,56 @@ button {
   background: #c6554d;
   transition: width 0.12s linear;
 }
+.boss-card {
+  position: fixed;
+  z-index: 2;
+  top: max(50px, calc(env(safe-area-inset-top) + 34px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(280px, 70vw);
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2a1a0a 0%, #1a0a2a 100%);
+  border: 1px solid #ff660044;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  box-shadow: 0 0 20px #ff660033;
+}
+.boss-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  color: #ffcc88;
+  font-size: 11px;
+  text-shadow: 0 0 8px #ff660066;
+}
+.boss-hp-bar {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #0e1a13;
+}
+.boss-hp-bar b {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #cc3333, #ff6600);
+  transition: width 0.15s linear;
+  border-radius: 10px;
+}
+.boss-enrage {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 8px;
+  color: #ff4444;
+  text-shadow: 0 0 4px #ff0000;
+  font-weight: 800;
+}
 .controls {
   position: fixed;
   z-index: 3;
@@ -595,6 +645,274 @@ button {
 .settings-panel small {
   font-size: 9px;
   line-height: 1.35;
+}
+.mute-btn {
+  display: block;
+  width: 100%;
+  margin: 7px 0 12px;
+  padding: 9px;
+  border: 1px solid #d9bd7d66;
+  border-radius: 7px;
+  background: #0f1c15;
+  color: #f8ecd0;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.mute-btn:hover {
+  background: #1a2a1d;
+}
+.daily-panel {
+  position: fixed;
+  z-index: 5;
+  top: max(72px, calc(env(safe-area-inset-top) + 58px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(320px, calc(100vw - 32px));
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 17px;
+  border: 1px solid #f1c46b52;
+  border-radius: 14px;
+  background: #17251df0;
+  box-shadow: 0 10px 28px #08110988;
+}
+.daily-panel h2 {
+  margin: 2px 0 14px;
+  font-family: Georgia, serif;
+  font-size: 14px;
+  color: #f0c36d;
+}
+.daily-quests {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.daily-quest-item {
+  padding: 10px;
+  border-radius: 8px;
+  background: #0f1c15;
+  border: 1px solid #2a3a2d;
+}
+.daily-quest-item.completed {
+  border-color: #44cc88;
+}
+.daily-quest-item.claimed {
+  opacity: 0.5;
+}
+.daily-quest-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f8ecd0;
+  margin-bottom: 4px;
+}
+.daily-quest-desc {
+  font-size: 10px;
+  color: #aaa88a;
+  margin-bottom: 6px;
+}
+.daily-quest-progress {
+  height: 6px;
+  border-radius: 6px;
+  background: #1a2a1d;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.daily-quest-progress b {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #44cc88, #66eebb);
+  transition: width 0.2s linear;
+  border-radius: 6px;
+}
+.daily-quest-reward {
+  font-size: 9px;
+  color: #f0c36d;
+}
+.daily-claim-btn {
+  margin-top: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: #2a5a3a;
+  color: #f8ecd0;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #44cc88;
+}
+.daily-claim-btn:hover {
+  background: #3a7a4a;
+}
+.daily-claim-btn:disabled {
+  background: #1a2a1d;
+  color: #666;
+  border-color: #333;
+  cursor: not-allowed;
+}
+.daily-button {
+  position: fixed;
+  z-index: 3;
+  bottom: max(100px, calc(env(safe-area-inset-bottom) + 84px));
+  left: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #2a5a3a;
+  border: 2px solid #f0c36d;
+  color: #f0c36d;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0 10px #f0c36d44;
+}
+.leaderboard-button,
+.battlepass-button {
+  position: fixed;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #f0c36d;
+  color: #f0c36d;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0 10px #f0c36d44;
+}
+.leaderboard-button {
+  bottom: max(146px, calc(env(safe-area-inset-bottom) + 130px));
+  left: 16px;
+  background: #3a2a5a;
+}
+.battlepass-button {
+  bottom: max(100px, calc(env(safe-area-inset-bottom) + 84px));
+  left: 16px;
+  margin-left: 44px;
+  background: #5a3a2a;
+}
+.leaderboard-panel,
+.battlepass-panel {
+  position: fixed;
+  z-index: 5;
+  top: max(72px, calc(env(safe-area-inset-top) + 58px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(320px, calc(100vw - 32px));
+  max-height: 65vh;
+  overflow-y: auto;
+  padding: 17px;
+  border: 1px solid #f1c46b52;
+  border-radius: 14px;
+  background: #17251df0;
+  box-shadow: 0 10px 28px #08110988;
+}
+.leaderboard-panel h2,
+.battlepass-panel h2 {
+  margin: 2px 0 14px;
+  font-family: Georgia, serif;
+  font-size: 14px;
+  color: #f0c36d;
+}
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lb-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #0f1c15;
+  font-size: 11px;
+}
+.lb-entry.self {
+  background: #1a3a2a;
+  border: 1px solid #44cc88;
+}
+.lb-rank {
+  width: 24px;
+  font-weight: 800;
+  color: #f0c36d;
+  text-align: center;
+}
+.lb-name {
+  flex: 1;
+  color: #f8ecd0;
+  font-weight: 600;
+}
+.lb-level {
+  color: #aaa88a;
+  font-size: 10px;
+}
+.lb-score {
+  color: #f0c36d;
+  font-weight: 700;
+}
+.battlepass-progress {
+  height: 8px;
+  border-radius: 8px;
+  background: #0f1c15;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.battlepass-progress b {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #5a3a2a, #f0c36d);
+  transition: width 0.2s linear;
+  border-radius: 8px;
+}
+.battlepass-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bp-tier {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #0f1c15;
+  font-size: 11px;
+}
+.bp-tier.claimed {
+  opacity: 0.5;
+}
+.bp-tier.available {
+  border: 1px solid #f0c36d;
+  background: #1a2a1d;
+}
+.bp-level {
+  width: 28px;
+  font-weight: 800;
+  color: #f0c36d;
+  text-align: center;
+}
+.bp-reward {
+  flex: 1;
+  color: #f8ecd0;
+}
+.bp-claim-btn {
+  padding: 4px 10px;
+  border-radius: 5px;
+  background: #5a3a2a;
+  color: #f8ecd0;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #f0c36d;
+}
+.bp-claim-btn:hover {
+  background: #7a5a3a;
+}
+.bp-claim-btn:disabled {
+  background: #1a2a1d;
+  color: #666;
+  border-color: #333;
+  cursor: not-allowed;
 }
 .intro .clear-cache-button {
   width: auto;

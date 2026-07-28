@@ -1,5 +1,6 @@
 import type { NftCharacter } from './nft';
 import { type PlayerAchievement, createAchievements } from './achievements';
+import { type DailyQuestData, loadDailyQuests } from './daily-quests';
 
 export type Inventory = Record<'trigo' | 'mineral' | 'esencia' | 'madera' | 'hierba', number>;
 export type CraftedItems = Record<
@@ -60,6 +61,7 @@ export interface PlayerProfile {
   unlockedZones: ZoneId[];
   loot: LootEntry[];
   achievements: PlayerAchievement[];
+  dailyQuests: DailyQuestData;
 }
 
 const STORAGE_KEY = 'reinos-ancestrales-v3';
@@ -106,6 +108,7 @@ export function createProfile(nft: NftCharacter): PlayerProfile {
     unlockedZones: ['aldea'],
     loot: [],
     achievements: createAchievements(),
+    dailyQuests: loadDailyQuests(),
   };
 }
 

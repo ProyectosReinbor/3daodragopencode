@@ -1,6 +1,7 @@
 import type { ZoneId, TradeOffer } from './profile';
 import type { World } from './world';
 import type { Group } from 'three';
+import type { ActiveBoss } from './bosses';
 
 export interface ZonePortal {
   position: { x: number; z: number };
@@ -19,6 +20,7 @@ export interface CraftingStation {
   recipe: string;
 }
 export interface ZoneWorld extends World {
+  boss: ActiveBoss | null;
   npcs: Npc[];
   stations: CraftingStation[];
   portals: ZonePortal[];

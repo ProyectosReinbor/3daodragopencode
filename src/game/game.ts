@@ -35,6 +35,37 @@ import {
   type AbilityEffect,
 } from './abilities';
 import { updateAchievement } from './achievements';
+import { type ActiveBoss, getBossPhase, rollBossLoot, buildBossMinion } from './bosses';
+import { Minimap } from './minimap';
+import { AudioManager } from './audio';
+import {
+  loadDailyQuests,
+  saveDailyQuests,
+  updateLoginStreak,
+  trackDailyKill,
+  trackDailyCollect,
+  trackDailyCraft,
+  trackDailyExplore,
+  claimDailyQuest,
+  getDailyQuestStatus,
+} from './daily-quests';
+import { VisualEffects } from './visual';
+import {
+  loadLeaderboard,
+  submitScore,
+  calculateScore,
+  getRank,
+  type LeaderboardEntry,
+} from './leaderboard';
+import {
+  loadBattlePass,
+  saveBattlePass,
+  addBattlePassXp,
+  claimBattlePassTier,
+  getBattlePassTiers,
+  getBattlePassProgress,
+  type BattlePassState,
+} from './battlepass';
 
 type ConsumableItem =
   | 'racion'
@@ -96,6 +127,23 @@ export class Game {
   private readonly domInput = {} as Record<string, HTMLInputElement>;
   private readonly domButton = {} as Record<string, HTMLButtonElement>;
   private readonly domSelect = {} as Record<string, HTMLSelectElement>;
+  private activeBoss: ActiveBoss | null = null;
+  private bossMinions = new Map<
+    Group,
+    { health: number; damage: number; speed: number; alive: boolean }
+  >();
+  private bossWarningTimer = 0;
+  private bossAbilityWarnings: string[] = [];
+  private readonly lastMinionAttacks = new Map<Group, number>();
+  private readonly minimap: Minimap;
+  private readonly audio: AudioManager;
+  private readonly visuals: VisualEffects;
+  private dailyQuestData: ReturnType<typeof loadDailyQuests>;
+  private leaderboard: LeaderboardEntry[];
+  private battlePass: BattlePassState;
+  private sessionStartTime = 0;
+  private sessionKills = 0;
+  private sessionBossKills = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -144,6 +192,17 @@ export class Game {
     });
     this.dom['settings-button'].addEventListener('click', () => this.toggleSettings());
     this.dom['close-settings'].addEventListener('click', () => this.toggleSettings(true));
+    this.dom['mute-toggle']?.addEventListener('click', () => {
+      const muted = this.audio.toggleMute();
+      const btn = this.dom['mute-toggle'];
+      if (btn) btn.textContent = muted ? '🔇 Silenciado' : '🔊 Sonido';
+    });
+    this.dom['daily-button']?.addEventListener('click', () => this.toggleDailyQuests());
+    this.dom['close-daily']?.addEventListener('click', () => this.toggleDailyQuests(true));
+    this.dom['leaderboard-button']?.addEventListener('click', () => this.toggleLeaderboard());
+    this.dom['close-leaderboard']?.addEventListener('click', () => this.toggleLeaderboard(true));
+    this.dom['battlepass-button']?.addEventListener('click', () => this.toggleBattlePass());
+    this.dom['close-battlepass']?.addEventListener('click', () => this.toggleBattlePass(true));
     const qualitySelect = this.domSelect['quality-select'];
     qualitySelect.value = this.quality;
     qualitySelect.addEventListener('change', () =>
@@ -174,6 +233,15 @@ export class Game {
     this.dom['close-trade']?.addEventListener('click', () => this.closeTrade());
     this.abilities = createActiveAbilities(this.profile.nft);
     this.setupAbilityButtons();
+    this.minimap = new Minimap();
+    this.audio = new AudioManager();
+    this.visuals = new VisualEffects();
+    this.leaderboard = loadLeaderboard();
+    this.battlePass = loadBattlePass();
+    this.sessionStartTime = Date.now();
+    this.dailyQuestData = updateLoginStreak(this.profile.dailyQuests);
+    this.profile.dailyQuests = this.dailyQuestData;
+    saveDailyQuests(this.dailyQuestData);
     this.updateProfilePanel();
     this.updateQuest();
     this.updateZoneLabel();
@@ -237,11 +305,38 @@ export class Game {
     this.player.position.x = Math.max(-halfGround, Math.min(halfGround, this.player.position.x));
     this.player.position.z = Math.max(-halfGround, Math.min(halfGround, this.player.position.z));
     this.updateEnemies(delta);
+    this.updateBoss(delta);
+    this.updateBossMinions(delta);
     this.autoCollect();
     this.checkInteractProximity();
     this.updateCompass();
+    this.minimap.update(
+      this.player.position.x,
+      this.player.position.z,
+      this.player.rotation.y,
+      zoneConfig(this.currentZone).groundSize,
+      this.enemies,
+      this.npcs,
+      this.stations,
+      this.portals,
+      this.activeBoss,
+      this.bossMinions,
+      this.currentZone
+    );
+    this.visuals.update(delta, this.player.position.x, this.player.position.z);
     this.updateAnimations(delta);
     this.updateAbilityCooldowns();
+    if (this.bossWarningTimer > 0) {
+      this.bossWarningTimer -= delta;
+      const warning = this.dom['levelup-flash'];
+      if (this.bossWarningTimer > 0) {
+        warning.classList.add('active');
+        warning.style.background = 'rgba(255, 50, 0, 0.3)';
+      } else {
+        warning.classList.remove('active');
+        warning.style.background = '';
+      }
+    }
     this.cameraTarget.set(this.player.position.x, 0.5, this.player.position.z);
     this.tempVec.copy(this.cameraTarget).add(this.cameraOffset);
     this.camera.position.lerp(this.tempVec, 1 - Math.exp(-delta * 5));
@@ -261,10 +356,25 @@ export class Game {
     this.profile.inventory[node.kind] += amount;
     this.addExperience(5);
     this.profile.quest.resources += amount;
+    trackDailyCollect(this.dailyQuestData, node.kind, amount);
+    saveDailyQuests(this.dailyQuestData);
     this.trackAchievement('collector_1', amount);
     this.trackAchievement('collector_2', amount);
     this.trackAchievement('collector_3', amount);
     this.updateQuest();
+    this.audio.playCollect();
+    const resourceColors: Record<string, number> = {
+      trigo: 0xd8bc4f,
+      mineral: 0x788c9a,
+      esencia: 0x9c70cb,
+      madera: 0x71472e,
+      hierba: 0x75b954,
+    };
+    this.visuals.spawnCollectBurst(
+      this.scene,
+      node.mesh.position,
+      resourceColors[node.kind] ?? 0xffffff
+    );
     this.hint(`+${amount} ${node.kind}`);
     window.setTimeout(() => {
       node.active = true;
@@ -303,50 +413,180 @@ export class Game {
     this.lastAttack = now;
     this.attackAnimTimer = 0.25;
     this.player.scale.setScalar(1.12);
+    this.audio.playAttack();
     const stats = totalStats(this.profile.nft);
+
     const enemy = this.cachedNearestEnemy;
-    if (!enemy) {
+    const boss = this.activeBoss;
+    const bossDist =
+      boss && boss.alive ? this.player.position.distanceTo(boss.mesh.position) : Infinity;
+    const enemyDist = enemy ? this.player.position.distanceTo(enemy.mesh.position) : Infinity;
+
+    const targetBoss = boss && boss.alive && bossDist < enemyDist && bossDist < 6;
+    const targetEnemy = enemy && enemyDist < 6;
+
+    if (!targetBoss && !targetEnemy) {
       this.hint('No hay criaturas cerca.');
       return;
     }
-    const attackRange = enemy.kind === 'golem' ? 4.5 : enemy.kind === 'spirit' ? 4.0 : 4.2;
-    if (this.player.position.distanceTo(enemy.mesh.position) >= attackRange) {
-      this.hint('Acercate mas para atacar.');
+
+    if (targetBoss) {
+      const attackRange = boss!.definition.attackRange;
+      if (bossDist >= attackRange) {
+        this.hint('Acercate mas para atacar al boss.');
+        return;
+      }
+      const dmg = 1 + Math.floor(stats.atk / 3) + (this.profile.crafted.espada > 0 ? 2 : 0);
+      this.damageBoss(dmg);
       return;
     }
-    const dmg = 1 + Math.floor(stats.atk / 3) + (this.profile.crafted.espada > 0 ? 2 : 0);
-    enemy.health -= dmg;
-    enemy.mesh.scale.setScalar(0.85);
-    setTimeout(() => enemy.mesh.scale.setScalar(1), 100);
-    this.updateEnemyHpBar(enemy);
-    if (enemy.health <= 0) {
-      enemy.alive = false;
-      enemy.mesh.visible = false;
-      this.addExperience(15);
-      this.profile.quest.creatures += 1;
-      this.trackAchievement('monster_slayer_1', 1);
-      this.trackAchievement('monster_slayer_2', 1);
-      if (enemy.kind === 'wolf') this.trackAchievement('wolf_hunter_1', 1);
-      if (enemy.kind === 'wolf') this.trackAchievement('wolf_hunter_2', 1);
-      if (enemy.kind === 'spirit') this.trackAchievement('spirit_hunter_1', 1);
-      if (enemy.kind === 'golem') this.trackAchievement('golem_hunter_1', 1);
-      this.trackQuestKill(enemy);
-      const drops = rollLoot(enemy.kind);
-      if (drops.length > 0) {
-        const dropTexts: string[] = [];
-        for (const drop of drops) {
-          this.profile.inventory[drop.resource] += drop.amount;
-          this.profile.loot.push(drop);
-          this.profile.quest.resources += drop.amount;
-          dropTexts.push(`+${drop.amount} ${drop.resource}`);
-        }
-        this.hint(`${enemy.name} derrotado. Botin: ${dropTexts.join(', ')}`);
-      } else {
-        this.hint(`${enemy.name} fue derrotado. Volvera mas tarde.`);
+
+    if (targetEnemy && enemy) {
+      const attackRange = enemy.kind === 'golem' ? 4.5 : enemy.kind === 'spirit' ? 4.0 : 4.2;
+      if (enemyDist >= attackRange) {
+        this.hint('Acercate mas para atacar.');
+        return;
       }
-      this.updateQuest();
-      window.setTimeout(() => this.respawnEnemy(enemy), 18000);
+      const dmg = 1 + Math.floor(stats.atk / 3) + (this.profile.crafted.espada > 0 ? 2 : 0);
+      enemy.health -= dmg;
+      enemy.mesh.scale.setScalar(0.85);
+      setTimeout(() => enemy.mesh.scale.setScalar(1), 100);
+      this.updateEnemyHpBar(enemy);
+      if (enemy.health <= 0) {
+        enemy.alive = false;
+        enemy.mesh.visible = false;
+        this.visuals.spawnDeathBurst(this.scene, enemy.mesh.position);
+        this.addExperience(15);
+        this.sessionKills++;
+        const bpResult = addBattlePassXp(this.battlePass, 10);
+        saveBattlePass(this.battlePass);
+        if (bpResult.leveledUp) this.hint(`Battle Pass nivel ${bpResult.newLevel}`);
+        this.profile.quest.creatures += 1;
+        this.trackAchievement('monster_slayer_1', 1);
+        this.trackAchievement('monster_slayer_2', 1);
+        if (enemy.kind === 'wolf') this.trackAchievement('wolf_hunter_1', 1);
+        if (enemy.kind === 'wolf') this.trackAchievement('wolf_hunter_2', 1);
+        if (enemy.kind === 'spirit') this.trackAchievement('spirit_hunter_1', 1);
+        if (enemy.kind === 'golem') this.trackAchievement('golem_hunter_1', 1);
+        this.trackQuestKill(enemy);
+        trackDailyKill(this.dailyQuestData, enemy.kind);
+        saveDailyQuests(this.dailyQuestData);
+        const drops = rollLoot(enemy.kind);
+        if (drops.length > 0) {
+          const dropTexts: string[] = [];
+          for (const drop of drops) {
+            this.profile.inventory[drop.resource] += drop.amount;
+            this.profile.loot.push(drop);
+            this.profile.quest.resources += drop.amount;
+            dropTexts.push(`+${drop.amount} ${drop.resource}`);
+          }
+          this.hint(`${enemy.name} derrotado. Botin: ${dropTexts.join(', ')}`);
+        } else {
+          this.hint(`${enemy.name} fue derrotado. Volvera mas tarde.`);
+        }
+        this.updateQuest();
+        window.setTimeout(() => this.respawnEnemy(enemy), 18000);
+      }
     }
+  }
+
+  private damageBoss(dmg: number) {
+    const boss = this.activeBoss;
+    if (!boss || !boss.alive) return;
+
+    boss.health -= dmg;
+    boss.mesh.scale.setScalar(0.9);
+    setTimeout(() => boss.mesh.scale.setScalar(1), 100);
+    this.showDamageNumber(dmg, true);
+    this.updateBossHpBar();
+
+    const healthRatio = boss.health / boss.maxHealth;
+    const newPhase = getBossPhase(healthRatio, boss.definition.phases);
+
+    if (newPhase > boss.currentPhase) {
+      boss.currentPhase = newPhase;
+      const phaseConfig = boss.definition.phases[newPhase - 1];
+      if (phaseConfig && phaseConfig.message) {
+        this.hint(`⚠ ${phaseConfig.message}`);
+        this.bossWarningTimer = 3.0;
+        this.audio.playBossWarning();
+        this.visuals.flashBossWarning();
+      }
+    }
+
+    if (healthRatio <= 0.25 && !boss.enraged) {
+      boss.enraged = true;
+      boss.enrageTimer = boss.enrageMaxTime;
+      this.hint(`⚠ ¡${boss.definition.name} se ha enfurecido! ¡Ataca con todo!`);
+      this.bossWarningTimer = 3.0;
+      this.audio.playBossWarning();
+      this.visuals.flashBossWarning();
+    }
+
+    if (boss.health <= 0) {
+      this.killBoss();
+    }
+  }
+
+  private killBoss() {
+    const boss = this.activeBoss;
+    if (!boss) return;
+
+    boss.alive = false;
+    boss.mesh.visible = false;
+    this.visuals.spawnBossKillBurst(this.scene, boss.mesh.position);
+    this.addExperience(boss.definition.xpReward);
+    this.sessionBossKills++;
+    const bpResult = addBattlePassXp(this.battlePass, 50);
+    saveBattlePass(this.battlePass);
+    if (bpResult.leveledUp) this.hint(`Battle Pass nivel ${bpResult.newLevel}`);
+
+    for (const [minion] of this.bossMinions) {
+      this.scene.remove(minion);
+    }
+    this.bossMinions.clear();
+
+    const drops = rollBossLoot(boss.definition);
+    if (drops.length > 0) {
+      const dropTexts: string[] = [];
+      for (const drop of drops) {
+        this.profile.inventory[drop.resource] += drop.amount;
+        this.profile.loot.push({ resource: drop.resource, amount: drop.amount });
+        this.profile.quest.resources += drop.amount;
+        dropTexts.push(`+${drop.amount} ${drop.resource}`);
+      }
+      this.hint(`🏆 ¡${boss.definition.name} derrotado! Botin: ${dropTexts.join(', ')}`);
+    } else {
+      this.hint(`🏆 ¡${boss.definition.name} derrotado! +${boss.definition.xpReward} EXP`);
+    }
+
+    this.trackAchievement('monster_slayer_1', 1);
+    this.trackAchievement('monster_slayer_2', 1);
+    this.updateQuest();
+    this.dom['boss-card'].hidden = true;
+
+    window.setTimeout(() => this.respawnBoss(), boss.definition.respawnTime);
+  }
+
+  private respawnBoss() {
+    const boss = this.activeBoss;
+    if (!boss) return;
+
+    boss.alive = true;
+    boss.health = boss.maxHealth;
+    boss.currentPhase = 1;
+    boss.enraged = false;
+    boss.enrageTimer = 0;
+    boss.lastAttack = 0;
+    boss.lastAbilityUse.clear();
+    boss.summonCount = 0;
+    boss.mesh.position.copy(boss.spawnPosition);
+    boss.mesh.visible = true;
+    boss.hpBar.scale.x = 1;
+    boss.hpBar.position.x = 0;
+    boss.phaseBar.scale.x = 1;
+    boss.phaseBar.position.x = 0;
+    this.hint(`⚠ ¡${boss.definition.name} ha regresado!`);
   }
 
   private updateEnemyHpBar(enemy: Enemy) {
@@ -380,6 +620,7 @@ export class Game {
           `Zona desbloqueada: ${nextDef.unlockZone === 'bosque' ? 'Bosque Ancestral' : nextDef.unlockZone}`
         );
       }
+      this.audio.playQuestComplete();
       this.hint(`Mision "${qdef.title}" completada. +${qdef.rewardExp} EXP`);
       const completedCount = this.profile.quests.filter((q) => q.completed).length;
       if (completedCount >= 3) this.trackAchievement('quest_complete_1', 0);
@@ -412,6 +653,8 @@ export class Game {
     this.trackAchievement('explorer_3', 1);
     const visitedCount = new Set(this.profile.unlockedZones).size;
     if (visitedCount >= 5) this.trackAchievement('explorer_1', 0);
+    trackDailyExplore(this.dailyQuestData, visitedCount);
+    saveDailyQuests(this.dailyQuestData);
     this.hint(`Has llegado a ${portal.label}.`);
     this.updateZoneLabel();
   }
@@ -428,7 +671,17 @@ export class Game {
     this.npcs = world.npcs;
     this.stations = world.stations;
     this.portals = world.portals;
+    this.activeBoss = world.boss;
+    this.bossMinions.clear();
+    this.bossWarningTimer = 0;
+    this.bossAbilityWarnings = [];
     this.currentZone = zone;
+    this.minimap.resetFog();
+    this.audio.startZoneAmbient(zone);
+    this.visuals.setWeather(this.scene, zone);
+    if (this.activeBoss) {
+      this.hint(`⚠ ¡${this.activeBoss.definition.name} acecha en esta zona!`);
+    }
   }
 
   private handleNpcInteract() {
@@ -500,6 +753,245 @@ export class Game {
     this.hint(`${enemy.name} ha regresado al mundo.`);
   }
 
+  private updateBoss(delta: number) {
+    const boss = this.activeBoss;
+    if (!boss || !boss.alive) return;
+
+    const now = performance.now();
+    const distance = this.player.position.distanceTo(boss.mesh.position);
+    const phaseConfig = boss.definition.phases[boss.currentPhase - 1];
+    const dmgMul = phaseConfig?.damageMultiplier ?? 1;
+    const spdMul = phaseConfig?.speedMultiplier ?? 1;
+
+    if (boss.enraged) {
+      boss.enrageTimer -= delta * 1000;
+      if (boss.enrageTimer <= 0) {
+        boss.health = boss.maxHealth;
+        this.hint(`⚠ ¡${boss.definition.name} se ha regenerado!`);
+        this.updateBossHpBar();
+      }
+    }
+
+    boss.hpBarBg.lookAt(this.camera.position);
+    boss.hpBar.lookAt(this.camera.position);
+    boss.phaseBar.lookAt(this.camera.position);
+
+    const chaseRange = boss.definition.aggroRange;
+    const attackRange = boss.definition.attackRange;
+
+    if (distance > attackRange && distance < chaseRange) {
+      const dir = this.player.position.clone().sub(boss.mesh.position);
+      dir.y = 0;
+      dir.normalize();
+      boss.mesh.position.addScaledVector(dir, boss.definition.baseSpeed * spdMul * delta);
+      boss.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+    }
+
+    const lastAttack = boss.lastAttack;
+    if (distance <= attackRange && now - lastAttack > boss.definition.attackCooldown) {
+      boss.lastAttack = now;
+      const stats = totalStats(this.profile.nft);
+      let damage = Math.max(
+        2,
+        boss.definition.baseDamage * dmgMul -
+          stats.def * 0.6 -
+          (this.profile.crafted.escudo > 0 ? 3 : 0)
+      );
+      if (this.shieldActive && this.shieldHp > 0) {
+        const absorbed = Math.min(this.shieldHp, damage);
+        this.shieldHp -= absorbed;
+        damage -= absorbed;
+        if (this.shieldHp <= 0) this.shieldActive = false;
+      }
+      if (damage > 0) {
+        this.health = Math.max(0, this.health - damage);
+        this.audio.playDamage();
+        this.visuals.flashDamage();
+        this.showDamageNumber(Math.round(damage));
+        this.hint(`${boss.definition.name} te ha causado ${Math.round(damage)} de dano.`);
+        if (this.health <= 0) this.respawnPlayer();
+      } else {
+        this.hint(`${boss.definition.name} ataco pero tu escudo lo bloqueo!`);
+      }
+    }
+
+    for (const ability of boss.definition.abilities) {
+      if (ability.phaseRequired > boss.currentPhase) continue;
+      const lastUsed = boss.lastAbilityUse.get(ability.type + ability.name) ?? 0;
+      if (ability.cooldown > 0 && now - lastUsed < ability.cooldown) continue;
+      if (distance < ability.range || ability.type === 'summon' || ability.type === 'enrage') {
+        this.executeBossAbility(boss, ability);
+        boss.lastAbilityUse.set(ability.type + ability.name, now);
+      }
+    }
+
+    this.updateBossHpBar();
+  }
+
+  private executeBossAbility(boss: ActiveBoss, ability: import('./bosses').BossAbility) {
+    const stats = totalStats(this.profile.nft);
+    const distance = this.player.position.distanceTo(boss.mesh.position);
+
+    switch (ability.type) {
+      case 'aoe':
+      case 'slam':
+      case 'charge': {
+        const dmg = ability.damage;
+        if (distance <= ability.range) {
+          let damage = Math.max(
+            2,
+            dmg - stats.def * 0.5 - (this.profile.crafted.escudo > 0 ? 3 : 0)
+          );
+          if (this.shieldActive && this.shieldHp > 0) {
+            const absorbed = Math.min(this.shieldHp, damage);
+            this.shieldHp -= absorbed;
+            damage -= absorbed;
+            if (this.shieldHp <= 0) this.shieldActive = false;
+          }
+          if (damage > 0) {
+            this.health = Math.max(0, this.health - damage);
+            this.showDamageNumber(Math.round(damage), true);
+          }
+          this.hint(`⚠ ${boss.definition.name} usa ${ability.name}!`);
+        }
+        break;
+      }
+      case 'summon': {
+        if (boss.summonCount >= 5) break;
+        const minionKinds: Record<
+          string,
+          { kind: Parameters<typeof buildBossMinion>[0]; count: number }
+        > = {
+          guardian_ancestral: { kind: 'stone_fragment', count: 2 },
+          senor_bosque: { kind: 'spirit_wolf', count: 2 },
+          rey_golem: { kind: 'stone_pillar', count: 3 },
+          faraon: { kind: 'mummy_guardian', count: 2 },
+          senor_profundidades: { kind: 'shadow', count: 3 },
+        };
+        const config = minionKinds[boss.definition.id];
+        if (!config) break;
+        for (let i = 0; i < config.count && boss.summonCount < 5; i++) {
+          const minionMesh = buildBossMinion(config.kind, boss.definition.zone);
+          const angle = (i / config.count) * Math.PI * 2;
+          const spawnDist = 3 + Math.random() * 2;
+          minionMesh.position.set(
+            boss.mesh.position.x + Math.cos(angle) * spawnDist,
+            0,
+            boss.mesh.position.z + Math.sin(angle) * spawnDist
+          );
+          this.scene.add(minionMesh);
+          this.bossMinions.set(minionMesh, {
+            health: 30 + boss.definition.baseDamage * 2,
+            damage: boss.definition.baseDamage * 0.5,
+            speed: 2.0,
+            alive: true,
+          });
+          boss.summonCount++;
+        }
+        this.hint(`⚠ ${boss.definition.name} invoca ayuda!`);
+        break;
+      }
+      case 'heal': {
+        const healAmount = Math.round(boss.maxHealth * 0.15);
+        boss.health = Math.min(boss.maxHealth, boss.health + healAmount);
+        this.showHealNumber(healAmount);
+        this.hint(`⚠ ${boss.definition.name} se regenera!`);
+        break;
+      }
+      case 'enrage': {
+        if (!boss.enraged) {
+          boss.enraged = true;
+          boss.enrageTimer = boss.enrageMaxTime;
+          this.hint(`⚠ ¡${boss.definition.name} se ha enfurecido!`);
+        }
+        break;
+      }
+    }
+  }
+
+  private updateBossMinions(delta: number) {
+    const now = performance.now();
+    const stats = totalStats(this.profile.nft);
+
+    for (const [minion, data] of this.bossMinions) {
+      if (!data.alive) continue;
+
+      const distance = this.player.position.distanceTo(minion.position);
+      if (distance > 1 && distance < 12) {
+        const dir = this.player.position.clone().sub(minion.position);
+        dir.y = 0;
+        dir.normalize();
+        minion.position.addScaledVector(dir, data.speed * delta);
+        minion.rotation.y = Math.atan2(dir.x, dir.z);
+      }
+
+      const attackRange = 2.5;
+      if (distance <= attackRange) {
+        const lastAttack = this.lastMinionAttacks.get(minion) ?? 0;
+        if (now - lastAttack > 1500) {
+          this.lastMinionAttacks.set(minion, now);
+          let damage = Math.max(
+            1,
+            data.damage - stats.def * 0.5 - (this.profile.crafted.escudo > 0 ? 2 : 0)
+          );
+          if (this.shieldActive && this.shieldHp > 0) {
+            const absorbed = Math.min(this.shieldHp, damage);
+            this.shieldHp -= absorbed;
+            damage -= absorbed;
+            if (this.shieldHp <= 0) this.shieldActive = false;
+          }
+          if (damage > 0) {
+            this.health = Math.max(0, this.health - damage);
+            this.showDamageNumber(Math.round(damage));
+            if (this.health <= 0) this.respawnPlayer();
+          }
+        }
+      }
+
+      if (distance < 4.5) {
+        const dmg = 1 + Math.floor(stats.atk / 4);
+        data.health -= dmg;
+        if (data.health <= 0) {
+          data.alive = false;
+          this.scene.remove(minion);
+          this.bossMinions.delete(minion);
+          this.addExperience(8);
+        }
+      }
+    }
+  }
+
+  private updateBossHpBar() {
+    const boss = this.activeBoss;
+    if (!boss) return;
+    const ratio = Math.max(0, boss.health / boss.maxHealth);
+    boss.hpBar.scale.x = ratio;
+    boss.hpBar.position.x = -(1.8 * (1 - ratio)) / 2;
+
+    const phaseConfig = boss.definition.phases[boss.currentPhase - 1];
+    const prevThreshold =
+      boss.currentPhase > 1 ? boss.definition.phases[boss.currentPhase - 2].threshold : 1;
+    const phaseRange = prevThreshold - phaseConfig.threshold;
+    const phaseProgress = phaseRange > 0 ? (prevThreshold - ratio) / phaseRange : 1;
+    boss.phaseBar.scale.x = Math.max(0, 1 - phaseProgress);
+    boss.phaseBar.position.x = -(1.8 * phaseProgress) / 2;
+
+    const card = this.dom['boss-card'];
+    if (card) {
+      card.hidden = false;
+      this.dom['boss-name'].textContent = boss.definition.name;
+      this.dom['boss-health'].style.width = `${ratio * 100}%`;
+      this.dom['boss-phase'].textContent =
+        `Fase ${boss.currentPhase} / ${boss.definition.phases.length}`;
+      if (boss.enraged) {
+        this.dom['boss-enrage'].textContent = `FURIA: ${Math.ceil(boss.enrageTimer / 1000)}s`;
+        this.dom['boss-enrage'].style.color = '#ff4444';
+      } else {
+        this.dom['boss-enrage'].textContent = '';
+      }
+    }
+  }
+
   private updateEnemies(delta: number) {
     const now = performance.now();
     const stats = totalStats(this.profile.nft);
@@ -532,6 +1024,8 @@ export class Game {
           }
           if (damage > 0) {
             this.health = Math.max(0, this.health - damage);
+            this.audio.playDamage();
+            this.visuals.flashDamage();
             this.showDamageNumber(Math.round(damage));
             this.hint(`${enemy.name} te ha causado ${Math.round(damage)} de dano.`);
             if (this.health <= 0) this.respawnPlayer();
@@ -549,6 +1043,7 @@ export class Game {
     this.player.scale.setScalar(1);
     this.health = Math.round(this.maxHealth() * 0.65);
     this.energy = 60;
+    this.audio.playDeath();
     this.hint('Has caido en batalla. Regresaste al punto de inicio.');
   }
 
@@ -561,6 +1056,9 @@ export class Game {
       nft.level += 1;
       this.profile.attributePoints += 1;
       this.levelupFlashTimer = 0.6;
+      this.audio.playLevelUp();
+      this.visuals.flashLevelUp();
+      this.visuals.spawnLevelUpBurst(this.scene, this.player.position);
       this.hint(`${nft.name} subio a nivel ${nft.level}!`);
       if (nft.level >= 5) this.trackAchievement('level_5', 0);
       if (nft.level >= 10) this.trackAchievement('level_10', 0);
@@ -622,6 +1120,8 @@ export class Game {
     }
     this.profile.inventory[ingredient] -= cost;
     this.profile.crafted[recipe] += 1;
+    trackDailyCraft(this.dailyQuestData, 1);
+    saveDailyQuests(this.dailyQuestData);
     this.trackAchievement('crafter_1', 1);
     this.trackAchievement('crafter_2', 1);
     this.trackAchievement('crafter_3', 1);
@@ -733,6 +1233,7 @@ export class Game {
     window.addEventListener('keydown', (e) => {
       if (e.key.toLowerCase() === 'q') this.useAbility(0);
       if (e.key.toLowerCase() === 'w' && !this.isMoving) this.useAbility(1);
+      if (e.key.toLowerCase() === 'm') this.minimap.toggle();
     });
   }
 
@@ -805,11 +1306,23 @@ export class Game {
             window.setTimeout(() => this.respawnEnemy(enemy), 18000);
           }
         }
+
+        const boss = this.activeBoss;
+        if (boss && boss.alive) {
+          const bossDist = this.player.position.distanceTo(boss.mesh.position);
+          if (effect.targets === 'aoe' && bossDist < 6) {
+            this.damageBoss(effect.value);
+          } else if (effect.targets !== 'aoe' && bossDist < 5) {
+            this.damageBoss(effect.value);
+          }
+        }
         break;
       }
       case 'heal': {
         const healAmount = effect.value;
         this.health = Math.min(this.maxHealth(), this.health + healAmount);
+        this.audio.playHeal();
+        this.visuals.flashHeal();
         this.showHealNumber(healAmount);
         break;
       }
@@ -853,6 +1366,18 @@ export class Game {
             this.profile.quest.creatures += 1;
             this.trackQuestKill(enemy);
             window.setTimeout(() => this.respawnEnemy(enemy), 18000);
+          }
+        } else {
+          const boss = this.activeBoss;
+          if (boss && boss.alive) {
+            const bossDist = this.player.position.distanceTo(boss.mesh.position);
+            if (bossDist < 5) {
+              const dmg = effect.value;
+              this.damageBoss(dmg);
+              const heal = Math.round(dmg * 0.3);
+              this.health = Math.min(this.maxHealth(), this.health + heal);
+              this.showHealNumber(heal);
+            }
           }
         }
         break;
@@ -934,12 +1459,26 @@ export class Game {
   }
   private updateTarget() {
     const enemy = this.cachedNearestEnemy;
+    const boss = this.activeBoss;
+    const bossDist =
+      boss && boss.alive ? this.player.position.distanceTo(boss.mesh.position) : Infinity;
+    const enemyDist = enemy ? this.player.position.distanceTo(enemy.mesh.position) : Infinity;
+
+    const showBoss = boss && boss.alive && bossDist < enemyDist && bossDist < 8;
+    const showEnemy = enemy && enemyDist < 8 && !showBoss;
+
     const card = this.dom['target-card'];
-    const visible = Boolean(enemy && this.cachedNearestEnemyDist < 8);
-    card.hidden = !visible;
-    if (!enemy || !visible) return;
-    this.dom['target-name'].textContent = enemy.name;
-    this.dom['target-health'].style.width = `${(enemy.health / enemy.maxHealth) * 100}%`;
+    if (showBoss) {
+      card.hidden = false;
+      this.dom['target-name'].textContent = `👑 ${boss!.definition.name}`;
+      this.dom['target-health'].style.width = `${(boss!.health / boss!.maxHealth) * 100}%`;
+    } else if (showEnemy) {
+      card.hidden = false;
+      this.dom['target-name'].textContent = enemy!.name;
+      this.dom['target-health'].style.width = `${(enemy!.health / enemy!.maxHealth) * 100}%`;
+    } else {
+      card.hidden = true;
+    }
   }
   private cacheNearestEnemy() {
     let closest: Enemy | null = null;
@@ -1002,6 +1541,27 @@ export class Game {
       'trade-panel',
       'reward-code',
       'ability-buttons',
+      'boss-card',
+      'boss-name',
+      'boss-health',
+      'boss-phase',
+      'boss-enrage',
+      'mute-toggle',
+      'daily-panel',
+      'daily-button',
+      'close-daily',
+      'daily-streak',
+      'daily-quests',
+      'leaderboard-panel',
+      'leaderboard-button',
+      'close-leaderboard',
+      'leaderboard-list',
+      'battlepass-panel',
+      'battlepass-button',
+      'close-battlepass',
+      'battlepass-title',
+      'battlepass-progress',
+      'battlepass-tiers',
     ];
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -1060,6 +1620,165 @@ export class Game {
   private toggleSettings(force?: boolean) {
     const panel = this.dom['settings-panel'];
     panel.hidden = force ?? !panel.hidden;
+  }
+  private toggleDailyQuests(force?: boolean) {
+    const panel = this.dom['daily-panel'];
+    panel.hidden = force ?? !panel.hidden;
+    if (!panel.hidden) this.updateDailyQuestsUI();
+  }
+  private updateDailyQuestsUI() {
+    const data = this.dailyQuestData;
+    const streakEl = this.dom['daily-streak'];
+    if (streakEl)
+      streakEl.textContent = `Racha: ${data.loginStreak} dia${data.loginStreak > 1 ? 's' : ''}`;
+    const container = this.dom['daily-quests'];
+    if (!container) return;
+    container.innerHTML = '';
+    const status = getDailyQuestStatus(data);
+    for (let i = 0; i < data.quests.length; i++) {
+      const quest = data.quests[i];
+      const state = data.states[i];
+      const item = document.createElement('div');
+      item.className = `daily-quest-item${state.completed ? ' completed' : ''}${state.claimed ? ' claimed' : ''}`;
+      const progress = Math.min(state.progress, quest.required);
+      const pct = Math.round((progress / quest.required) * 100);
+      let rewardText = `+${quest.rewardXp} EXP`;
+      if (quest.rewardResource && quest.rewardAmount)
+        rewardText += ` +${quest.rewardAmount} ${quest.rewardResource}`;
+      item.innerHTML = `
+        <div class="daily-quest-title">${quest.title}</div>
+        <div class="daily-quest-desc">${quest.description}</div>
+        <div class="daily-quest-progress"><b style="width:${pct}%"></b></div>
+        <div class="daily-quest-reward">${progress}/${quest.required} — ${rewardText}</div>
+        <button class="daily-claim-btn" data-daily-index="${i}" ${state.completed && !state.claimed ? '' : 'disabled'}>${state.claimed ? 'Reclamado' : state.completed ? 'Reclamar' : 'En progreso'}</button>
+      `;
+      container.appendChild(item);
+    }
+    container.querySelectorAll<HTMLButtonElement>('.daily-claim-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.dailyIndex);
+        this.claimDailyQuest(idx);
+      });
+    });
+    const claimed = status.claimed;
+    const total = status.total;
+    if (claimed === total) {
+      const done = document.createElement('div');
+      done.style.cssText = 'text-align:center;color:#44cc88;font-size:11px;margin-top:8px;';
+      done.textContent = '¡Todas las misiones diarias completadas!';
+      container.appendChild(done);
+    }
+  }
+  private claimDailyQuest(index: number) {
+    const result = claimDailyQuest(this.dailyQuestData, index);
+    if (!result) return;
+    saveDailyQuests(this.dailyQuestData);
+    this.profile.nft.xp += result.xp;
+    if (result.resource && result.amount) {
+      this.profile.inventory[result.resource] += result.amount;
+    }
+    this.hint(
+      `Mision diaria reclamada. +${result.xp} EXP${result.streakBonus > 0 ? ` (+${result.streakBonus} bonus racha)` : ''}`
+    );
+    this.updateDailyQuestsUI();
+    this.updateProfilePanel();
+    saveProfile(this.profile);
+  }
+  private toggleLeaderboard(force?: boolean) {
+    const panel = this.dom['leaderboard-panel'];
+    panel.hidden = force ?? !panel.hidden;
+    if (!panel.hidden) this.updateLeaderboardUI();
+  }
+  private updateLeaderboardUI() {
+    const elapsed = Math.floor((Date.now() - this.sessionStartTime) / 1000);
+    const playerScore = calculateScore(
+      this.currentZone,
+      this.sessionKills,
+      this.sessionBossKills,
+      elapsed,
+      this.profile.nft.level
+    );
+    this.leaderboard = submitScore(
+      this.leaderboard,
+      this.profile.nft.name,
+      this.profile.nft.level,
+      this.profile.nft.traits.element,
+      playerScore,
+      this.currentZone
+    );
+    const container = this.dom['leaderboard-list'];
+    if (!container) return;
+    container.innerHTML = '';
+    const rank = getRank(this.leaderboard, this.profile.nft.name);
+    const entries = this.leaderboard.slice(0, 20);
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      const entry = document.createElement('div');
+      entry.className = `lb-entry${e.name === this.profile.nft.name ? ' self' : ''}`;
+      entry.innerHTML = `
+        <span class="lb-rank">${i + 1}</span>
+        <span class="lb-name">${e.name}</span>
+        <span class="lb-level">Lv.${e.level}</span>
+        <span class="lb-score">${e.score}</span>
+      `;
+      container.appendChild(entry);
+    }
+    const footer = document.createElement('div');
+    footer.style.cssText = 'text-align:center;color:#aaa88a;font-size:10px;margin-top:8px;';
+    footer.textContent = `Tu rango: #${rank} — Puntos: ${playerScore}`;
+    container.appendChild(footer);
+  }
+  private toggleBattlePass(force?: boolean) {
+    const panel = this.dom['battlepass-panel'];
+    panel.hidden = force ?? !panel.hidden;
+    if (!panel.hidden) this.updateBattlePassUI();
+  }
+  private updateBattlePassUI() {
+    const progress = getBattlePassProgress(this.battlePass);
+    const tiers = getBattlePassTiers();
+    const title = this.dom['battlepass-title'];
+    if (title) title.textContent = `Nivel ${progress.tier}`;
+    const barContainer = this.dom['battlepass-progress'];
+    if (barContainer) barContainer.innerHTML = `<b style="width:${progress.pct}%"></b>`;
+    const container = this.dom['battlepass-tiers'];
+    if (!container) return;
+    container.innerHTML = '';
+    const displayTiers = tiers.filter((t) => t.level <= progress.tier + 2 && t.level > 0);
+    for (const tier of displayTiers) {
+      const claimed = this.battlePass.claimedTiers.includes(tier.level);
+      const available = !claimed && progress.tier >= tier.level;
+      const tierEl = document.createElement('div');
+      tierEl.className = `bp-tier${claimed ? ' claimed' : ''}${available ? ' available' : ''}`;
+      tierEl.innerHTML = `
+        <span class="bp-level">${tier.level}</span>
+        <span class="bp-reward">${tier.label}</span>
+        <button class="bp-claim-btn" data-bp-tier="${tier.level}" ${available ? '' : 'disabled'}>${claimed ? 'Reclamado' : available ? 'Reclamar' : 'Bloqueado'}</button>
+      `;
+      container.appendChild(tierEl);
+    }
+    container.querySelectorAll<HTMLButtonElement>('.bp-claim-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.claimBattlePassTier(Number(btn.dataset.bpTier));
+      });
+    });
+  }
+  private claimBattlePassTier(tierLevel: number) {
+    const result = claimBattlePassTier(this.battlePass, tierLevel);
+    if (!result) return;
+    saveBattlePass(this.battlePass);
+    if (result.rewardType === 'xp') {
+      this.profile.nft.xp += result.rewardAmount;
+    } else if (result.rewardType === 'resource') {
+      this.profile.inventory[result.rewardId as keyof typeof this.profile.inventory] +=
+        result.rewardAmount;
+    } else if (result.rewardType === 'crafted') {
+      this.profile.crafted[result.rewardId as keyof typeof this.profile.crafted] +=
+        result.rewardAmount;
+    }
+    this.hint(`Recompensa reclamada: ${result.rewardAmount}x ${result.rewardId}`);
+    this.updateBattlePassUI();
+    this.updateProfilePanel();
+    saveProfile(this.profile);
   }
   private hint(message: string) {
     this.dom['hint'].textContent = message;

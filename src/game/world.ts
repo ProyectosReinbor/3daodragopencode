@@ -19,6 +19,7 @@ import {
 import type { ZoneId } from './profile';
 import { TRADES, type LootEntry, type LootResource } from './profile';
 import { zoneConfig, type ZoneWorld, type Npc, type CraftingStation } from './zones';
+import { getBossForZone, buildBossMesh, type ActiveBoss } from './bosses';
 
 export const LOOT_TABLE: Record<
   string,
@@ -67,7 +68,7 @@ export type Enemy = {
 };
 export type ResourceKind = 'trigo' | 'mineral' | 'esencia' | 'madera' | 'hierba';
 export type ResourceNode = { mesh: Group; kind: ResourceKind; active: boolean };
-export type World = { enemies: Enemy[]; resources: ResourceNode[] };
+export type World = { enemies: Enemy[]; resources: ResourceNode[]; boss: ActiveBoss | null };
 
 export function createWorld(scene: Scene, zone: ZoneId): ZoneWorld {
   const cfg = zoneConfig(zone);
@@ -106,10 +107,12 @@ export function createWorld(scene: Scene, zone: ZoneId): ZoneWorld {
   const npcs = createNpcs(scene, zone);
   const stations = createStations(scene, zone);
   const portals = addPortals(scene, zone);
+  const boss = createBoss(scene, zone);
 
   return {
     enemies,
     resources,
+    boss,
     npcs,
     stations,
     portals,
@@ -308,6 +311,42 @@ function createCuevaEnemies(): Enemy[] {
   golem.mesh.position.set(0, 0, -6);
   golem.spawnPosition.copy(golem.mesh.position);
   return [bat, ghost, golem];
+}
+
+function createBoss(scene: Scene, zone: ZoneId): ActiveBoss | null {
+  const bossDef = getBossForZone(zone);
+  if (!bossDef) return null;
+
+  const mesh = buildBossMesh(bossDef) as Group & { hpBar: Mesh; hpBarBg: Mesh; phaseBar: Mesh };
+  const positions: Record<ZoneId, { x: number; z: number }> = {
+    aldea: { x: -12, z: -15 },
+    bosque: { x: 10, z: -12 },
+    ruinas: { x: -8, z: -10 },
+    desierto: { x: 0, z: -14 },
+    cueva: { x: 0, z: -12 },
+  };
+  const pos = positions[zone];
+  mesh.position.set(pos.x, 0, pos.z);
+  scene.add(mesh);
+
+  return {
+    definition: bossDef,
+    mesh,
+    health: bossDef.maxHealth,
+    maxHealth: bossDef.maxHealth,
+    alive: true,
+    currentPhase: 1,
+    lastAttack: 0,
+    lastAbilityUse: new Map(),
+    enrageTimer: 0,
+    enrageMaxTime: 45000,
+    enraged: false,
+    summonCount: 0,
+    spawnPosition: new Vector3(pos.x, 0, pos.z),
+    hpBar: mesh.hpBar,
+    hpBarBg: mesh.hpBarBg,
+    phaseBar: mesh.phaseBar,
+  };
 }
 
 function createNpcs(scene: Scene, zone: ZoneId): Npc[] {
