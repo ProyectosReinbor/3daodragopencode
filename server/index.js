@@ -349,6 +349,23 @@ function recordRedemption(phone, code, rewardType, rewardId, rewardName, quantit
   );
 }
 
+// --- Admin Configuration ---
+const ADMIN_USERNAME = 'ProyectosReinbor';
+const ADMIN_PASSWORD_HASH = '$2b$12$PjnSmnRKbXGoSZ4xvn64dOwEDAbgJmcVX7jP0glRuId4CIdR4HEku';
+
+function adminAuth(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Token de admin requerido' });
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.role !== 'admin') throw new Error('No es admin');
+    req.admin = payload;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Token de admin invalido' });
+  }
+}
+
 const BCRYPT_ROUNDS = 12;
 
 const rateLimitStore = new Map();
@@ -453,8 +470,15 @@ function isLegacyHash(hash) {
 function auth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Token requerido' });
-  try { req.phone = jwt.verify(token, JWT_SECRET).phone; next(); }
-  catch { res.status(401).json({ error: 'Token invalido' }); }
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    const user = db.prepare('SELECT phone FROM users WHERE phone = ?').get(payload.phone);
+    if (!user) return res.status(401).json({ error: 'Cuenta eliminada' });
+    req.phone = payload.phone;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Token invalido' });
+  }
 }
 
 const app = express();
@@ -793,6 +817,213 @@ app.get('/api/products', (req, res) => {
   res.json({ products: rows });
 });
 
+// --- Admin Routes ---
+
+app.post('/api/admin/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Usuario y contrasena requeridos' });
+  }
+  if (username !== ADMIN_USERNAME) {
+    return res.status(401).json({ error: 'ACCESO_DENEGADO' });
+  }
+  const valid = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+  if (!valid) {
+    return res.status(401).json({ error: 'ACCESO_DENEGADO' });
+  }
+  const token = jwt.sign({ role: 'admin', username: ADMIN_USERNAME }, JWT_SECRET, { expiresIn: '24h' });
+  res.json({ token, username: ADMIN_USERNAME });
+});
+
+app.get('/api/admin/stats', adminAuth, (req, res) => {
+  const totalUsers = db.prepare('SELECT COUNT(*) AS cnt FROM users').get().cnt;
+  const totalRedeemed = db.prepare("SELECT COUNT(*) AS cnt FROM invoice_codes WHERE status = 'REDEEMED'").get().cnt;
+  const totalStores = db.prepare('SELECT COUNT(*) AS cnt FROM stores WHERE active = 1').get().cnt;
+  const totalRewards = db.prepare('SELECT COUNT(*) AS cnt FROM reward_history').get().cnt;
+  res.json({ totalUsers, totalRedeemed, totalStores, totalRewards });
+});
+
+app.get('/api/admin/users', adminAuth, (req, res) => {
+  const users = db.prepare(`
+    SELECT u.phone, u.created_at,
+      COALESCE((SELECT COUNT(*) FROM reward_history rh WHERE rh.user_phone = u.phone), 0) AS total_redemptions
+    FROM users u
+    ORDER BY u.created_at DESC
+  `).all();
+  const result = users.map((u) => {
+    const profile = getProfile(u.phone);
+    let characterCount = 0;
+    let topCharacter = null;
+    if (profile) {
+      try {
+        const chars = profile.characters?.characters || [];
+        characterCount = chars.length;
+        if (chars.length > 0) {
+          const sorted = [...chars].sort((a, b) => b.level - a.level);
+          topCharacter = { name: sorted[0].name, level: sorted[0].level, rarity: sorted[0].traits?.rarity };
+        }
+      } catch {}
+    }
+    return { phone: u.phone, created_at: u.created_at, characterCount, topCharacter, total_redemptions: u.total_redemptions };
+  });
+  res.json({ users: result });
+});
+
+app.get('/api/admin/users/:phone', adminAuth, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE phone = ?').get(req.params.phone);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+  const profile = getProfile(req.params.phone);
+  const redemptions = db.prepare(`
+    SELECT rh.*, ic.campaign_id, ic.product_id, p.name AS product_name, p.reward_type, p.reward_name, p.reward_rarity, p.reward_qty, s.name AS store_name
+    FROM reward_history rh
+    LEFT JOIN invoice_codes ic ON ic.code = rh.invoice_code
+    LEFT JOIN products p ON p.id = ic.product_id
+    LEFT JOIN stores s ON s.id = p.store_id
+    WHERE rh.user_phone = ?
+    ORDER BY rh.created_at DESC
+  `).all(req.params.phone);
+  const invoices = db.prepare(`
+    SELECT ic.*, p.name AS product_name, p.reward_type, p.reward_name, s.name AS store_name
+    FROM invoice_codes ic
+    LEFT JOIN products p ON p.id = ic.product_id
+    LEFT JOIN stores s ON s.id = p.store_id
+    WHERE ic.redeemed_by = ?
+    ORDER BY ic.created_at DESC
+  `).all(req.params.phone);
+  res.json({ user, profile, redemptions, invoices });
+});
+
+app.get('/api/admin/invoices', adminAuth, (req, res) => {
+  const status = req.query.status;
+  let sql = `
+    SELECT ic.*, p.name AS product_name, p.reward_type, p.reward_name, p.reward_rarity, p.reward_qty,
+      s.name AS store_name, s.id AS store_id,
+      rh.id AS history_id, rh.reward_type AS hist_reward_type, rh.reward_name AS hist_reward_name, rh.quantity AS hist_quantity
+    FROM invoice_codes ic
+    LEFT JOIN products p ON p.id = ic.product_id
+    LEFT JOIN stores s ON s.id = p.store_id
+    LEFT JOIN reward_history rh ON rh.invoice_code = ic.code
+  `;
+  const params = [];
+  if (status) {
+    sql += ' WHERE ic.status = ?';
+    params.push(status);
+  }
+  sql += ' ORDER BY ic.created_at DESC LIMIT 200';
+  const rows = db.prepare(sql).all(...params);
+  res.json({ invoices: rows });
+});
+
+app.get('/api/admin/stores', adminAuth, (req, res) => {
+  const stores = db.prepare(`
+    SELECT s.*,
+      (SELECT COUNT(*) FROM promotions p WHERE p.store_id = s.id AND p.active = 1) AS promotion_count,
+      (SELECT COUNT(*) FROM products pr WHERE pr.store_id = s.id) AS product_count,
+      (SELECT COUNT(*) FROM invoice_codes ic WHERE ic.product_id IN (SELECT id FROM products WHERE store_id = s.id) AND ic.status = 'REDEEMED') AS redeemed_count
+    FROM stores s
+    ORDER BY s.name
+  `).all();
+  res.json({ stores });
+});
+
+app.get('/api/admin/stores/:id', adminAuth, (req, res) => {
+  const store = db.prepare('SELECT * FROM stores WHERE id = ?').get(req.params.id);
+  if (!store) return res.status(404).json({ error: 'Tienda no encontrada' });
+  const promotions = db.prepare('SELECT * FROM promotions WHERE store_id = ? ORDER BY start_date DESC').all(req.params.id);
+  const products = db.prepare('SELECT * FROM products WHERE store_id = ? ORDER BY name').all(req.params.id);
+  const invoices = db.prepare(`
+    SELECT ic.*, p.name AS product_name, p.reward_type, p.reward_name, p.reward_rarity, p.reward_qty,
+      rh.user_phone, rh.reward_name AS hist_reward_name, rh.quantity AS hist_quantity, rh.created_at AS hist_created_at
+    FROM invoice_codes ic
+    JOIN products p ON p.id = ic.product_id
+    LEFT JOIN reward_history rh ON rh.invoice_code = ic.code
+    WHERE p.store_id = ? AND ic.status = 'REDEEMED'
+    ORDER BY ic.redeemed_at DESC
+    LIMIT 200
+  `).all(req.params.id);
+  res.json({ store, promotions, products, invoices });
+});
+
+// --- Admin: Delete user ---
+app.delete('/api/admin/users/:phone', adminAuth, (req, res) => {
+  const phone = req.params.phone;
+  const user = db.prepare('SELECT * FROM users WHERE phone = ?').get(phone);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+  const del = db.transaction(() => {
+    db.prepare('DELETE FROM reward_history WHERE user_phone = ?').run(phone);
+    db.prepare('DELETE FROM profiles WHERE phone = ?').run(phone);
+    db.prepare('UPDATE invoice_codes SET redeemed_by = NULL, status = ? WHERE redeemed_by = ?').run('AVAILABLE', phone);
+    db.prepare('DELETE FROM users WHERE phone = ?').run(phone);
+  });
+  del();
+  res.json({ ok: true });
+});
+
+// --- Admin: Delete store ---
+app.delete('/api/admin/stores/:id', adminAuth, (req, res) => {
+  const store = db.prepare('SELECT * FROM stores WHERE id = ?').get(req.params.id);
+  if (!store) return res.status(404).json({ error: 'Tienda no encontrada' });
+  db.prepare('DELETE FROM stores WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// --- Admin: Create store ---
+app.post('/api/admin/stores', adminAuth, (req, res) => {
+  const { id, name, category, city, description, short_description, hours } = req.body;
+  if (!id || !name) return res.status(400).json({ error: 'id y name requeridos' });
+  const existing = db.prepare('SELECT id FROM stores WHERE id = ?').get(id);
+  if (existing) return res.status(409).json({ error: 'Ya existe una tienda con ese ID' });
+  db.prepare(`INSERT INTO stores (id, name, logo_url, category, city, description, short_description, banner_url, lat, lng, hours, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    id, name, '', category || '', city || '', description || '', short_description || '', '', 0, 0, hours || '', 1
+  );
+  res.json({ ok: true });
+});
+
+// --- Admin: Create invoice (store creates it, auto-delivers to user) ---
+app.post('/api/admin/stores/:id/invoices', adminAuth, (req, res) => {
+  const { product_id, user_phone } = req.body;
+  if (!product_id || !user_phone) return res.status(400).json({ error: 'product_id y user_phone requeridos' });
+
+  const store = db.prepare('SELECT * FROM stores WHERE id = ?').get(req.params.id);
+  if (!store) return res.status(404).json({ error: 'Tienda no encontrada' });
+
+  const product = db.prepare('SELECT * FROM products WHERE id = ? AND store_id = ? AND active = 1').get(product_id, req.params.id);
+  if (!product) return res.status(404).json({ error: 'Producto no encontrado en esta tienda' });
+
+  const user = db.prepare('SELECT * FROM users WHERE phone = ?').get(user_phone);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+  const processInvoice = db.transaction(() => {
+    const code = `RA-STR-${req.params.id}-${Date.now()}`;
+    db.prepare('INSERT INTO invoice_codes (code, product_id, status, campaign_id, created_at, redeemed_at, redeemed_by, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+      code, product_id, 'REDEEMED', 'store-sale', Date.now(), Date.now(), user_phone, JSON.stringify({ store_id: req.params.id, created_by: 'admin' })
+    );
+
+    const profile = getProfile(user_phone);
+    if (!profile) return { error: 'Perfil de usuario no encontrado' };
+
+    const deliveryResult = deliverReward(profile, product);
+    if (!Array.isArray(profile.redeemedRewards)) profile.redeemedRewards = [];
+    profile.redeemedRewards.push(code);
+    saveProfile(user_phone, profile);
+
+    db.prepare('INSERT INTO reward_history (user_phone, invoice_code, reward_type, reward_id, reward_name, quantity, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+      user_phone, code, deliveryResult.rewardType, deliveryResult.rewardId, deliveryResult.rewardName, deliveryResult.quantity, Date.now()
+    );
+
+    return {
+      success: true, code,
+      reward: { type: deliveryResult.rewardType, id: deliveryResult.rewardId, name: deliveryResult.rewardName, label: deliveryResult.rewardLabel, quantity: deliveryResult.quantity, duplicated: deliveryResult.duplicated },
+      product: { id: product.id, name: product.name },
+      user: user_phone,
+    };
+  });
+
+  const result = processInvoice();
+  if (result.error) return res.status(400).json({ error: result.error });
+  res.json(result);
+});
+
 if (existsSync(FRONTEND_DIR)) {
   app.use(express.static(FRONTEND_DIR, {
     setHeaders(res) {
@@ -801,6 +1032,10 @@ if (existsSync(FRONTEND_DIR)) {
       res.set('Expires', '0');
     },
   }));
+  const adminHtmlPath = join(__dirname, 'admin.html');
+  app.get('/admin', (_req, res) => {
+    res.sendFile(adminHtmlPath);
+  });
   app.get('*', (req, res) => {
     if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
     res.sendFile(join(FRONTEND_DIR, 'index.html'));

@@ -9,8 +9,10 @@ import {
   elementColor,
   statLabel,
   statIcon,
+  phoneHash,
+  mulberry32,
 } from './game/nft';
-import { generateCharacterFromPhone, totalStats } from './game/characters';
+import { generateCharacterFromPhone, generateSlimeCharacter, totalStats } from './game/characters';
 import type { Character } from './game/characters';
 import { CharacterManager } from './game/characters';
 import {
@@ -189,19 +191,12 @@ function startGameWithProfile(profile: PlayerProfile) {
 
 function showNftCreation(phoneStr: string) {
   navigation.navigate('nft');
-  currentCharacter = generateCharacterFromPhone(phoneStr);
+  const seed = phoneHash(phoneStr);
+  currentCharacter = generateSlimeCharacter(mulberry32(seed));
   showNftInfo(currentCharacter);
   initPreview();
   nftEnterBtn.hidden = false;
 }
-
-nftGenerateBtn.addEventListener('click', () => {
-  if (!getPhone()) return;
-  currentCharacter = generateCharacterFromPhone(getPhone()!);
-  showNftInfo(currentCharacter);
-  initPreview();
-  nftEnterBtn.hidden = false;
-});
 
 nftEnterBtn.addEventListener(
   'click',

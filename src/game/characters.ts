@@ -208,12 +208,26 @@ function makeCharacter(rng: Rng): Character {
   };
 }
 
-export function createStarterCharacter(): Character {
+export function generateSlimeCharacter(rng: Rng = globalRng()): Character {
+  const id = genId(rng);
+  const element = pick<Element>(['fuego', 'agua', 'tierra', 'aire', 'sombra', 'luz'], rng);
+  const colors = ELEMENT_COLORS[element];
   return {
-    id: 'RA-SLIME-ANCESTRAL',
-    name: 'Slime Ancestral',
-    traits: { ...SLIME_TRAITS },
-    baseStats: { ...SLIME_STATS },
+    id,
+    name: 'Slime ' + pick(ELEMENT_PREFIXES[element], rng),
+    traits: {
+      element,
+      rarity: 'comun',
+      bodyType: 'golem',
+      primaryColor: pick(colors.primary, rng),
+      secondaryColor: pick(colors.secondary, rng),
+      accentColor: pick(colors.accent, rng),
+      eyeStyle: Math.floor(rng() * 5),
+      hornStyle: pick([0, 0, 1], rng),
+      wingStyle: 0,
+      pattern: Math.floor(rng() * 4),
+    },
+    baseStats: distributePool(28, rng),
     level: 1,
     xp: 0,
     upgrades: [],
@@ -221,6 +235,10 @@ export function createStarterCharacter(): Character {
     source: 'starter',
     isStarter: true,
   };
+}
+
+export function createStarterCharacter(): Character {
+  return generateSlimeCharacter();
 }
 
 export function generateCharacterFromPhone(phoneStr: string): Character {

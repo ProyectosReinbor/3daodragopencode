@@ -9,23 +9,28 @@ import {
 } from './characters';
 
 describe('createStarterCharacter', () => {
-  it('creates Slime Ancestral with correct properties', () => {
+  it('creates a random slime with correct properties', () => {
     const c = createStarterCharacter();
-    expect(c.name).toBe('Slime Ancestral');
+    expect(c.name).toMatch(/^Slime /);
     expect(c.isStarter).toBe(true);
     expect(c.source).toBe('starter');
     expect(c.level).toBe(1);
     expect(c.xp).toBe(0);
-    expect(c.baseStats.atk).toBe(4);
-    expect(c.baseStats.def).toBe(4);
-    expect(c.baseStats.spd).toBe(4);
-    expect(c.baseStats.hp).toBe(4);
-    expect(c.baseStats.ability).toBe(4);
+    expect(c.traits.bodyType).toBe('golem');
+    expect(c.traits.rarity).toBe('comun');
+    expect(c.baseStats.atk).toBeGreaterThanOrEqual(2);
+    expect(c.baseStats.def).toBeGreaterThanOrEqual(2);
+    expect(c.baseStats.spd).toBeGreaterThanOrEqual(2);
+    expect(c.baseStats.hp).toBeGreaterThanOrEqual(2);
+    expect(c.baseStats.ability).toBeGreaterThanOrEqual(2);
+    expect(
+      c.baseStats.atk + c.baseStats.def + c.baseStats.spd + c.baseStats.hp + c.baseStats.ability
+    ).toBe(28);
   });
 
-  it('Slime Ancestral has agua element and comun rarity', () => {
+  it('Slime has random element and comun rarity', () => {
     const c = createStarterCharacter();
-    expect(c.traits.element).toBe('agua');
+    expect(['fuego', 'agua', 'tierra', 'aire', 'sombra', 'luz']).toContain(c.traits.element);
     expect(c.traits.rarity).toBe('comun');
     expect(c.traits.bodyType).toBe('golem');
   });
@@ -95,7 +100,8 @@ describe('ensureStarterCharacter', () => {
     const col = createEmptyCollection();
     const result = ensureStarterCharacter(col);
     expect(result.characters.length).toBe(1);
-    expect(result.characters[0].name).toBe('Slime Ancestral');
+    expect(result.characters[0].isStarter).toBe(true);
+    expect(result.characters[0].traits.bodyType).toBe('golem');
     expect(result.selectedId).toBe(result.characters[0].id);
   });
 
@@ -106,7 +112,7 @@ describe('ensureStarterCharacter', () => {
     col.selectedId = c.id;
     const result = ensureStarterCharacter(col);
     expect(result.characters.length).toBe(1);
-    expect(result.characters[0].name).not.toBe('Slime Ancestral');
+    expect(result.characters[0].isStarter).toBe(false);
   });
 });
 
@@ -115,8 +121,8 @@ describe('CharacterManager', () => {
     const col = createEmptyCollection();
     const manager = new CharacterManager(col);
     const active = manager.getActive();
-    expect(active.name).toBe('Slime Ancestral');
     expect(active.isStarter).toBe(true);
+    expect(active.traits.bodyType).toBe('golem');
     expect(col.characters.length).toBe(1);
   });
 
@@ -216,18 +222,19 @@ describe('totalStats', () => {
   it('returns correct stats for starter', () => {
     const c = createStarterCharacter();
     const stats = totalStats(c);
-    expect(stats.atk).toBe(4);
-    expect(stats.def).toBe(4);
-    expect(stats.spd).toBe(4);
-    expect(stats.hp).toBe(4);
-    expect(stats.ability).toBe(4);
+    expect(stats.atk).toBe(c.baseStats.atk);
+    expect(stats.def).toBe(c.baseStats.def);
+    expect(stats.spd).toBe(c.baseStats.spd);
+    expect(stats.hp).toBe(c.baseStats.hp);
+    expect(stats.ability).toBe(c.baseStats.ability);
   });
 
   it('includes level bonuses', () => {
     const c = createStarterCharacter();
+    const baseAtk = c.baseStats.atk;
     c.level = 5;
     const stats = totalStats(c);
-    expect(stats.atk).toBe(4 + 4); // base + (level-1)
-    expect(stats.def).toBe(4 + 4);
+    expect(stats.atk).toBe(baseAtk + 4); // base + (level-1)
+    expect(stats.def).toBe(c.baseStats.def + 4);
   });
 });

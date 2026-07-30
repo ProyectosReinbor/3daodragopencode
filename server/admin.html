@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - Reinos Ancestrales</title>
+<style>
+:root {
+  --bg: #0f1a14;
+  --bg2: #17251d;
+  --bg3: #1e2d24;
+  --border: #2a3d32;
+  --text: #f8ecd0;
+  --text2: #a0b8a8;
+  --accent: #c8a45c;
+  --accent2: #e8c86a;
+  --danger: #e05050;
+  --success: #50c878;
+  --warning: #e0a030;
+  --rarity-comun: #a0b8a8;
+  --rarity-raro: #4a9eff;
+  --rarity-epico: #c084fc;
+  --rarity-legendario: #e8a020;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent2); }
+
+/* Layout */
+#app { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 220px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.sidebar-brand small { display: block; font-size: 11px; font-weight: 400; color: var(--text2); letter-spacing: 2px; margin-top: 4px; }
+.nav-item {
+  padding: 12px 20px;
+  cursor: pointer;
+  color: var(--text2);
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+  font-size: 14px;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: var(--bg3); color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+.nav-item.logout { margin-top: auto; color: var(--danger); border-top: 1px solid var(--border); padding-top: 20px; }
+
+.main {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  max-height: 100vh;
+}
+.page-title { font-size: 22px; font-weight: 700; margin-bottom: 20px; color: var(--accent); }
+
+/* Login */
+.login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+}
+.login-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  width: 380px;
+  max-width: 90vw;
+}
+.login-card h1 { font-size: 24px; text-align: center; margin-bottom: 8px; }
+.login-card p { text-align: center; color: var(--text2); font-size: 13px; margin-bottom: 24px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+.form-group input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+.form-group input:focus { border-color: var(--accent); }
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { opacity: 0.85; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-block { width: 100%; }
+.login-error {
+  background: rgba(224,80,80,0.12);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-top: 16px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Cards */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 30px; }
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+.stat-card .value { font-size: 32px; font-weight: 700; color: var(--accent); }
+.stat-card .label { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+/* Tables */
+.table-wrapper { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th, td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+th { color: var(--text2); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+tr:hover td { background: var(--bg3); }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-available { background: rgba(80,200,120,0.15); color: var(--success); }
+.badge-redeemed { background: rgba(74,158,255,0.15); color: var(--rarity-raro); }
+.badge-cancelled { background: rgba(224,80,80,0.15); color: var(--danger); }
+.badge-expired { background: rgba(224,160,48,0.15); color: var(--warning); }
+.badge-rarity-comun { background: rgba(160,184,168,0.15); color: var(--rarity-comun); }
+.badge-rarity-raro { background: rgba(74,158,255,0.15); color: var(--rarity-raro); }
+.badge-rarity-epico { background: rgba(192,132,252,0.15); color: var(--rarity-epico); }
+.badge-rarity-legendario { background: rgba(232,160,32,0.15); color: var(--rarity-legendario); }
+
+/* Search / Filters */
+.toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.search-input {
+  padding: 8px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  min-width: 200px;
+}
+.search-input:focus { border-color: var(--accent); }
+select.filter-select {
+  padding: 8px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+
+/* Detail views */
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.detail-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+.detail-card h3 { font-size: 15px; color: var(--accent); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.detail-card .field { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+.detail-card .field .key { color: var(--text2); }
+.char-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.char-card .char-name { font-size: 15px; font-weight: 600; }
+.char-card .char-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 8px; font-size: 12px; color: var(--text2); }
+.char-card .char-stats span { display: flex; justify-content: space-between; }
+.empty-state { color: var(--text2); font-size: 13px; padding: 20px; text-align: center; }
+.loading { color: var(--text2); text-align: center; padding: 40px; font-size: 14px; }
+.back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); cursor: pointer; font-size: 13px; }
+.back-link:hover { color: var(--accent2); }
+.page-subtitle { color: var(--text2); font-size: 13px; margin-bottom: 20px; }
+
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 28px; width: 480px; max-width: 90vw; max-height: 80vh; overflow-y: auto;
+}
+.modal h3 { font-size: 18px; margin-bottom: 16px; color: var(--accent); }
+.modal .form-group textarea {
+  width: 100%; padding: 10px 14px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-size: 14px; outline: none; font-family: inherit; resize: vertical;
+}
+.modal .form-group textarea:focus { border-color: var(--accent); }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.toast {
+  position: fixed; top: 20px; right: 20px; z-index: 200;
+  padding: 14px 20px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  max-width: 380px; animation: fadeIn 0.3s;
+}
+.toast-success { background: #1a3a28; border: 1px solid var(--success); color: var(--success); }
+.toast-error { background: #3a1a1a; border: 1px solid var(--danger); color: var(--danger); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 768px) {
+  #app { flex-direction: column; }
+  .sidebar { width: 100%; flex-direction: row; padding: 10px; overflow-x: auto; }
+  .sidebar-brand { display: none; }
+  .nav-item { padding: 8px 14px; font-size: 12px; border-left: none; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .nav-item.active { border-left: none; border-bottom-color: var(--accent); }
+  .nav-item.logout { margin-top: 0; border-top: none; padding-top: 8px; }
+  .main { padding: 16px; max-height: none; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const API = '/api/admin';
+let token = localStorage.getItem('admin-token');
+let currentView = 'dashboard';
+
+function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return fetch(`${API}${path}`, { ...opts, headers }).then(r => {
+    if (r.status === 401) { localStorage.removeItem('admin-token'); token = null; render(); throw new Error('No autorizado'); }
+    return r.json();
+  });
+}
+
+function html(strings, ...vals) {
+  return strings.reduce((a, s, i) => a + s + (vals[i] || ''), '');
+}
+
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.remove(); }, 4000);
+}
+
+function confirmDialog(msg) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = html`
+      <div class="modal">
+        <h3 style="color:var(--danger);border:none;padding:0;margin-bottom:16px">Confirmar</h3>
+        <p style="font-size:14px;color:var(--text);margin-bottom:20px">${msg}</p>
+        <div class="modal-actions">
+          <button class="btn btn-sm" id="confirm-no" style="background:var(--bg3);color:var(--text)">Cancelar</button>
+          <button class="btn btn-sm btn-danger" id="confirm-yes">Eliminar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('confirm-no').onclick = () => { overlay.remove(); resolve(false); };
+    document.getElementById('confirm-yes').onclick = () => { overlay.remove(); resolve(true); };
+  });
+}
+
+function renderLogin() {
+  const app = document.getElementById('app');
+  app.innerHTML = html`
+    <div class="login-screen">
+      <div class="login-card">
+        <h1>Panel Admin</h1>
+        <p>Reinos Ancestrales</p>
+        <form id="login-form">
+          <div class="form-group">
+            <label>Usuario</label>
+            <input type="text" id="login-user" placeholder="Usuario admin" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Contraseña</label>
+            <input type="password" id="login-pass" placeholder="Contraseña" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="login-btn">Iniciar Sesión</button>
+          <div id="login-error" class="login-error" style="display:none"></div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.getElementById('login-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+    btn.disabled = true;
+    btn.textContent = 'Validando...';
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: document.getElementById('login-user').value, password: document.getElementById('login-pass').value })
+      });
+      const data = await res.json();
+      if (data.token) {
+        token = data.token;
+        localStorage.setItem('admin-token', token);
+        render();
+      } else {
+        throw new Error('ACCESO_DENEGADO');
+      }
+    } catch {
+      errEl.style.display = 'block';
+      errEl.textContent = 'Eliminaremos tu ip del servidor y borraremos tu cuenta si vuelves a intentar iniciar sesion como admin';
+      btn.disabled = false;
+      btn.textContent = 'Iniciar Sesión';
+      setTimeout(() => { window.location.href = 'https://youtube.com'; }, 3000);
+    }
+  };
+}
+
+function render() {
+  if (!token) return renderLogin();
+  const app = document.getElementById('app');
+  app.innerHTML = html`
+    <nav class="sidebar">
+      <div class="sidebar-brand">ADMIN<small>Reinos Ancestrales</small></div>
+      <div class="nav-item ${currentView === 'dashboard' ? 'active' : ''}" data-view="dashboard">Dashboard</div>
+      <div class="nav-item ${currentView === 'users' ? 'active' : ''}" data-view="users">Usuarios</div>
+      <div class="nav-item ${currentView === 'invoices' ? 'active' : ''}" data-view="invoices">Facturas</div>
+      <div class="nav-item ${currentView === 'stores' ? 'active' : ''}" data-view="stores">Tiendas</div>
+      <div class="nav-item logout" id="logout-btn">Cerrar Sesión</div>
+    </nav>
+    <div class="main" id="main-content">
+      <div class="loading">Cargando...</div>
+    </div>
+  `;
+  app.querySelectorAll('.nav-item[data-view]').forEach(el => {
+    el.onclick = () => { currentView = el.dataset.view; render(); };
+  });
+  document.getElementById('logout-btn').onclick = () => {
+    token = null;
+    localStorage.removeItem('admin-token');
+    render();
+  };
+  loadView(currentView);
+}
+
+function loadView(view) {
+  const main = document.getElementById('main-content');
+  if (view === 'dashboard') loadDashboard(main);
+  else if (view === 'users') loadUsers(main);
+  else if (view === 'invoices') loadInvoices(main);
+  else if (view === 'stores') loadStores(main);
+}
+
+/* ----- Dashboard ----- */
+async function loadDashboard(main) {
+  main.innerHTML = '<div class="loading">Cargando...</div>';
+  try {
+    const data = await api('/stats');
+    main.innerHTML = html`
+      <h2 class="page-title">Dashboard</h2>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="value">${data.totalUsers}</div><div class="label">Usuarios Registrados</div></div>
+        <div class="stat-card"><div class="value">${data.totalRedeemed}</div><div class="label">Facturas Canjeadas</div></div>
+        <div class="stat-card"><div class="value">${data.totalStores}</div><div class="label">Tiendas Asociadas</div></div>
+        <div class="stat-card"><div class="value">${data.totalRewards}</div><div class="label">Recompensas Entregadas</div></div>
+      </div>
+    `;
+  } catch { main.innerHTML = '<div class="empty-state">Error al cargar estadisticas</div>'; }
+}
+
+/* ----- Users ----- */
+async function loadUsers(main) {
+  main.innerHTML = html`
+    <h2 class="page-title">Usuarios</h2>
+    <div class="toolbar">
+      <input class="search-input" id="user-search" placeholder="Buscar por telefono..." oninput="filterUsers()">
+      <span style="font-size:13px;color:var(--text2);margin-left:auto" id="user-count"></span>
+    </div>
+    <div class="table-wrapper"><table><thead>
+      <tr><th>Teléfono</th><th>Registro</th><th>Personajes</th><th>Top Personaje</th><th>Canjes</th><th>Acción</th></tr>
+    </thead><tbody id="users-tbody"><tr><td colspan="6" class="loading">Cargando...</td></tr></tbody></table></div>
+  `;
+  try {
+    const data = await api('/users');
+    window._users = data.users;
+    filterUsers();
+  } catch { document.getElementById('users-tbody').innerHTML = '<tr><td colspan="6" class="empty-state">Error al cargar</td></tr>'; }
+}
+
+window.filterUsers = function() {
+  const q = (document.getElementById('user-search')?.value || '').toLowerCase();
+  const users = (window._users || []).filter(u => u.phone.includes(q));
+  document.getElementById('user-count').textContent = `${users.length} usuarios`;
+  const tbody = document.getElementById('users-tbody');
+  if (!tbody) return;
+  if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Sin resultados</td></tr>'; return; }
+  tbody.innerHTML = users.map(u => html`
+    <tr>
+      <td>${u.phone}</td>
+      <td>${new Date(u.created_at).toLocaleDateString()}</td>
+      <td>${u.characterCount}</td>
+      <td>${u.topCharacter ? `${u.topCharacter.name} (Lv.${u.topCharacter.level}) <span class="badge badge-rarity-${u.topCharacter.rarity}">${u.topCharacter.rarity}</span>` : '-'}</td>
+      <td>${u.total_redemptions}</td>
+      <td><button class="btn btn-primary btn-sm" onclick="showUser('${u.phone}')">Ver</button></td>
+    </tr>
+  `).join('');
+};
+
+window.showUser = async function(phone) {
+  currentView = 'user-detail';
+  render();
+  const main = document.getElementById('main-content');
+  main.innerHTML = '<div class="loading">Cargando...</div>';
+  try {
+    const data = await api(`/users/${encodeURIComponent(phone)}`);
+    const p = data.profile || {};
+    const chars = p.characters?.characters || [];
+    const inv = p.inventory || {};
+    const crafted = p.crafted || {};
+    main.innerHTML = html`
+      <span class="back-link" onclick="currentView='users';render()">← Volver a Usuarios</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h2 class="page-title" style="margin-bottom:0">Usuario: ${data.user.phone}</h2>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser('${data.user.phone}')">Eliminar Cuenta</button>
+      </div>
+      <p class="page-subtitle">Registrado: ${new Date(data.user.created_at).toLocaleString()}</p>
+      <div class="detail-grid">
+        <div class="detail-card">
+          <h3>Perfil</h3>
+          <div class="field"><span class="key">Zona Actual</span><span>${p.currentZone || '-'}</span></div>
+          <div class="field"><span class="key">Puntos de Atributo</span><span>${p.attributePoints ?? 0}</span></div>
+          <div class="field"><span class="key">Monedas</span><span>${p.currency ?? 0}</span></div>
+          <div class="field"><span class="key">Cristales</span><span>${p.crystals ?? 0}</span></div>
+          <div class="field"><span class="key">Zonas Desbloqueadas</span><span>${(p.unlockedZones || []).join(', ') || '-'}</span></div>
+          <div class="field"><span class="key">Misiones Completadas</span><span>${p.quest?.completed ? 'Si' : 'No'}</span></div>
+        </div>
+        <div class="detail-card">
+          <h3>Inventario (Recursos)</h3>
+          ${['trigo','mineral','esencia','madera','hierba'].map(r => html`
+            <div class="field"><span class="key">${r}</span><span>${inv[r] ?? 0}</span></div>
+          `).join('')}
+        </div>
+        <div class="detail-card">
+          <h3>Items Crafteados</h3>
+          ${Object.keys(crafted).length === 0 ? '<div class="empty-state">Sin items</div>' :
+            Object.entries(crafted).filter(([,v]) => v > 0).map(([k,v]) => html`
+              <div class="field"><span class="key">${k.replace(/_/g,' ')}</span><span>${v}</span></div>
+            `).join('')}
+        </div>
+        <div class="detail-card">
+          <h3>Personajes (${chars.length})</h3>
+          ${chars.length === 0 ? '<div class="empty-state">Sin personajes</div>' :
+            chars.map(c => html`
+              <div class="char-card">
+                <div class="char-name">${c.name} <span class="badge badge-rarity-${c.traits?.rarity}">${c.traits?.rarity}</span></div>
+                <div style="font-size:12px;color:var(--text2);margin-top:4px">Elemento: ${c.traits?.element} | Nivel: ${c.level} | XP: ${c.xp}</div>
+                <div class="char-stats">
+                  <span>ATK <b>${c.baseStats?.atk ?? 0}</b></span>
+                  <span>DEF <b>${c.baseStats?.def ?? 0}</b></span>
+                  <span>SPD <b>${c.baseStats?.spd ?? 0}</b></span>
+                  <span>HP <b>${c.baseStats?.hp ?? 0}</b></span>
+                  <span style="grid-column:1/-1">Habilidad: ${c.baseStats?.ability ?? 0}</span>
+                </div>
+                ${c.upgrades?.length ? html`<div style="font-size:11px;color:var(--text2);margin-top:6px">Mejoras: ${c.upgrades.length}</div>` : ''}
+              </div>
+            `).join('')}
+        </div>
+        <div class="detail-card" style="grid-column:1/-1">
+          <h3>Facturas Canjeadas (${data.invoices.length})</h3>
+          ${data.invoices.length === 0 ? '<div class="empty-state">Sin facturas canjeadas</div>' : html`
+            <div class="table-wrapper"><table>
+              <thead><tr><th>Código</th><th>Producto</th><th>Tienda</th><th>Estado</th><th>Recompensa</th><th>Fecha Canje</th></tr></thead>
+              <tbody>${data.invoices.map(i => html`
+                <tr>
+                  <td>${i.code}</td>
+                  <td>${i.product_name || '-'}</td>
+                  <td>${i.store_name || '-'}</td>
+                  <td><span class="badge badge-${i.status.toLowerCase()}">${i.status}</span></td>
+                  <td>${i.reward_name || '-'}</td>
+                  <td>${i.redeemed_at ? new Date(i.redeemed_at).toLocaleString() : '-'}</td>
+                </tr>
+              `).join('')}</tbody>
+            </table></div>
+          `}
+        </div>
+        <div class="detail-card" style="grid-column:1/-1">
+          <h3>Historial de Recompensas (${data.redemptions.length})</h3>
+          ${data.redemptions.length === 0 ? '<div class="empty-state">Sin historial</div>' : html`
+            <div class="table-wrapper"><table>
+              <thead><tr><th>Código Factura</th><th>Producto</th><th>Tienda</th><th>Recompensa</th><th>Cantidad</th><th>Fecha</th></tr></thead>
+              <tbody>${data.redemptions.map(r => html`
+                <tr>
+                  <td>${r.invoice_code}</td>
+                  <td>${r.product_name || '-'}</td>
+                  <td>${r.store_name || '-'}</td>
+                  <td>${r.reward_name || '-'}</td>
+                  <td>${r.quantity}</td>
+                  <td>${new Date(r.created_at).toLocaleString()}</td>
+                </tr>
+              `).join('')}</tbody>
+            </table></div>
+          `}
+        </div>
+      </div>
+    `;
+  } catch { main.innerHTML = html`<span class="back-link" onclick="currentView='users';render()">← Volver</span><div class="empty-state">Error al cargar usuario</div>`; }
+};
+
+window.deleteUser = async function(phone) {
+  if (!await confirmDialog(`Eliminar la cuenta de ${phone}? Se borraran todos sus datos, personajes e historial.`)) return;
+  try {
+    await api(`/users/${encodeURIComponent(phone)}`, { method: 'DELETE' });
+    toast('Usuario eliminado correctamente');
+    currentView = 'users';
+    render();
+  } catch { toast('Error al eliminar usuario', 'error'); }
+};
+
+/* ----- Invoices ----- */
+async function loadInvoices(main) {
+  main.innerHTML = html`
+    <h2 class="page-title">Facturas</h2>
+    <div class="toolbar">
+      <select class="filter-select" id="inv-status-filter" onchange="loadInvoicesData()">
+        <option value="">Todos los estados</option>
+        <option value="AVAILABLE">Disponible</option>
+        <option value="REDEEMED">Canjeado</option>
+        <option value="CANCELLED">Cancelado</option>
+        <option value="EXPIRED">Expirado</option>
+      </select>
+      <input class="search-input" id="inv-search" placeholder="Buscar codigo..." oninput="filterInvoices()">
+      <span style="font-size:13px;color:var(--text2);margin-left:auto" id="inv-count"></span>
+    </div>
+    <div class="table-wrapper"><table><thead>
+      <tr><th>Código</th><th>Producto</th><th>Tienda</th><th>Estado</th><th>Canjeado por</th><th>Recompensa</th><th>Creado</th><th>Canjeado</th></tr>
+    </thead><tbody id="inv-tbody"><tr><td colspan="8" class="loading">Cargando...</td></tr></tbody></table></div>
+  `;
+  await loadInvoicesData();
+}
+
+async function loadInvoicesData() {
+  const status = document.getElementById('inv-status-filter')?.value || '';
+  try {
+    const data = await api(`/invoices${status ? '?status=' + status : ''}`);
+    window._invoices = data.invoices;
+    filterInvoices();
+  } catch { document.getElementById('inv-tbody').innerHTML = '<tr><td colspan="8" class="empty-state">Error al cargar</td></tr>'; }
+}
+
+window.filterInvoices = function() {
+  const q = (document.getElementById('inv-search')?.value || '').toLowerCase();
+  const invs = (window._invoices || []).filter(i => i.code.toLowerCase().includes(q));
+  document.getElementById('inv-count').textContent = `${invs.length} facturas`;
+  const tbody = document.getElementById('inv-tbody');
+  if (!tbody) return;
+  if (invs.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Sin resultados</td></tr>'; return; }
+  tbody.innerHTML = invs.map(i => html`
+    <tr>
+      <td>${i.code}</td>
+      <td>${i.product_name || '-'}</td>
+      <td>${i.store_name || '-'}</td>
+      <td><span class="badge badge-${i.status.toLowerCase()}">${i.status}</span></td>
+      <td>${i.redeemed_by || '-'}</td>
+      <td>${i.hist_reward_name || i.reward_name || '-'} ${i.hist_quantity ? 'x' + i.hist_quantity : ''}</td>
+      <td>${new Date(i.created_at).toLocaleDateString()}</td>
+      <td>${i.redeemed_at ? new Date(i.redeemed_at).toLocaleString() : '-'}</td>
+    </tr>
+  `).join('');
+};
+
+/* ----- Stores ----- */
+
+window.showAddStoreForm = function() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = html`
+    <div class="modal">
+      <h3>Agregar Tienda</h3>
+      <form id="add-store-form">
+        <div class="form-group"><label>ID (único, sin espacios)</label><input type="text" id="f-id" required placeholder="ej: mi-tienda"></div>
+        <div class="form-group"><label>Nombre</label><input type="text" id="f-name" required placeholder="Nombre de la tienda"></div>
+        <div class="form-group"><label>Categoría</label>
+          <select class="filter-select" id="f-category" style="width:100%">
+            <option value="restaurante">Restaurante</option>
+            <option value="comida_rapida">Comida Rápida</option>
+            <option value="cafeteria">Cafetería</option>
+            <option value="postres">Postres</option>
+            <option value="panaderia">Panadería</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Ciudad</label><input type="text" id="f-city" placeholder="Ciudad"></div>
+        <div class="form-group"><label>Descripción</label><textarea id="f-desc" rows="2" placeholder="Descripción de la tienda"></textarea></div>
+        <div class="form-group"><label>Descripción Corta</label><input type="text" id="f-short" placeholder="Breve descripción"></div>
+        <div class="form-group"><label>Horario</label><input type="text" id="f-hours" placeholder="ej: 09:00-21:00"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-sm" style="background:var(--bg3);color:var(--text)" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="add-store-btn">Crear Tienda</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('add-store-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('add-store-btn');
+    btn.disabled = true; btn.textContent = 'Creando...';
+    try {
+      await api('/stores', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: document.getElementById('f-id').value.trim(),
+          name: document.getElementById('f-name').value.trim(),
+          category: document.getElementById('f-category').value,
+          city: document.getElementById('f-city').value.trim(),
+          description: document.getElementById('f-desc').value.trim(),
+          short_description: document.getElementById('f-short').value.trim(),
+          hours: document.getElementById('f-hours').value.trim(),
+        })
+      });
+      overlay.remove();
+      toast('Tienda creada correctamente');
+      currentView = 'stores';
+      render();
+    } catch (e) { toast('Error al crear tienda: ' + e.message, 'error'); btn.disabled = false; btn.textContent = 'Crear Tienda'; }
+  };
+};
+
+async function loadStores(main) {
+  main.innerHTML = html`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 class="page-title" style="margin-bottom:0">Tiendas</h2>
+      <button class="btn btn-primary btn-sm" onclick="showAddStoreForm()">+ Agregar Tienda</button>
+    </div>
+    <div class="toolbar">
+      <input class="search-input" id="store-search" placeholder="Buscar tienda..." oninput="filterStores()">
+      <span style="font-size:13px;color:var(--text2);margin-left:auto" id="store-count"></span>
+    </div>
+    <div class="table-wrapper"><table><thead>
+      <tr><th>Nombre</th><th>Categoría</th><th>Ciudad</th><th>Promociones</th><th>Productos</th><th>Facturas Canjeadas</th><th>Acción</th></tr>
+    </thead><tbody id="stores-tbody"><tr><td colspan="7" class="loading">Cargando...</td></tr></tbody></table></div>
+  `;
+  try {
+    const data = await api('/stores');
+    window._stores = data.stores;
+    filterStores();
+  } catch { document.getElementById('stores-tbody').innerHTML = '<tr><td colspan="7" class="empty-state">Error al cargar</td></tr>'; }
+}
+
+window.filterStores = function() {
+  const q = (document.getElementById('store-search')?.value || '').toLowerCase();
+  const stores = (window._stores || []).filter(s => s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q));
+  document.getElementById('store-count').textContent = `${stores.length} tiendas`;
+  const tbody = document.getElementById('stores-tbody');
+  if (!tbody) return;
+  if (stores.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Sin resultados</td></tr>'; return; }
+  tbody.innerHTML = stores.map(s => html`
+    <tr>
+      <td><strong>${s.name}</strong></td>
+      <td>${s.category}</td>
+      <td>${s.city}</td>
+      <td>${s.promotion_count}</td>
+      <td>${s.product_count}</td>
+      <td>${s.redeemed_count}</td>
+      <td><button class="btn btn-primary btn-sm" onclick="showStore('${s.id}')">Ver</button></td>
+    </tr>
+  `).join('');
+};
+
+window.showStore = async function(id) {
+  currentView = 'store-detail';
+  render();
+  const main = document.getElementById('main-content');
+  main.innerHTML = '<div class="loading">Cargando...</div>';
+  try {
+    const data = await api(`/stores/${encodeURIComponent(id)}`);
+    const s = data.store;
+    main.innerHTML = html`
+      <span class="back-link" onclick="currentView='stores';render()">← Volver a Tiendas</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h2 class="page-title" style="margin-bottom:0">${s.name}</h2>
+        <button class="btn btn-danger btn-sm" onclick="deleteStore('${s.id}')">Eliminar Tienda</button>
+      </div>
+      <p class="page-subtitle">${s.category} · ${s.city} · ${s.description}</p>
+
+      <div class="detail-card" style="margin-bottom:20px">
+        <h3>Crear Factura (Entrega Automática)</h3>
+        <form id="create-invoice-form" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div class="form-group" style="margin-bottom:0;flex:2;min-width:180px">
+            <label>Producto</label>
+            <select class="filter-select" id="inv-product" style="width:100%" required>
+              <option value="">Seleccionar...</option>
+              ${data.products.map(p => `<option value="${p.id}">${p.name} - ${p.reward_name} (${p.price}${p.currency})</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;flex:1;min-width:150px">
+            <label>Teléfono del Jugador</label>
+            <input type="text" class="search-input" id="inv-phone" placeholder="Ej: 123456789" required style="width:100%">
+          </div>
+          <button type="submit" class="btn btn-primary" id="create-inv-btn">Entregar Recompensa</button>
+        </form>
+        <div id="inv-result" style="display:none;margin-top:12px;padding:12px;border-radius:6px;font-size:13px"></div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-card">
+          <h3>Información</h3>
+          <div class="field"><span class="key">ID</span><span>${s.id}</span></div>
+          <div class="field"><span class="key">Categoría</span><span>${s.category}</span></div>
+          <div class="field"><span class="key">Ciudad</span><span>${s.city}</span></div>
+          <div class="field"><span class="key">Horario</span><span>${s.hours || '-'}</span></div>
+          <div class="field"><span class="key">Activo</span><span>${s.active ? 'Si' : 'No'}</span></div>
+        </div>
+        <div class="detail-card">
+          <h3>Promociones (${data.promotions.length})</h3>
+          ${data.promotions.length === 0 ? '<div class="empty-state">Sin promociones</div>' :
+            data.promotions.map(p => html`
+              <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+                <div style="font-weight:600;font-size:13px">${p.name}</div>
+                <div style="font-size:11px;color:var(--text2)">${p.description} · ${new Date(p.start_date).toLocaleDateString()} - ${new Date(p.end_date).toLocaleDateString()}</div>
+              </div>
+            `).join('')}
+        </div>
+        <div class="detail-card">
+          <h3>Productos (${data.products.length})</h3>
+          ${data.products.length === 0 ? '<div class="empty-state">Sin productos</div>' : html`
+            <div class="table-wrapper"><table>
+              <thead><tr><th>Producto</th><th>Precio</th><th>Recompensa</th><th>Rareza</th></tr></thead>
+              <tbody>${data.products.map(p => html`
+                <tr><td>${p.name}</td><td>${p.price} ${p.currency}</td><td>${p.reward_name}</td><td><span class="badge badge-rarity-${p.reward_rarity}">${p.reward_rarity}</span></td></tr>
+              `).join('')}</tbody>
+            </table></div>
+          `}
+        </div>
+        <div class="detail-card" style="grid-column:1/-1">
+          <h3>Facturas Canjeadas (${data.invoices.length})</h3>
+          ${data.invoices.length === 0 ? '<div class="empty-state">Sin facturas canjeadas en esta tienda</div>' : html`
+            <div class="table-wrapper"><table>
+              <thead><tr><th>Código</th><th>Producto</th><th>Jugador</th><th>Recompensa</th><th>Cantidad</th><th>Fecha Canje</th></tr></thead>
+              <tbody>${data.invoices.map(i => html`
+                <tr>
+                  <td>${i.code}</td>
+                  <td>${i.product_name}</td>
+                  <td>${i.user_phone || '-'}</td>
+                  <td>${i.hist_reward_name || i.reward_name}</td>
+                  <td>${i.hist_quantity || i.reward_qty}</td>
+                  <td>${i.hist_created_at ? new Date(i.hist_created_at).toLocaleString() : (i.redeemed_at ? new Date(i.redeemed_at).toLocaleString() : '-')}</td>
+                </tr>
+              `).join('')}</tbody>
+            </table></div>
+          `}
+        </div>
+      </div>
+    `;
+  } catch { main.innerHTML = html`<span class="back-link" onclick="currentView='stores';render()">← Volver</span><div class="empty-state">Error al cargar tienda</div>`; }
+
+  document.getElementById('create-invoice-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('create-inv-btn');
+    const resultDiv = document.getElementById('inv-result');
+    const productId = document.getElementById('inv-product').value;
+    const phone = document.getElementById('inv-phone').value.trim();
+    if (!productId || !phone) { toast('Selecciona un producto y escribe un telefono', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Entregando...';
+    resultDiv.style.display = 'none';
+    try {
+      const data = await api(`/stores/${encodeURIComponent(s.id)}/invoices`, {
+        method: 'POST',
+        body: JSON.stringify({ product_id: productId, user_phone: phone })
+      });
+      if (data.success) {
+        resultDiv.style.display = 'block';
+        resultDiv.style.background = 'rgba(80,200,120,0.12)';
+        resultDiv.style.border = '1px solid var(--success)';
+        resultDiv.style.color = 'var(--success)';
+        resultDiv.innerHTML = html`
+          <strong>Recompensa entregada!</strong><br>
+          Jugador: ${data.user}<br>
+          Producto: ${data.product.name}<br>
+          Recompensa: ${data.reward.label}<br>
+          Código: ${data.code}
+        `;
+        toast('Recompensa entregada a ' + phone);
+        document.getElementById('inv-phone').value = '';
+      } else {
+        throw new Error(data.error || 'Error al crear factura');
+      }
+    } catch (err) {
+      resultDiv.style.display = 'block';
+      resultDiv.style.background = 'rgba(224,80,80,0.12)';
+      resultDiv.style.border = '1px solid var(--danger)';
+      resultDiv.style.color = 'var(--danger)';
+      resultDiv.textContent = 'Error: ' + err.message;
+    }
+    btn.disabled = false; btn.textContent = 'Entregar Recompensa';
+  };
+};
+
+window.deleteStore = async function(id) {
+  if (!await confirmDialog(`Eliminar la tienda "${id}"? Se borraran todas sus promociones y productos asociados.`)) return;
+  try {
+    await api(`/stores/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    toast('Tienda eliminada correctamente');
+    currentView = 'stores';
+    render();
+  } catch { toast('Error al eliminar tienda', 'error'); }
+};
+
+render();
+</script>
+</body>
+</html>

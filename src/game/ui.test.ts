@@ -64,7 +64,8 @@ describe('Hub UI', () => {
   });
 
   it('renders character info in hub', () => {
-    const col = { characters: [createStarterCharacter()], selectedId: 'RA-SLIME-ANCESTRAL' };
+    const starter = createStarterCharacter();
+    const col = { characters: [starter], selectedId: starter.id };
     const cm = new CharacterManager(col);
     const profile = makeProfile(cm);
     mountHub(profile, cm, {
@@ -74,7 +75,7 @@ describe('Hub UI', () => {
       onStartGame: () => {},
       onRedeem: () => {},
     });
-    expect(document.getElementById('hub-char-name')?.textContent).toBe('Slime Ancestral');
+    expect(document.getElementById('hub-char-name')?.textContent).toBe(starter.name);
     expect(document.getElementById('hub-char-level')?.textContent).toBe('Nivel 1');
   });
 
@@ -86,7 +87,8 @@ describe('Hub UI', () => {
   });
 
   it('news section renders static cards', () => {
-    const col = { characters: [createStarterCharacter()], selectedId: 'RA-SLIME-ANCESTRAL' };
+    const starter = createStarterCharacter();
+    const col = { characters: [starter], selectedId: starter.id };
     const cm = new CharacterManager(col);
     const profile = makeProfile(cm);
     mountHub(profile, cm, {
@@ -111,7 +113,8 @@ describe('Characters UI', () => {
   });
 
   it('renders character collection', () => {
-    const col = { characters: [createStarterCharacter()], selectedId: 'RA-SLIME-ANCESTRAL' };
+    const starter = createStarterCharacter();
+    const col = { characters: [starter], selectedId: starter.id };
     const cm = new CharacterManager(col);
     const profile = makeProfile(cm);
     mountCharacters(profile, cm, {
@@ -119,7 +122,7 @@ describe('Characters UI', () => {
       onSelected: () => {},
     });
     const list = document.getElementById('characters-list');
-    expect(list?.textContent).toContain('Slime Ancestral');
+    expect(list?.textContent).toContain(starter.name);
     expect(list?.textContent).toContain('ACTIVO');
   });
 
@@ -147,7 +150,8 @@ describe('Inventory UI', () => {
   });
 
   it('renders inventory categories', () => {
-    const col = { characters: [createStarterCharacter()], selectedId: 'RA-SLIME-ANCESTRAL' };
+    const starter = createStarterCharacter();
+    const col = { characters: [starter], selectedId: starter.id };
     const cm = new CharacterManager(col);
     const profile = makeProfile(cm);
     mountInventory(profile, { onBack: () => {} });
@@ -160,7 +164,8 @@ describe('Inventory UI', () => {
   });
 
   it('shows materials with counts', () => {
-    const col = { characters: [createStarterCharacter()], selectedId: 'RA-SLIME-ANCESTRAL' };
+    const starter = createStarterCharacter();
+    const col = { characters: [starter], selectedId: starter.id };
     const cm = new CharacterManager(col);
     const profile = makeProfile(cm);
     mountInventory(profile, { onBack: () => {} });
@@ -172,7 +177,8 @@ describe('Inventory UI', () => {
   });
 
   it('shows consumables with counts', () => {
-    const col = { characters: [createStarterCharacter()], selectedId: 'RA-SLIME-ANCESTRAL' };
+    const starter = createStarterCharacter();
+    const col = { characters: [starter], selectedId: starter.id };
     const cm = new CharacterManager(col);
     const profile = makeProfile(cm);
     mountInventory(profile, { onBack: () => {} });
