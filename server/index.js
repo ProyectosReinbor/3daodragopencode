@@ -794,7 +794,13 @@ app.get('/api/products', (req, res) => {
 });
 
 if (existsSync(FRONTEND_DIR)) {
-  app.use(express.static(FRONTEND_DIR));
+  app.use(express.static(FRONTEND_DIR, {
+    setHeaders(res) {
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+    },
+  }));
   app.get('*', (req, res) => {
     if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
     res.sendFile(join(FRONTEND_DIR, 'index.html'));

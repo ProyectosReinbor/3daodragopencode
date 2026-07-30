@@ -95,11 +95,12 @@ document
     button.disabled = true;
     if ('caches' in window)
       await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
-    button.textContent = 'Cache eliminada';
-    window.setTimeout(() => {
-      button.textContent = 'Limpiar cache';
-      button.disabled = false;
-    }, 1800);
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((r) => r.unregister()));
+    }
+    button.textContent = 'Cache eliminada — recargando';
+    window.location.reload();
   });
 
 function showLoginError(msg: string) {

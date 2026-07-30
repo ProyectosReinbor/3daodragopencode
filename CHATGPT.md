@@ -3,7 +3,7 @@
 ## Descripción General
 RPG 3D en navegador (PWA) con generación determinista de personajes NFT, combate en tiempo real, crafting, misiones, jefes, y sistema de logros. Todo en español.
 
-- **Versión:** 0.8.0 (Extracción CombatManager)
+- **Versión:** 0.9.0 (Extracción LootManager, ProgressManager, CraftingManager)
 - **Stack:** TypeScript + Three.js + Vite (frontend), Node.js + Express + SQLite (backend)
 - **Licencia:** Privada — Todos los derechos reservados
 
@@ -23,8 +23,11 @@ RPG 3D en navegador (PWA) con generación determinista de personajes NFT, combat
 │   ├── main.ts             # Entry point: login, Hub, navegación, flujo PWA
 │   ├── styles.css          # Todos los estilos CSS (~2100 líneas)
 │   └── game/
-│       ├── game.ts         # Clase principal Game (~987 líneas) — loop, UI, crafting, orquestación
-│       ├── combat.ts       # Sistema de combate: daño, enemigos, bosses, habilidades
+│       ├── game.ts         # Clase principal Game (~955 líneas) — loop, orquestación
+│       ├── combat.ts       # Sistema de combate: daño, enemigos, bosses, habilidades (sin loot/BP/dailies)
+│       ├── crafting-manager.ts # Nuevo: CraftingManager — recetas, canCraft, performCraft
+│       ├── loot.ts          # Nuevo: LootManager — tablas de botín, rollLoot, applyDrops
+│       ├── progress.ts      # Nuevo: ProgressManager — XP, niveles, Battle Pass, logros, quest tracking
 │       ├── world.ts        # Generación procedural de zonas, enemigos, recursos, NPCs
 │       ├── nft.ts          # Sistema NFT: generación determinista, traits, modelo 3D
 │       ├── nft.test.ts     # Tests unitarios NFT
@@ -241,7 +244,7 @@ Jobs en push/PR a main/master:
 ```bash
 npm run dev        # Inicia frontend + backend en concurrently
 npm run build      # Build de producción (Vite)
-npm run test       # Vitest (159 tests: nft + profile + characters + navigation + ui + stores + reward-manager + combat)
+npm run test       # Vitest (179 tests: nft + profile + characters + navigation + ui + stores + reward-manager + combat + loot + crafting-manager + progress)
 npm run lint       # ESLint
 npm run format     # Prettier
 ```
@@ -276,7 +279,7 @@ npm run format     # Prettier
 
 **Completado (todo v0.7.0 +):**
 - Auth con JWT + bcrypt, rate limiting, migración a SQLite
-- README, tests (159), ESLint/Prettier, CI/CD
+- README, tests (179), ESLint/Prettier, CI/CD
 - Sistema de habilidades (2 por elemento)
 - Crafting expandido (12 recetas)
 - Zonas Desierto y Cueva
@@ -293,6 +296,7 @@ npm run format     # Prettier
 - Seed data: 5 tiendas, 5 promociones, 5 productos con recompensas (v0.6.0)
 - **Sistema de Canje de Facturas (v0.7.0):** Tablas `invoice_codes` y `reward_history` en SQLite, servicio CodeGenerator en backend, 11 códigos de prueba (10 disponibles + 1 expirado), transacciones atómicas para validación/entrega/rede, entrega de recompensas (personajes, items, moneda, cristales), compensación de personajes duplicados con cristales, API REST `POST /api/redeem`, `GET /api/rewards/history`, `GET /api/rewards/pending`, frontend redeem-ui.ts con formulario e historial, reward-result-ui.ts con animación de pulso, botón "Canjear Factura" funcional en hub y detalle de tienda.
 - **Extracción CombatManager (v0.8.0):** `combat.ts` creado con `CombatManager` (~760 líneas) conteniendo toda la lógica de combate extraída de `Game` (ataque, enemigos, bosses, habilidades, daño, cooldowns, escudos, stuns, loot, BP, daily quests, respawn). `game.ts` reducido de ~1600 a ~987 líneas. Arquitectura: CombatManager recibe dependencias vía constructor y `CombatServices` callbacks; no recibe la instancia completa de Game. 39 tests unitarios de combate. 0 errores tsc, 0 errores ESLint.
+- **Extracción LootManager, ProgressManager, CraftingManager (v0.9.0):** `loot.ts`, `progress.ts`, `crafting-manager.ts` creados. CombatManager desacoplado de loot/BP/daily-quests mediante callbacks `onEnemyKilled`/`onBossKilled`. Game reduce a ~955 líneas como coordinador puro. `crafting.ts` y `recipes.ts` eliminados. 179 tests totales (11 suites). 0 errores tsc, 0 errores ESLint (15 warnings pre-existing).
 
 **Pendiente de alta prioridad:**
 - Integración completa de jefes (UI avanzada)
@@ -319,3 +323,92 @@ npm run format     # Prettier
 - Contenido del juego en español
 - Tests junto al archivo que prueban (`*.test.ts`)
 - Errores silenciosos con `console.error` (sin notificación al usuario)
+
+---
+
+## Informe Final — Fase 6: Refactor Arquitectónico v0.9.0
+
+### 1. Resumen General
+Extracción completa de 3 nuevos managers (LootManager, ProgressManager, CraftingManager) desde la clase Game. CombatManager desacoplado de loot, Battle Pass y daily quests mediante callbacks `onEnemyKilled`/`onBossKilled`. Game reducido a coordinador puro (~955 líneas). `crafting.ts` y `recipes.ts` eliminados.
+
+### 2. Archivos Creados
+- `src/game/loot.ts` — LootManager (44 líneas)
+- `src/game/progress.ts` — ProgressManager (147 líneas)
+- `src/game/crafting-manager.ts` — CraftingManager (70 líneas)
+- `src/game/loot.test.ts` — 6 tests
+- `src/game/progress.test.ts` — 5 tests
+- `src/game/crafting-manager.test.ts` — 9 tests
+
+### 3. Archivos Eliminados
+- `src/game/crafting.ts`
+- `src/game/recipes.ts`
+
+### 4. Archivos Modificados
+- `src/game/combat.ts` — imports de loot/BP/daily-quests removidos; `CombatServices` con `onEnemyKilled`/`onBossKilled`; `attack()`/`useAbility()` sin `dailyQuestData`/`battlePass`
+- `src/game/game.ts` — integrados LootManager, ProgressManager, CraftingManager; delegación de XP/achievements vía ProgressManager
+- `src/game/combat.test.ts` — `makeServices()` actualizado; `notifyKill` → `onEnemyKilled`
+
+### 5. Líneas Reducidas de Game
+- v0.8.0: ~987 líneas → v0.9.0: ~955 líneas
+
+### 6. Nueva Arquitectura
+```
+Game (coordinador)
+├── CombatManager    → combate, daño, enemigos, bosses, estados
+│   └── callbacks    → Game.onEnemyKilled → ProgressManager.processEnemyKill()
+│                   → Game.onBossKilled  → ProgressManager.processBossKill()
+├── LootManager      → tablas de botín, rollLoot, rollBossLoot, applyDrops
+├── ProgressManager  → XP, niveles, BP, logros, daily quests, crafting diario
+│   ├── LootManager  → applyDrops (loot post-kill)
+│   └── daily-quests → trackDailyKill, saveDailyQuests
+├── CraftingManager  → recetas, canCraft, craft, daily craft tracking
+└── otros (audio, visual, world, etc.)
+```
+
+### 7. Responsabilidades
+- **CombatManager:** ataques, daño, enemigos, bosses, muerte, estados. NO recompensas/XP/misiones.
+- **LootManager:** drops, probabilidades, recompensas. NO inventario/UI.
+- **ProgressManager:** XP, niveles, kills, BP, logros, progreso global.
+- **CraftingManager:** recetas, materiales, creación de objetos.
+
+### 8. Sistema de Callbacks
+```
+CombatServices.onEnemyKilled(enemy, profile)
+  → Game.onEnemyKilled → ProgressManager.processEnemyKill()
+    → LootManager.applyDrops()
+    → addBattlePassXp() + saveBattlePass()
+    → trackDailyKill() + saveDailyQuests()
+    → trackAchievement()
+    → trackQuestKill()
+```
+
+### 9. Tests Agregados
+- `loot.test.ts` — 6 tests (rollEnemyLoot, rollBossLoot, applyDrops)
+- `crafting-manager.test.ts` — 9 tests (getRecipe, canCraft, craft)
+- `progress.test.ts` — 5 tests (addExperience, trackAchievement, processEnemyKill, processBossKill)
+
+### 10. Resultado Validaciones
+| Herramienta | Resultado |
+|-------------|-----------|
+| tsc | 0 errores |
+| ESLint | 0 errores, 15 warnings (pre-existing no-explicit-any) |
+| Vitest | 179/179 passed (11 suites) |
+| Vite build | OK (42 módulos, 141 KB + 477 KB three.js) |
+
+### 11. Problemas Encontrados
+- Game aún importa `saveDailyQuests`/`saveBattlePass` para funcionalidad no-combate (collect, explore, login streak). No se extrajeron por ser coordinación directa de Game.
+- 15 warnings de `no-explicit-any` pre-existentes (tests y main.ts). No se intervinieron.
+
+### 12. Decisiones Técnicas
+- **Callbacks directos** (CombatServices) por simplicidad y type safety. Migrar a EventEmitter si escala.
+- **ProgressServices separado** de CombatServices para efectos visuales/sonoros (levelUpEffects).
+- **LootManager inyectado** en ProgressManager como dependencia stateless/pura.
+- **CraftingManager independiente:** solo recibe profile + dailyQuestData.
+
+### 13. Recomendaciones Fase 7
+1. Completar contenido real de zonas (Desierto, Cueva).
+2. Mejorar bosses (UI avanzada, patrones de ataque).
+3. Nuevos enemigos por zona.
+4. Mejorar generación procedural del mundo.
+5. Preparar sistemas sociales (chat, clanes, ranking).
+6. No implementar nuevas features sin cerrar documentación y estabilidad de v0.9.0.

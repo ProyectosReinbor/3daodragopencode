@@ -1,14 +1,7 @@
 import { Clock, Group, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
 import { InputController } from './input';
-import {
-  saveProfile,
-  migrateProfile,
-  type PlayerProfile,
-  type ZoneId,
-  currentQuestDef,
-  advanceQuest,
-} from './profile';
-import { createWorld, type Enemy, type ResourceNode } from './world';
+import { saveProfile, migrateProfile, type PlayerProfile, type ZoneId } from './profile';
+import { createWorld, type ResourceNode } from './world';
 import {
   type Npc,
   type CraftingStation,
@@ -27,19 +20,19 @@ import {
   saveQuality,
   type QualityLevel,
 } from './quality';
-import { buildNftModel, xpForLevel, type StatName } from './nft';
+import { buildNftModel, type StatName } from './nft';
 import { apiSaveProfile, isLoggedIn } from './api';
 
 import { CharacterManager, totalStats as characterTotalStats } from './characters';
-import { RECIPES, type RecipeId } from './recipes';
-import { canCraft, performCraft } from './crafting';
+import { LootManager } from './loot';
+import { ProgressManager } from './progress';
+import { CraftingManager, type RecipeId } from './crafting-manager';
 import {
   useConsumable,
   applyBuffToCharacter,
   clearBuffsFromCharacter,
   type ConsumableItem,
 } from './items';
-import { updateAchievement } from './achievements';
 
 import { GameUI } from './game-ui';
 import { Minimap } from './minimap';
@@ -101,6 +94,9 @@ export class Game {
   private readonly ui: GameUI;
   private readonly audio: AudioManager;
   private readonly visuals: VisualEffects;
+  private readonly lootManager: LootManager;
+  private readonly progressManager: ProgressManager;
+  private readonly craftingManager: CraftingManager;
   private dailyQuestData: ReturnType<typeof loadDailyQuests>;
   private leaderboard: LeaderboardEntry[];
   private battlePass: BattlePassState;
@@ -124,6 +120,22 @@ export class Game {
     this.minimap = new Minimap();
     this.audio = new AudioManager();
     this.visuals = new VisualEffects();
+    this.lootManager = new LootManager();
+    this.craftingManager = new CraftingManager();
+    this.progressManager = new ProgressManager(
+      {
+        hint: (msg) => this.hint(msg),
+        updateQuest: () => this.updateQuest(),
+        updateProfilePanel: () => this.updateProfilePanel(),
+        levelUpEffects: (_name, _level) => {
+          this.levelupFlashTimer = 0.6;
+          this.audio.playLevelUp();
+          this.visuals.flashLevelUp();
+          this.visuals.spawnLevelUpBurst(this.scene, this.player.position);
+        },
+      },
+      this.lootManager
+    );
     this.combat = new CombatManager(
       this.player,
       this.camera,
@@ -134,17 +146,30 @@ export class Game {
       this.ui,
       {
         hint: (msg) => this.hint(msg),
-        trackAchievement: (id, amount) => this.trackAchievement(id, amount),
         updateQuest: () => this.updateQuest(),
         updateProfilePanel: () => this.updateProfilePanel(),
-        addExperience: (amount) => this.addExperience(amount),
-        notifyKill: (enemy) => this.trackQuestKill(enemy),
+        addExperience: (amount) =>
+          this.progressManager.addExperience(amount, this.profile, this.characters),
         onPlayerDeath: () => {
           this.clearBuffs();
           const cfg = zoneConfig(this.currentZone);
           this.player.position.set(cfg.playerStart.x, 0, cfg.playerStart.z);
           this.player.scale.setScalar(1);
         },
+        onEnemyKilled: (enemy) =>
+          this.progressManager.processEnemyKill(
+            enemy,
+            this.profile,
+            this.dailyQuestData,
+            this.battlePass
+          ),
+        onBossKilled: (boss) =>
+          this.progressManager.processBossKill(
+            boss,
+            this.profile,
+            this.dailyQuestData,
+            this.battlePass
+          ),
       }
     );
     this.loadZone(this.currentZone);
@@ -388,43 +413,8 @@ export class Game {
     }
   }
 
-  private trackQuestKill(_enemy: Enemy) {
-    const qdef = currentQuestDef(this.profile);
-    if (!qdef || qdef.zone !== this.currentZone) return;
-    const resources = Math.min(this.profile.quest.resources, qdef.requiredResources);
-    const creatures = Math.min(this.profile.quest.creatures, qdef.requiredCreatures);
-    if (resources >= qdef.requiredResources && creatures >= qdef.requiredCreatures) {
-      const qs = this.profile.quests.find((q) => !q.completed);
-      if (!qs) return;
-      qs.completed = true;
-      this.characters.getActive().xp += qdef.rewardExp;
-      if (qdef.rewardResource && qdef.rewardAmount)
-        this.profile.inventory[qdef.rewardResource] += qdef.rewardAmount;
-      this.profile.quest.resources = 0;
-      this.profile.quest.creatures = 0;
-      const nextDef = advanceQuest(this.profile);
-      if (
-        nextDef &&
-        nextDef.unlockZone &&
-        !this.profile.unlockedZones.includes(nextDef.unlockZone)
-      ) {
-        this.profile.unlockedZones.push(nextDef.unlockZone);
-        this.hint(
-          `Zona desbloqueada: ${nextDef.unlockZone === 'bosque' ? 'Bosque Ancestral' : nextDef.unlockZone}`
-        );
-      }
-      this.audio.playQuestComplete();
-      this.hint(`Mision "${qdef.title}" completada. +${qdef.rewardExp} EXP`);
-      const completedCount = this.profile.quests.filter((q) => q.completed).length;
-      if (completedCount >= 3) this.trackAchievement('quest_complete_1', 0);
-      if (completedCount >= 7) this.trackAchievement('quest_complete_2', 0);
-      if (isLoggedIn()) apiSaveProfile(this.profile).catch(() => {});
-    }
-    saveProfile(this.profile);
-  }
-
   private trackAchievement(id: string, amount: number) {
-    this.profile.achievements = updateAchievement(this.profile.achievements, id, amount);
+    this.progressManager.trackAchievement(id, amount, this.profile);
   }
 
   private interact() {
@@ -535,23 +525,7 @@ export class Game {
   }
 
   private addExperience(amount: number) {
-    const activeChar = this.characters.getActive();
-    activeChar.xp += amount;
-    const required = xpForLevel(activeChar.level);
-    if (activeChar.xp >= required) {
-      activeChar.xp -= required;
-      activeChar.level += 1;
-      this.profile.attributePoints += 1;
-      this.levelupFlashTimer = 0.6;
-      this.audio.playLevelUp();
-      this.visuals.flashLevelUp();
-      this.visuals.spawnLevelUpBurst(this.scene, this.player.position);
-      this.hint(`${activeChar.name} subio a nivel ${activeChar.level}!`);
-      if (activeChar.level >= 5) this.trackAchievement('level_5', 0);
-      if (activeChar.level >= 10) this.trackAchievement('level_10', 0);
-      if (activeChar.level >= 20) this.trackAchievement('level_20', 0);
-      if (isLoggedIn()) apiSaveProfile(this.profile).catch(() => {});
-    }
+    this.progressManager.addExperience(amount, this.profile, this.characters);
     saveProfile(this.profile);
     this.updateProfilePanel();
   }
@@ -561,21 +535,20 @@ export class Game {
   }
 
   private craft(recipe: keyof PlayerProfile['crafted'], stationName?: string) {
-    if (!canCraft(this.profile, recipe as RecipeId)) {
-      const def = RECIPES[recipe as RecipeId];
+    const rid = recipe as RecipeId;
+    if (!this.craftingManager.canCraft(this.profile, rid)) {
+      const def = this.craftingManager.getRecipe(rid);
       if (!def) return;
       this.hint(
         `Necesitas ${def.cost} de ${def.ingredient} para fabricar ${def.name}${stationName ? ` en ${stationName}` : ''}.`
       );
       return;
     }
-    const msg = performCraft(this.profile, recipe as RecipeId, this.dailyQuestData, stationName);
-    if (!msg) return;
-    this.trackAchievement('crafter_1', 1);
-    this.trackAchievement('crafter_2', 1);
-    this.trackAchievement('crafter_3', 1);
+    const result = this.craftingManager.craft(this.profile, rid, this.dailyQuestData, stationName);
+    if (!result.success || !result.message) return;
+    this.progressManager.trackCraft(rid, this.profile);
     this.addExperience(4);
-    this.hint(msg);
+    this.hint(result.message);
     this.updateProfilePanel();
   }
 
@@ -666,7 +639,7 @@ export class Game {
   }
 
   private attackButtonHandler() {
-    const initiated = this.combat.attack(this.profile, this.dailyQuestData, this.battlePass);
+    const initiated = this.combat.attack(this.profile);
     if (initiated) {
       this.attackAnimTimer = 0.25;
       this.player.scale.setScalar(1.12);
@@ -675,12 +648,7 @@ export class Game {
   }
 
   private abilityButtonHandler(index: number) {
-    const result = this.combat.useAbility(
-      index,
-      this.profile,
-      this.dailyQuestData,
-      this.battlePass
-    );
+    const result = this.combat.useAbility(index, this.profile);
     if (result) {
       this.dashDirection.copy(result.dashDirection);
       this.dashTimer = 0.2;

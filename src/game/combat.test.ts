@@ -13,8 +13,6 @@ import { CharacterManager, createStarterCharacter, createEmptyCollection } from 
 import { type Enemy } from './world';
 import type { ActiveBoss, BossDefinition } from './bosses';
 import type { PlayerProfile } from './profile';
-import type { DailyQuestData } from './daily-quests';
-import type { BattlePassState } from './battlepass';
 
 function makeEnemy(overrides: Partial<Enemy> = {}): Enemy {
   const hpBar = new Mesh(new BoxGeometry(1.2, 0.08, 0.08), new MeshLambertMaterial());
@@ -144,35 +142,15 @@ function makeProfile(): PlayerProfile {
   };
 }
 
-function makeDailyQuestData(): DailyQuestData {
-  return {
-    date: '2024-01-01',
-    quests: [],
-    states: [],
-    loginStreak: 0,
-    lastLoginDate: '2024-01-01',
-    totalClaimed: 0,
-  };
-}
-
-function makeBattlePass(): BattlePassState {
-  return {
-    currentLevel: 1,
-    currentXp: 0,
-    claimedTiers: [],
-    seasonStart: '2024-01-01',
-  };
-}
-
 function makeServices(): CombatServices {
   return {
     hint: vi.fn(),
-    trackAchievement: vi.fn(),
     updateQuest: vi.fn(),
     updateProfilePanel: vi.fn(),
     addExperience: vi.fn(),
-    notifyKill: vi.fn(),
     onPlayerDeath: vi.fn(),
+    onEnemyKilled: vi.fn(),
+    onBossKilled: vi.fn(),
   };
 }
 
@@ -181,14 +159,10 @@ describe('CombatManager', () => {
   let player: Group;
   let services: ReturnType<typeof makeServices>;
   let profile: PlayerProfile;
-  let dailyQuestData: DailyQuestData;
-  let battlePass: BattlePassState;
   beforeEach(() => {
     player = new Group();
     services = makeServices();
     profile = makeProfile();
-    dailyQuestData = makeDailyQuestData();
-    battlePass = makeBattlePass();
 
     const characters = new CharacterManager(profile.characters!);
     const audio = {
@@ -247,7 +221,7 @@ describe('CombatManager', () => {
       combat.cachedNearestEnemy = enemy;
       player.position.set(0, 0, 0);
       enemy.mesh.position.set(1, 0, 1);
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(enemy.health).toBeLessThan(30);
     });
 
@@ -257,7 +231,7 @@ describe('CombatManager', () => {
       combat.cachedNearestEnemy = enemy;
       player.position.set(0, 0, 0);
       enemy.mesh.position.set(1, 0, 1);
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(enemy.health).toBeLessThanOrEqual(0);
     });
 
@@ -267,16 +241,16 @@ describe('CombatManager', () => {
       combat.cachedNearestEnemy = enemy;
       player.position.set(0, 0, 0);
       enemy.mesh.position.set(1, 0, 1);
-      expect(combat.attack(profile, dailyQuestData, battlePass)).toBe(true);
+      expect(combat.attack(profile)).toBe(true);
       const healthAfterFirst = enemy.health;
-      expect(combat.attack(profile, dailyQuestData, battlePass)).toBe(false);
+      expect(combat.attack(profile)).toBe(false);
       expect(enemy.health).toBe(healthAfterFirst);
     });
 
     it('attack returns true when no target is near', () => {
       combat.enemies = [makeEnemy({ mesh: new Group() })];
       combat.enemies[0].mesh.position.set(20, 0, 20);
-      const result = combat.attack(profile, dailyQuestData, battlePass);
+      const result = combat.attack(profile);
       expect(result).toBe(true);
       expect(services.hint).toHaveBeenCalledWith('No hay criaturas cerca.');
     });
@@ -309,7 +283,7 @@ describe('CombatManager', () => {
       combat.enemies = [e1, e2];
       player.position.set(0, 0, 0);
       combat.cachedNearestEnemy = e1;
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(e1.alive).toBe(false);
       combat.update(0.016, profile);
       expect(combat.cachedNearestEnemy).toBe(e2);
@@ -321,7 +295,7 @@ describe('CombatManager', () => {
       combat.cachedNearestEnemy = enemy;
       player.position.set(0, 0, 0);
       enemy.mesh.position.set(1, 0, 1);
-      const result = combat.attack(profile, dailyQuestData, battlePass);
+      const result = combat.attack(profile);
       expect(result).toBe(true);
       expect(enemy.health).toBeLessThan(30);
     });
@@ -330,7 +304,7 @@ describe('CombatManager', () => {
       combat.enemies = [];
       combat.cachedNearestEnemy = null;
       player.position.set(0, 0, 0);
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(services.hint).toHaveBeenCalledWith('No hay criaturas cerca.');
     });
   });
@@ -364,12 +338,11 @@ describe('CombatManager', () => {
       combat.cachedNearestEnemy = enemy;
       player.position.set(0, 0, 0);
       enemy.mesh.position.set(1, 0, 1);
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(enemy.alive).toBe(false);
       expect(enemy.mesh.visible).toBe(false);
       expect(services.addExperience).toHaveBeenCalledWith(15);
-      expect(services.notifyKill).toHaveBeenCalled();
-      expect(profile.quest.creatures).toBeGreaterThan(0);
+      expect(services.onEnemyKilled).toHaveBeenCalled();
     });
 
     it('dead enemy does not attack', () => {
@@ -392,7 +365,7 @@ describe('CombatManager', () => {
       combat.enemies = [];
       player.position.set(0, 0, 0);
       boss.mesh.position.set(2, 0, 2);
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(boss.health).toBeLessThan(200);
     });
 
@@ -449,7 +422,7 @@ describe('CombatManager', () => {
       combat.activeBoss = boss;
       player.position.set(0, 0, 0);
       boss.mesh.position.set(2, 0, 2);
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(boss.health).toBeLessThanOrEqual(200);
     });
 
@@ -513,7 +486,7 @@ describe('CombatManager', () => {
       combat.activeBoss = boss;
       player.position.set(0, 0, 0);
       boss.mesh.position.set(2, 0, 2);
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(boss.health).toBeLessThanOrEqual(300);
     });
 
@@ -577,7 +550,7 @@ describe('CombatManager', () => {
       combat.activeBoss = boss;
       player.position.set(0, 0, 0);
       boss.mesh.position.set(2, 0, 2);
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(boss.health).toBeLessThanOrEqual(400);
     });
 
@@ -601,7 +574,7 @@ describe('CombatManager', () => {
     it('useAbility consumes energy', () => {
       const energyBefore = combat.energy;
       combat.abilities[0].energyCost = 10;
-      combat.useAbility(0, profile, dailyQuestData, battlePass);
+      combat.useAbility(0, profile);
       expect(combat.energy).toBe(energyBefore - 10);
     });
 
@@ -609,7 +582,7 @@ describe('CombatManager', () => {
       combat.abilities[0].energyCost = 0;
       combat.abilities[0].cooldown = 5000;
       combat.abilities[0].lastUsed = performance.now();
-      const result = combat.useAbility(0, profile, dailyQuestData, battlePass);
+      const result = combat.useAbility(0, profile);
       expect(result).toBeNull();
       expect(services.hint).toHaveBeenCalledWith(expect.stringContaining('enfriamiento'));
     });
@@ -617,7 +590,7 @@ describe('CombatManager', () => {
     it('insufficient energy blocks ability use', () => {
       combat.energy = 0;
       combat.abilities[0].energyCost = 50;
-      const result = combat.useAbility(0, profile, dailyQuestData, battlePass);
+      const result = combat.useAbility(0, profile);
       expect(result).toBeNull();
       expect(services.hint).toHaveBeenCalledWith(expect.stringContaining('Energia insuficiente'));
     });
@@ -630,7 +603,7 @@ describe('CombatManager', () => {
       enemy.mesh.position.set(1, 0, 1);
       combat.abilities[0].id = 'fireball';
       combat.abilities[0].energyCost = 0;
-      combat.useAbility(0, profile, dailyQuestData, battlePass);
+      combat.useAbility(0, profile);
       expect(enemy.health).toBeLessThan(100);
     });
 
@@ -641,7 +614,7 @@ describe('CombatManager', () => {
       enemy.mesh.position.set(1, 0, 1);
       combat.abilities[0].id = 'frost_shield';
       combat.abilities[0].energyCost = 0;
-      combat.useAbility(0, profile, dailyQuestData, battlePass);
+      combat.useAbility(0, profile);
       combat.update(1, profile);
       expect(combat.health).toBe(100);
     });
@@ -653,7 +626,7 @@ describe('CombatManager', () => {
       enemy.mesh.position.set(1, 0, 1);
       combat.abilities[0].id = 'earthquake';
       combat.abilities[0].energyCost = 0;
-      combat.useAbility(0, profile, dailyQuestData, battlePass);
+      combat.useAbility(0, profile);
       expect(enemy.speed).toBe(0);
     });
 
@@ -667,7 +640,7 @@ describe('CombatManager', () => {
       combat.abilities[0].id = 'dark_pulse';
       combat.abilities[0].energyCost = 0;
       const healthBefore = combat.health;
-      combat.useAbility(0, profile, dailyQuestData, battlePass);
+      combat.useAbility(0, profile);
       expect(enemy.health).toBeLessThan(100);
       expect(combat.health).toBeGreaterThan(healthBefore);
     });
@@ -676,20 +649,20 @@ describe('CombatManager', () => {
       combat.health = 30;
       combat.abilities[0].id = 'heal_wave';
       combat.abilities[0].energyCost = 0;
-      combat.useAbility(0, profile, dailyQuestData, battlePass);
+      combat.useAbility(0, profile);
       expect(combat.health).toBeGreaterThan(30);
     });
 
     it('dash ability returns direction vector', () => {
       combat.abilities[0].id = 'dash';
       combat.abilities[0].energyCost = 0;
-      const result = combat.useAbility(0, profile, dailyQuestData, battlePass);
+      const result = combat.useAbility(0, profile);
       expect(result).not.toBeNull();
       expect(result!.dashDirection).toBeDefined();
     });
 
     it('invalid ability index returns null', () => {
-      const result = combat.useAbility(999, profile, dailyQuestData, battlePass);
+      const result = combat.useAbility(999, profile);
       expect(result).toBeNull();
     });
 
@@ -702,7 +675,7 @@ describe('CombatManager', () => {
       player.position.set(0, 0, 0);
       combat.abilities[0].id = 'flame_burst';
       combat.abilities[0].energyCost = 0;
-      combat.useAbility(0, profile, dailyQuestData, battlePass);
+      combat.useAbility(0, profile);
       expect(e1.health).toBeLessThan(30);
       expect(e2.health).toBeLessThan(30);
     });
@@ -714,14 +687,14 @@ describe('CombatManager', () => {
     it('player blocked by full energy', () => {
       combat.abilities[0].lastUsed = -999999;
       combat.abilities[0].energyCost = 200;
-      const result = combat.useAbility(0, profile, dailyQuestData, battlePass);
+      const result = combat.useAbility(0, profile);
       expect(result).toBeNull();
       expect(services.hint).toHaveBeenCalledWith(expect.stringContaining('Energia insuficiente'));
     });
 
     it('attack returns true even with no target', () => {
       combat.enemies = [];
-      const result = combat.attack(profile, dailyQuestData, battlePass);
+      const result = combat.attack(profile);
       expect(result).toBe(true);
     });
 
@@ -748,18 +721,18 @@ describe('CombatManager', () => {
       combat.cachedNearestEnemy = enemy;
       player.position.set(0, 0, 0);
       const killsBefore = combat.sessionKills;
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(combat.sessionKills).toBe(killsBefore + 1);
     });
 
-    it('notifyKill called with enemy and profile on kill', () => {
+    it('onEnemyKilled called with enemy and profile on kill', () => {
       const enemy = makeEnemy({ health: 1, maxHealth: 1 });
       combat.enemies = [enemy];
       combat.cachedNearestEnemy = enemy;
       player.position.set(0, 0, 0);
       enemy.mesh.position.set(1, 0, 1);
-      combat.attack(profile, dailyQuestData, battlePass);
-      expect(services.notifyKill).toHaveBeenCalledWith(enemy, profile);
+      combat.attack(profile);
+      expect(services.onEnemyKilled).toHaveBeenCalledWith(enemy, profile);
     });
   });
 
@@ -772,7 +745,7 @@ describe('CombatManager', () => {
       player.position.set(0, 0, 0);
       boss.mesh.position.set(2, 0, 2);
       const before = combat.sessionBossKills;
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(combat.sessionBossKills).toBe(before + 1);
     });
 
@@ -782,7 +755,7 @@ describe('CombatManager', () => {
       player.position.set(0, 0, 0);
       boss.mesh.position.set(2, 0, 2);
       boss.health = 60;
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(boss.currentPhase).toBeGreaterThanOrEqual(1);
     });
 
@@ -795,7 +768,7 @@ describe('CombatManager', () => {
     it('no crash when attacking without enemies', () => {
       combat.enemies = [];
       combat.activeBoss = null;
-      const result = combat.attack(profile, dailyQuestData, battlePass);
+      const result = combat.attack(profile);
       expect(result).toBe(true);
     });
 
@@ -806,7 +779,7 @@ describe('CombatManager', () => {
       combat.enemies[0].mesh.position.set(10, 0, 10);
       player.position.set(0, 0, 0);
       boss.mesh.position.set(2, 0, 2);
-      combat.attack(profile, dailyQuestData, battlePass);
+      combat.attack(profile);
       expect(boss.health).toBeLessThan(200);
     });
   });

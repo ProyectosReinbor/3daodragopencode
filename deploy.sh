@@ -12,6 +12,7 @@ echo "[1/4] Instalando dependencias..."
 npm install --production=false
 
 echo "[2/4] Building frontend..."
+rm -rf dist
 npm run build
 
 echo "[3/4] Instalando dependencias del servidor..."

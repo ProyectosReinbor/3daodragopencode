@@ -1,9 +1,9 @@
 # PLAN DE DESARROLLO - REINOS ANCESTRALES (3DAODRAG)
 
 > **Fecha de análisis:** 2026-07-30
-> **Versión actual:** 0.8.0 (Extracción CombatManager)
-> **Fases completadas:** 1 (Seguridad) + 2 (Infraestructura) + 3 (Gameplay parcial) + 4 (Sistema de Personajes) + 5 (Hub y Navegación) + 6 (Tiendas Asociadas) + 7 (Canje de Facturas) + 3.7 (Extracción CombatManager)
-> **Próxima fase:** Refactorización de Game / Boss Battles
+> **Versión actual:** 0.9.0 (Extracción LootManager, ProgressManager, CraftingManager)
+> **Fases completadas:** 1 (Seguridad) + 2 (Infraestructura) + 3 (Gameplay parcial) + 4 (Sistema de Personajes) + 5 (Hub y Navegación) + 6 (Tiendas Asociadas) + 7 (Canje de Facturas) + 3.7 (Extracción CombatManager) + 3.8 (Extracción Loot/Progress/Crafting Managers)
+> **Próxima fase:** Boss Battles / World Generation
 
 ---
 
@@ -18,7 +18,7 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 - CI/CD: GitHub Actions
 - PWA: Service Worker + Web App Manifest
 
-**Estado actual:** MVP funcional con autenticación, generación procedural de personajes NFT, 3 zonas, 7 quests, 12 recetas de crafting, 2 habilidades por elemento, sistema de logros, soporte QR. **Nuevo (v0.4.0):** Sistema de múltiples personajes por cuenta. **Nuevo (v0.5.0):** Hub Principal con navegación centralizada. **Nuevo (v0.6.0):** Tiendas Asociadas con backend SQLite, API REST y frontend lazy loading. **Nuevo (v0.7.0):** Sistema de Canje de Facturas con backend SQLite (invoice_codes, reward_history), transacciones atómicas, entrega de recompensas (personajes, items, moneda, cristales), compensación de duplicados, frontend redeem-ui y reward-result-ui con animación de pulso. **Nuevo (v0.8.0):** Extracción de CombatManager (~760 líneas) de Game. game.ts reducido de ~1600 a ~987 líneas. 39 tests de combate. 159 tests totales.
+**Estado actual:** MVP funcional con autenticación, generación procedural de personajes NFT, 3 zonas, 7 quests, 12 recetas de crafting, 2 habilidades por elemento, sistema de logros, soporte QR. **Nuevo (v0.4.0):** Sistema de múltiples personajes por cuenta. **Nuevo (v0.5.0):** Hub Principal con navegación centralizada. **Nuevo (v0.6.0):** Tiendas Asociadas con backend SQLite, API REST y frontend lazy loading. **Nuevo (v0.7.0):** Sistema de Canje de Facturas con backend SQLite (invoice_codes, reward_history), transacciones atómicas, entrega de recompensas (personajes, items, moneda, cristales), compensación de duplicados, frontend redeem-ui y reward-result-ui con animación de pulso. **Nuevo (v0.8.0):** Extracción de CombatManager (~760 líneas) de Game. game.ts reducido de ~1600 a ~987 líneas. 39 tests de combate. **Nuevo (v0.9.0):** Extracción de LootManager, ProgressManager y CraftingManager. CombatManager desacoplado de loot/BP/daily-quests. game.ts reducido a ~955 líneas. 179 tests totales.
 
 **Cambio arquitectónico clave (v0.4.0):** Se creó `src/game/characters.ts` con el sistema `Character` + `CharacterCollection` + `CharacterManager`. Los perfiles ahora soportan múltiples personajes por cuenta en lugar de un único NFT. Migración automática de perfiles antiguos. `Game.ts` accede al personaje activo mediante `this.characters.getActive()`. 25 tests unitarios nuevos.
 
@@ -29,6 +29,13 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 **Cambio arquitectónico clave (v0.7.0):** Se crearon `src/game/reward-manager.ts`, `redeem-ui.ts`, `reward-result-ui.ts`. Backend: tablas SQLite `invoice_codes` (AVAILABLE/REDEEMED/CANCELLED/EXPIRED) y `reward_history` con seed data de 11 códigos de prueba (RA-2026-000001…000010 + RA-EXP-000001 expirado). Servicio `CodeGenerator` para generación de códigos. API REST: `POST /api/redeem` (transacción atómica: validar código → validar producto → entregar recompensa → guardar perfil → marcar código REDEEMED → insertar historial), `GET /api/rewards/history`, `GET /api/rewards/pending`. Entrega de recompensas con compensación de personajes duplicados en cristales. Frontend redeem-ui.ts con formulario e historial, reward-result-ui.ts con animación de pulso. Botón "Canjear Factura" funcional en hub y detalle de tienda. 8 tests nuevos (reward-manager).
 
 **Cambio arquitectónico clave (v0.8.0):** Se creó `src/game/combat.ts` con la clase `CombatManager` (~760 líneas) que extrae toda la lógica de combate de Game: estado de combate (health, energy, enemies, activeBoss, bossMinions, abilities), métodos de ataque, daño, enemigos, bosses, habilidades, cooldowns, escudos, stuns, loot, Battle Pass, daily quests, respawn. `CombatManager` recibe dependencias vía constructor (player, camera, scene, audio, visuals, characters, ui) y callbacks `CombatServices` (hint, trackAchievement, updateQuest, updateProfilePanel, addExperience, notifyKill, onPlayerDeath). `game.ts` reducido de ~1600 a ~987 líneas. 39 tests de combate. Arquitectura limpia: CombatManager no interactúa con Game directamente, solo a través de callbacks.
+
+**Cambio arquitectónico clave (v0.9.0):** Se crearon tres nuevos managers:
+- `src/game/loot.ts` — `LootManager`: tablas de botín, `rollEnemyLoot()`, `rollBossLoot()`, `applyDrops()`
+- `src/game/progress.ts` — `ProgressManager`: XP/leveling, Battle Pass, logros, tracking de quests, mazmorras diarias. Callbacks `ProgressServices` para efectos visuales/sonoros de subida de nivel
+- `src/game/crafting-manager.ts` — `CraftingManager`: recetas (antes en `recipes.ts`), `canCraft()`, `craft()`, mazmorras diarias de crafting
+
+CombatManager desacoplado de `rollLoot`, `rollBossLoot`, `addBattlePassXp`, `saveBattlePass`, `trackDailyKill`, `saveDailyQuests`. Ahora usa callbacks `onEnemyKilled` y `onBossKilled`. Game inyecta `ProgressManager.processEnemyKill()` y `ProgressManager.processBossKill()` que manejan loot, BP, logros, tracking diario y quests. `crafting.ts` y `recipes.ts` eliminados (reemplazados por `crafting-manager.ts`). `game.ts` reducido a ~955 líneas. 179 tests totales (20 nuevos: 6 loot, 9 crafting-manager, 5 progress).
 
 ---
 
@@ -79,7 +86,7 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 
 ### Limitaciones arquitectónicas
 
-1. **Monolito frontend:** La clase `Game` (987 líneas, antes 1600) se ha reducido significativamente extrayendo CombatManager. Aún concentra UI, crafting, interacciones y orquestación.
+1. **Monolito frontend:** La clase `Game` (955 líneas, antes 1600) se ha reducido significativamente extrayendo CombatManager, LootManager, ProgressManager y CraftingManager. Aún concentra UI, interacciones y orquestación.
 2. **Sin state management:** Estado disperso en DOM y variables de clase
 3. **Sin WebSocket:** No hay soporte para chat, PvP, ni multiplayer
 4. **Backend single-file:** `server/index.js` (273 líneas) maneja auth, API, DB, y static serving
@@ -138,8 +145,11 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 |---------|--------|-----------|--------------|
 | `src/main.ts` | 334 | Entry point, login, NFT creation, PWA install | game, profile, nft, api, three |
 | `src/styles.css` | 2212 | Todos los estilos CSS del juego | Ninguna |
-| `src/game/game.ts` | 987 | Core game loop, UI, interacciones, orquestación | input, profile, world, zones, rewards, qr-scanner, quality, nft, api, abilities |
-| `src/game/combat.ts` | 760 | CombatManager: ataque, enemigos, bosses, habilidades, daño | profile, world, bosses, abilities, daily-quests, battlepass, characters |
+| `src/game/game.ts` | 955 | Core game loop, UI, interacciones, orquestación | input, profile, world, zones, rewards, qr-scanner, quality, nft, api, abilities, progress, crafting-manager |
+| `src/game/combat.ts` | 698 | CombatManager: ataque, enemigos, bosses, habilidades, daño (sin loot/BP/dailies) | profile, world, bosses, abilities, characters |
+| `src/game/crafting-manager.ts` | 70 | CraftingManager: recetas, canCraft, craft | profile, daily-quests |
+| `src/game/loot.ts` | 44 | LootManager: tablas de botín, rollLoot, applyDrops | profile |
+| `src/game/progress.ts` | 147 | ProgressManager: XP, niveles, BP, logros, quest tracking | profile, characters, achievements, daily-quests, battlepass, nft, loot, crafting-manager |
 | `src/game/world.ts` | 857 | Generación de mundo, enemigos, recursos, NPCs | profile, zones, three |
 | `src/game/nft.ts` | 450 | Sistema NFT: generación, traits, modelo 3D | three |
 | `src/game/abilities.ts` | 221 | Sistema de habilidades por elemento | nft, world, three |
@@ -179,8 +189,11 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 | `src/game/ui.test.ts` | 140 | 8 | Hub, Characters UI, Inventory UI |
 | `src/game/stores.test.ts` | 200 | 33 | Stores, promotions, products |
 | `src/game/combat.test.ts` | 650 | 39 | Sistema de combate: daño, ciclos, enemigos, bosses, habilidades, estados |
+| `src/game/loot.test.ts` | 60 | 6 | LootManager: rollEnemyLoot, rollBossLoot, applyDrops |
+| `src/game/crafting-manager.test.ts` | 100 | 9 | CraftingManager: getRecipe, canCraft, craft |
+| `src/game/progress.test.ts` | 85 | 5 | ProgressManager: addExperience, trackAchievement, processEnemyKill, processBossKill |
 | `src/game/reward-manager.test.ts` | 35 | 8 | Reward manager helpers |
-| **Total tests** | **1,730** | **159** | |
+| **Total tests** | **2,075** | **179** | |
 
 ### Configuración
 
@@ -664,31 +677,54 @@ Fase 1 (Corrección de bugs críticos)
 | 3.7.4 | Conectar CombatManager en Game (constructor, update) | `game.ts` | 0.5h | Media |
 | 3.7.5 | Eliminar imports/métodos huérfanos de Game | `game.ts` | 0.5h | Baja |
 | 3.7.6 | Tests unitarios (39 tests) | `combat.test.ts` | 2h | Alta |
-| 3.7.7 | Lint + tsc + 159 tests | - | 0.5h | Baja |
+| 3.7.7 | Lint + tsc + 159 tests (v0.8.0) | - | 0.5h | Baja |
 
-**Resultado:** 0 errores lint, 3 warnings esperados, 159 tests pasan (8 test files). game.ts reducido de ~1600 a ~987 líneas. CombatManager (~760 líneas) maneja todo el combate. Arquitectura limpia: dependencias vía constructor, callbacks para efectos secundarios.
+**Resultado (v0.8.0):** 0 errores lint, 3 warnings esperados, 159 tests pasan (8 test files). game.ts reducido de ~1600 a ~987 líneas. CombatManager (~760 líneas) maneja todo el combate.
 
----
+### FASE 3.8: Extracción LootManager, ProgressManager, CraftingManager (COMPLETADA v0.9.0)
 
-### FASE 4: Refactorización (PRIORIDAD ALTA)
-
-**Duración estimada:** 3-5 días
-**Objetivo:** Mejorar arquitectura para soportar nuevas features
+**Duración estimada:** 1-2 días  
+**Objetivo:** Extraer el sistema de botín, progresión y crafting de Game class, desacoplar CombatManager de loot/BP/dailies
 
 | # | Tarea | Archivos | Tiempo | Dificultad |
 |---|-------|----------|--------|------------|
-| 4.1 | Extraer CombatManager de Game class | `game.ts` → `combat.ts` | 4h | Alta |
-| 4.2 | Extraer CraftingManager | `game.ts` → `crafting.ts` | 2h | Media |
-| 4.3 | Extraer UIManager (HUD, panels, hints) | `game.ts` → `ui.ts` | 4h | Alta |
-| 4.4 | Cachear DOM references en constructor | `game.ts` | 2h | Baja |
-| 4.5 | Calcular nearestEnemy una vez por frame | `game.ts` | 1h | Baja |
-| 4.6 | Mover recetas a archivo dedicado | `recipes.ts` | 1h | Baja |
-| 4.7 | Material sharing en world.ts | `world.ts` | 3h | Media |
-| 4.8 | Modularizar backend (routes, middleware, db) | `server/` | 6h | Alta |
-| 4.9 | Configurar CORS restrictivo | `server/index.js` | 1h | Baja |
-| 4.10 | Agregar helmet middleware | `server/index.js` | 0.5h | Baja |
+| 3.8.1 | Crear `loot.ts` con LootManager | `loot.ts` | 1h | Media |
+| 3.8.2 | Crear `progress.ts` con ProgressManager | `progress.ts` | 2h | Media |
+| 3.8.3 | Crear `crafting-manager.ts` con CraftingManager | `crafting-manager.ts` | 1.5h | Media |
+| 3.8.4 | Desacoplar CombatManager: remover imports loot/BP/daily-quests | `combat.ts` | 2h | Alta |
+| 3.8.5 | Actualizar Game: usar nuevos managers | `game.ts` | 1.5h | Media |
+| 3.8.6 | Eliminar `crafting.ts`, `recipes.ts` | - | 0.5h | Baja |
+| 3.8.7 | Tests unitarios (20 tests: 6 loot + 9 crafting-manager + 5 progress) | `loot.test.ts`, `crafting-manager.test.ts`, `progress.test.ts` | 2h | Alta |
+| 3.8.8 | Actualizar tests de combate | `combat.test.ts` | 1h | Alta |
+| 3.8.9 | Lint + tsc + 179 tests | - | 0.5h | Baja |
 
-**Total Fase 4:** ~24 horas
+**Resultado (v0.9.0):** 0 errores lint, 15 warnings (pre-existing no-explicit-any), 179 tests pasan (11 test files). game.ts reducido a ~955 líneas. CombatManager desacoplado de loot/BP/dailies. `crafting.ts` y `recipes.ts` eliminados. Arquitectura: LootManager, ProgressManager, CraftingManager son clases puras con dependencias inyectadas vía constructor. Game actúa como coordinador.
+
+---
+
+### FASE 4: Refactorización (PRIORIDAD ALTA) — COMPLETADA v0.8.0 + v0.9.0
+
+**Duración estimada:** 3-5 días  
+**Objetivo:** Mejorar arquitectura para soportar nuevas features
+
+| # | Tarea | Archivos | Tiempo | Dificultad | Estado |
+|---|-------|----------|--------|------------|--------|
+| 4.1 | Extraer CombatManager de Game class | `game.ts` → `combat.ts` | 4h | Alta | ✅ v0.8.0 |
+| 4.2 | Extraer CraftingManager | `game.ts` → `crafting-manager.ts` | 2h | Media | ✅ v0.9.0 |
+| 4.3 | Extraer UIManager (HUD, panels, hints) | `game.ts` → `ui.ts` | 4h | Alta | ⬜ Pendiente |
+| 4.4 | Cachear DOM references en constructor | `game.ts` | 2h | Baja | ⬜ Pendiente |
+| 4.5 | Calcular nearestEnemy una vez por frame | `game.ts` | 1h | Baja | ⬜ Pendiente |
+| 4.6 | Mover recetas a archivo dedicado | `recipes.ts` | 1h | Baja | ✅ v0.9.0 (→ crafting-manager.ts, recipes.ts eliminado) |
+| 4.7 | Material sharing en world.ts | `world.ts` | 3h | Media | ⬜ Pendiente |
+| 4.8 | Modularizar backend (routes, middleware, db) | `server/` | 6h | Alta | ⬜ Pendiente |
+| 4.9 | Configurar CORS restrictivo | `server/index.js` | 1h | Baja | ⬜ Pendiente |
+| 4.10 | Agregar helmet middleware | `server/index.js` | 0.5h | Baja | ⬜ Pendiente |
+| 4.11 | Extraer LootManager | `game.ts` → `loot.ts` | 1h | Media | ✅ v0.9.0 |
+| 4.12 | Extraer ProgressManager | `game.ts` → `progress.ts` | 2h | Media | ✅ v0.9.0 |
+| 4.13 | Desacoplar CombatManager de loot/BP/dailies | `combat.ts` | 2h | Alta | ✅ v0.9.0 |
+
+**Total completado Fase 4:** 9h / ~24h (37%)
+**Próximo sub-fase:** 4.3 UIManager para completar extracción
 
 ---
 

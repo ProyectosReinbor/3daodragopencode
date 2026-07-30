@@ -6,12 +6,10 @@ import {
   type ActiveAbility,
   type AbilityEffect,
 } from './abilities';
-import { type ActiveBoss, getBossPhase, rollBossLoot, buildBossMinion } from './bosses';
-import { type Enemy, rollLoot } from './world';
+import { type ActiveBoss, getBossPhase, buildBossMinion } from './bosses';
+import { type Enemy } from './world';
 
 import { type PlayerProfile } from './profile';
-import { type DailyQuestData, trackDailyKill, saveDailyQuests } from './daily-quests';
-import { type BattlePassState, addBattlePassXp, saveBattlePass } from './battlepass';
 import { AudioManager } from './audio';
 import { VisualEffects } from './visual';
 import { GameUI } from './game-ui';
@@ -25,12 +23,12 @@ interface MinionData {
 
 export interface CombatServices {
   hint: (msg: string) => void;
-  trackAchievement: (id: string, amount: number) => void;
   updateQuest: () => void;
   updateProfilePanel: () => void;
   addExperience: (amount: number) => void;
-  notifyKill: (enemy: Enemy, profile: PlayerProfile) => void;
   onPlayerDeath: () => void;
+  onEnemyKilled: (enemy: Enemy, profile: PlayerProfile) => void;
+  onBossKilled: (boss: ActiveBoss, profile: PlayerProfile) => void;
 }
 
 export class CombatManager {
@@ -94,11 +92,7 @@ export class CombatManager {
     }
   }
 
-  attack(
-    profile: PlayerProfile,
-    dailyQuestData: DailyQuestData,
-    battlePass: BattlePassState
-  ): boolean {
+  attack(profile: PlayerProfile): boolean {
     const now = performance.now();
     if (now - this.lastAttack < 400) return false;
     this.lastAttack = now;
@@ -126,7 +120,7 @@ export class CombatManager {
       }
       const dmg =
         1 + Math.floor(stats.atk / 3) + (profile.crafted.espada > 0 ? this.swordBonus : 0);
-      this.damageBoss(dmg, profile, dailyQuestData, battlePass);
+      this.damageBoss(dmg, profile);
       return true;
     }
 
@@ -148,45 +142,14 @@ export class CombatManager {
         this.visuals.spawnDeathBurst(this.scene, enemy.mesh.position);
         this.services.addExperience(15);
         this.sessionKills++;
-        const bpResult = addBattlePassXp(battlePass, 10);
-        saveBattlePass(battlePass);
-        if (bpResult.leveledUp) this.services.hint(`Battle Pass nivel ${bpResult.newLevel}`);
-        profile.quest.creatures += 1;
-        this.services.trackAchievement('monster_slayer_1', 1);
-        this.services.trackAchievement('monster_slayer_2', 1);
-        if (enemy.kind === 'wolf') this.services.trackAchievement('wolf_hunter_1', 1);
-        if (enemy.kind === 'wolf') this.services.trackAchievement('wolf_hunter_2', 1);
-        if (enemy.kind === 'spirit') this.services.trackAchievement('spirit_hunter_1', 1);
-        if (enemy.kind === 'golem') this.services.trackAchievement('golem_hunter_1', 1);
-        this.services.notifyKill(enemy, profile);
-        trackDailyKill(dailyQuestData, enemy.kind);
-        saveDailyQuests(dailyQuestData);
-        const drops = rollLoot(enemy.kind);
-        if (drops.length > 0) {
-          const dropTexts: string[] = [];
-          for (const drop of drops) {
-            profile.inventory[drop.resource] += drop.amount;
-            profile.loot.push(drop);
-            profile.quest.resources += drop.amount;
-            dropTexts.push(`+${drop.amount} ${drop.resource}`);
-          }
-          this.services.hint(`${enemy.name} derrotado. Botin: ${dropTexts.join(', ')}`);
-        } else {
-          this.services.hint(`${enemy.name} fue derrotado. Volvera mas tarde.`);
-        }
-        this.services.updateQuest();
+        this.services.onEnemyKilled(enemy, profile);
         window.setTimeout(() => this.respawnEnemy(enemy), 18000);
       }
     }
     return true;
   }
 
-  private damageBoss(
-    dmg: number,
-    profile: PlayerProfile,
-    dailyQuestData: DailyQuestData,
-    battlePass: BattlePassState
-  ) {
+  private damageBoss(dmg: number, profile: PlayerProfile) {
     const boss = this.activeBoss;
     if (!boss || !boss.alive) return;
 
@@ -220,16 +183,11 @@ export class CombatManager {
     }
 
     if (boss.health <= 0) {
-      this.killBoss(boss, profile, dailyQuestData, battlePass);
+      this.killBoss(boss, profile);
     }
   }
 
-  private killBoss(
-    boss: ActiveBoss,
-    profile: PlayerProfile,
-    dailyQuestData: DailyQuestData,
-    battlePass: BattlePassState
-  ) {
+  private killBoss(boss: ActiveBoss, profile: PlayerProfile) {
     if (!boss) return;
 
     boss.alive = false;
@@ -237,32 +195,12 @@ export class CombatManager {
     this.visuals.spawnBossKillBurst(this.scene, boss.mesh.position);
     this.services.addExperience(boss.definition.xpReward);
     this.sessionBossKills++;
-    const bpResult = addBattlePassXp(battlePass, 50);
-    saveBattlePass(battlePass);
-    if (bpResult.leveledUp) this.services.hint(`Battle Pass nivel ${bpResult.newLevel}`);
+    this.services.onBossKilled(boss, profile);
 
     for (const [minion] of this.bossMinions) {
       this.scene.remove(minion);
     }
     this.bossMinions.clear();
-
-    const drops = rollBossLoot(boss.definition);
-    if (drops.length > 0) {
-      const dropTexts: string[] = [];
-      for (const drop of drops) {
-        profile.inventory[drop.resource] += drop.amount;
-        profile.loot.push({ resource: drop.resource, amount: drop.amount });
-        profile.quest.resources += drop.amount;
-        dropTexts.push(`+${drop.amount} ${drop.resource}`);
-      }
-      this.services.hint(`🏆 ¡${boss.definition.name} derrotado! Botin: ${dropTexts.join(', ')}`);
-    } else {
-      this.services.hint(`🏆 ¡${boss.definition.name} derrotado! +${boss.definition.xpReward} EXP`);
-    }
-
-    this.services.trackAchievement('monster_slayer_1', 1);
-    this.services.trackAchievement('monster_slayer_2', 1);
-    this.services.updateQuest();
 
     window.setTimeout(() => this.respawnBoss(boss), boss.definition.respawnTime);
   }
@@ -598,12 +536,7 @@ export class CombatManager {
     this.cachedNearestEnemyDist = minDist;
   }
 
-  useAbility(
-    index: number,
-    profile: PlayerProfile,
-    dailyQuestData: DailyQuestData,
-    battlePass: BattlePassState
-  ): { dashDirection: Vector3 } | null {
+  useAbility(index: number, profile: PlayerProfile): { dashDirection: Vector3 } | null {
     const ability = this.abilities[index];
     if (!ability) return null;
 
@@ -625,7 +558,7 @@ export class CombatManager {
     ability.lastUsed = now;
     ability.currentCooldown = ability.cooldown;
 
-    this.applyAbilityEffect(ability, effect, profile, dailyQuestData, battlePass);
+    this.applyAbilityEffect(ability, effect, profile);
     this.services.hint(`${ability.icon} ${ability.name} activado!`);
 
     if (effect.type === 'dash') {
@@ -642,9 +575,7 @@ export class CombatManager {
   private applyAbilityEffect(
     _ability: ActiveAbility,
     effect: AbilityEffect,
-    profile: PlayerProfile,
-    dailyQuestData: DailyQuestData,
-    battlePass: BattlePassState
+    profile: PlayerProfile
   ) {
     switch (effect.type) {
       case 'damage': {
@@ -666,16 +597,7 @@ export class CombatManager {
             enemy.alive = false;
             enemy.mesh.visible = false;
             this.services.addExperience(15);
-            profile.quest.creatures += 1;
-            this.services.notifyKill(enemy, profile);
-            const drops = rollLoot(enemy.kind);
-            if (drops.length > 0) {
-              for (const drop of drops) {
-                profile.inventory[drop.resource] += drop.amount;
-                profile.loot.push(drop);
-                profile.quest.resources += drop.amount;
-              }
-            }
+            this.services.onEnemyKilled(enemy, profile);
             window.setTimeout(() => this.respawnEnemy(enemy), 18000);
           }
         }
@@ -683,10 +605,11 @@ export class CombatManager {
         const boss = this.activeBoss;
         if (boss && boss.alive) {
           const bossDist = this.player.position.distanceTo(boss.mesh.position);
-          if (effect.targets === 'aoe' && bossDist < 6) {
-            this.damageBoss(effect.value, profile, dailyQuestData, battlePass);
-          } else if (effect.targets !== 'aoe' && bossDist < 5) {
-            this.damageBoss(effect.value, profile, dailyQuestData, battlePass);
+          if (
+            (effect.targets === 'aoe' && bossDist < 6) ||
+            (effect.targets !== 'aoe' && bossDist < 5)
+          ) {
+            this.damageBoss(effect.value, profile);
           }
         }
         break;
@@ -736,8 +659,7 @@ export class CombatManager {
             enemy.alive = false;
             enemy.mesh.visible = false;
             this.services.addExperience(15);
-            profile.quest.creatures += 1;
-            this.services.notifyKill(enemy, profile);
+            this.services.onEnemyKilled(enemy, profile);
             window.setTimeout(() => this.respawnEnemy(enemy), 18000);
           }
         } else {
@@ -746,7 +668,7 @@ export class CombatManager {
             const bossDist = this.player.position.distanceTo(boss.mesh.position);
             if (bossDist < 5) {
               const dmg = effect.value;
-              this.damageBoss(dmg, profile, dailyQuestData, battlePass);
+              this.damageBoss(dmg, profile);
               const heal = Math.round(dmg * 0.3);
               this.health = Math.min(this.maxHealth(), this.health + heal);
               this.ui.showHealNumber(heal);
