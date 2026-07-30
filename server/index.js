@@ -43,26 +43,31 @@ db.exec(`
 const BCRYPT_ROUNDS = 12;
 
 const rateLimitStore = new Map();
+const authRateLimitStore = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000;
 const RATE_LIMIT_MAX = 100;
-const AUTH_RATE_LIMIT_MAX = 5;
+const AUTH_RATE_LIMIT_MAX = 10;
 
-function checkRateLimit(ip, max = RATE_LIMIT_MAX) {
+function checkRateLimit(ip, max = RATE_LIMIT_MAX, store = rateLimitStore) {
   const now = Date.now();
-  const entry = rateLimitStore.get(ip);
+  const entry = store.get(ip);
   if (!entry || now - entry.start > RATE_LIMIT_WINDOW) {
-    rateLimitStore.set(ip, { start: now, count: 1 });
+    store.set(ip, { start: now, count: 1 });
     return true;
   }
   entry.count++;
   return entry.count <= max;
 }
 
-setInterval(() => {
+function cleanupStore(store) {
   const now = Date.now();
-  for (const [ip, entry] of rateLimitStore) {
-    if (now - entry.start > RATE_LIMIT_WINDOW * 2) rateLimitStore.delete(ip);
+  for (const [ip, entry] of store) {
+    if (now - entry.start > RATE_LIMIT_WINDOW * 2) store.delete(ip);
   }
+}
+setInterval(() => {
+  cleanupStore(rateLimitStore);
+  cleanupStore(authRateLimitStore);
 }, 60000);
 
 function validatePhone(phone) {
@@ -144,6 +149,7 @@ function auth(req, res, next) {
 }
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use('/api', (req, res, next) => {
@@ -157,7 +163,7 @@ app.use('/api', (req, res, next) => {
 
 app.post('/api/register', async (req, res) => {
   const ip = req.ip || req.connection.remoteAddress;
-  if (!checkRateLimit(ip, AUTH_RATE_LIMIT_MAX)) {
+  if (!checkRateLimit(ip, AUTH_RATE_LIMIT_MAX, authRateLimitStore)) {
     return res.status(429).json({ error: 'Demasiados intentos de registro. Intenta de nuevo en un minuto.' });
   }
 
@@ -179,7 +185,7 @@ app.post('/api/register', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   const ip = req.ip || req.connection.remoteAddress;
-  if (!checkRateLimit(ip, AUTH_RATE_LIMIT_MAX)) {
+  if (!checkRateLimit(ip, AUTH_RATE_LIMIT_MAX, authRateLimitStore)) {
     return res.status(429).json({ error: 'Demasiados intentos de login. Intenta de nuevo en un minuto.' });
   }
 

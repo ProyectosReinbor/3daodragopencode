@@ -528,8 +528,12 @@ export function buildBossMesh(definition: BossDefinition): Group {
   phaseBar.position.z = 0.01;
   mesh.add(hpBarBg, hpBar, phaseBar);
   mesh.scale.setScalar(definition.scale);
+  const m = mesh as Group & { hpBar: Mesh; hpBarBg: Mesh; phaseBar: Mesh };
+  m.hpBar = hpBar;
+  m.hpBarBg = hpBarBg;
+  m.phaseBar = phaseBar;
 
-  return mesh as Group & { hpBar: Mesh; hpBarBg: Mesh; phaseBar: Mesh };
+  return m;
 }
 
 function buildGuardianBoss(

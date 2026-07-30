@@ -30,7 +30,7 @@ export function clearAuth() {
   localStorage.removeItem(PHONE_KEY);
 }
 
-async function req<T>(path: string, body?: unknown, retries = 1): Promise<T> {
+async function req<T>(path: string, body?: unknown, retries = 1, skipAuthCheck = false): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -43,7 +43,7 @@ async function req<T>(path: string, body?: unknown, retries = 1): Promise<T> {
         body: body ? JSON.stringify(body) : undefined,
       });
 
-      if (res.status === 401) {
+      if (res.status === 401 && !skipAuthCheck) {
         clearAuth();
         window.location.reload();
         throw new Error('Sesion expirada');
@@ -70,12 +70,12 @@ export async function apiRegister(phoneStr: string, password: string): Promise<v
   const data = await req<{ token: string; phone: string }>('/register', {
     phone: phoneStr,
     password,
-  });
+  }, 1, true);
   setAuth(data.token, data.phone);
 }
 
 export async function apiLogin(phoneStr: string, password: string): Promise<void> {
-  const data = await req<{ token: string; phone: string }>('/login', { phone: phoneStr, password });
+  const data = await req<{ token: string; phone: string }>('/login', { phone: phoneStr, password }, 1, true);
   setAuth(data.token, data.phone);
 }
 
