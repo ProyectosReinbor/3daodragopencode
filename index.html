@@ -255,6 +255,98 @@
           <small>Usa joystick/WASD. Espacio ataca; E interactua.</small>
         </div>
       </section>
+      <section class="hub-screen hidden" id="hub-screen">
+        <div class="hub-panel">
+          <div class="hub-welcome">
+            <p class="eyebrow">BIENVENIDO</p>
+            <h1>Reinos Ancestrales</h1>
+          </div>
+          <div class="hub-character-card">
+            <div class="hub-char-info">
+              <strong id="hub-char-name">-</strong>
+              <span id="hub-char-level">Nivel 1</span>
+              <div class="hub-char-tags">
+                <span id="hub-char-rarity">-</span>
+                <span id="hub-char-element">-</span>
+                <span id="hub-char-preview">-</span>
+              </div>
+            </div>
+            <div class="hub-char-stats" id="hub-char-stats"></div>
+          </div>
+          <div class="hub-actions">
+            <button class="hub-btn" id="hub-characters">Mis Personajes</button>
+            <button class="hub-btn" id="hub-inventory">Inventario</button>
+            <button class="hub-btn" id="hub-stores">Tiendas Asociadas</button>
+            <button class="hub-btn" id="hub-redeem">Canjear Factura</button>
+            <button class="hub-btn primary" id="hub-start">Entrar al Mundo</button>
+          </div>
+          <div class="hub-news" id="hub-news"></div>
+        </div>
+      </section>
+      <section class="characters-screen hidden" id="characters-screen">
+        <div class="characters-panel">
+          <button class="close-panel" id="characters-back" aria-label="Volver">x</button>
+          <p class="eyebrow">COLECCION</p>
+          <h2>Mis Personajes</h2>
+          <div class="characters-list" id="characters-list"></div>
+        </div>
+      </section>
+      <section class="inventory-screen hidden" id="inventory-screen">
+        <div class="inventory-screen-panel">
+          <button class="close-panel" id="inventory-back" aria-label="Volver">x</button>
+          <p class="eyebrow">EQUIPO</p>
+          <h2>Inventario</h2>
+          <div class="inventory-categories" id="inventory-categories"></div>
+        </div>
+      </section>
+      <section class="stores-screen hidden" id="stores-screen">
+        <div class="stores-panel">
+          <button class="close-panel" id="stores-back" aria-label="Volver">x</button>
+          <p class="eyebrow">TIENDAS</p>
+          <h2>Tiendas Asociadas</h2>
+          <div class="stores-list" id="stores-list"></div>
+        </div>
+      </section>
+      <section class="store-detail-screen hidden" id="store-detail-screen">
+        <div class="store-detail-panel">
+          <button class="close-panel" id="store-detail-back" aria-label="Volver">x</button>
+          <div class="store-detail-header" id="store-detail-header"></div>
+          <div class="store-detail-content" id="store-detail-content"></div>
+        </div>
+      </section>
+      <section class="redeem-screen hidden" id="redeem-screen">
+        <div class="redeem-panel">
+          <button class="close-panel" id="redeem-back" aria-label="Volver">x</button>
+          <p class="eyebrow">CANJE</p>
+          <h2>Canjear Factura</h2>
+          <div class="redeem-form">
+            <label for="redeem-code-input">Código de factura</label>
+            <input
+              type="text"
+              id="redeem-code-input"
+              maxlength="64"
+              placeholder="Ej: RA-2026-000001"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button class="redeem-btn primary" id="redeem-submit">Canjear</button>
+            <p class="redeem-message hidden" id="redeem-message"></p>
+          </div>
+          <div class="redeem-history-section">
+            <h3>Historial de canjes</h3>
+            <div class="redeem-history" id="redeem-history"></div>
+          </div>
+          <small class="redeem-security-info">Todos los canjes son verificados y registrados en el servidor. Nunca compartas tus códigos.</small>
+        </div>
+      </section>
+      <section class="reward-result-screen hidden" id="reward-result-screen">
+        <div class="reward-result-panel">
+          <div class="reward-result-content" id="reward-result-content"></div>
+          <div class="reward-result-actions">
+            <button class="redeem-btn primary" id="reward-result-continue">Continuar</button>
+          </div>
+        </div>
+      </section>
       <section class="intro hidden" id="intro">
         <div class="intro-panel">
           <p class="eyebrow">MVP WEB - PWA</p>

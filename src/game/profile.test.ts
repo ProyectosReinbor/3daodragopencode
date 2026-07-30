@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createProfile, currentQuestDef, advanceQuest, QUESTS, TRADES } from './profile';
-import { generateNftFromPhone } from './nft';
+import { generateCharacterFromPhone } from './characters';
 
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -25,10 +25,13 @@ beforeEach(() => {
 
 describe('createProfile', () => {
   it('creates profile with default values', () => {
-    const nft = generateNftFromPhone('1234567890');
-    const profile = createProfile(nft);
+    const character = generateCharacterFromPhone('1234567890');
+    const profile = createProfile(character);
 
-    expect(profile.nft).toBe(nft);
+    expect(profile.characters).toBeDefined();
+    expect(profile.characters!.characters.length).toBe(1);
+    expect(profile.characters!.characters[0].id).toBe(character.id);
+    expect(profile.characters!.selectedId).toBe(character.id);
     expect(profile.inventory).toEqual({
       trigo: 0,
       mineral: 0,
@@ -59,8 +62,8 @@ describe('createProfile', () => {
   });
 
   it('creates profile with initial quests', () => {
-    const nft = generateNftFromPhone('1234567890');
-    const profile = createProfile(nft);
+    const character = generateCharacterFromPhone('1234567890');
+    const profile = createProfile(character);
 
     expect(profile.quests.length).toBeGreaterThan(0);
     expect(profile.quests[0].id).toBe('bosque_lobo');
@@ -70,8 +73,8 @@ describe('createProfile', () => {
 
 describe('currentQuestDef', () => {
   it('returns first quest for new profile', () => {
-    const nft = generateNftFromPhone('1234567890');
-    const profile = createProfile(nft);
+    const character = generateCharacterFromPhone('1234567890');
+    const profile = createProfile(character);
     const quest = currentQuestDef(profile);
 
     expect(quest).toBeDefined();
@@ -79,8 +82,8 @@ describe('currentQuestDef', () => {
   });
 
   it('returns first quest when all quests completed', () => {
-    const nft = generateNftFromPhone('1234567890');
-    const profile = createProfile(nft);
+    const character = generateCharacterFromPhone('1234567890');
+    const profile = createProfile(character);
     profile.quests.forEach((q) => {
       q.completed = true;
     });
@@ -93,16 +96,16 @@ describe('currentQuestDef', () => {
 
 describe('advanceQuest', () => {
   it('marks current quest as completed', () => {
-    const nft = generateNftFromPhone('1234567890');
-    const profile = createProfile(nft);
+    const character = generateCharacterFromPhone('1234567890');
+    const profile = createProfile(character);
 
     advanceQuest(profile);
     expect(profile.quests[0].completed).toBe(true);
   });
 
   it('adds next quest to list', () => {
-    const nft = generateNftFromPhone('1234567890');
-    const profile = createProfile(nft);
+    const character = generateCharacterFromPhone('1234567890');
+    const profile = createProfile(character);
 
     const next = advanceQuest(profile);
     expect(next).toBeDefined();
@@ -110,8 +113,8 @@ describe('advanceQuest', () => {
   });
 
   it('returns undefined when no more quests', () => {
-    const nft = generateNftFromPhone('1234567890');
-    const profile = createProfile(nft);
+    const character = generateCharacterFromPhone('1234567890');
+    const profile = createProfile(character);
     profile.quests.forEach((q) => {
       q.completed = true;
     });

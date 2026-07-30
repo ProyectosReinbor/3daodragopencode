@@ -1,4 +1,5 @@
-import { type Element, type NftCharacter, type NftStats } from './nft';
+import { type Element, type NftStats } from './nft';
+import type { Character } from './characters';
 import { Group, Mesh, SphereGeometry, MeshLambertMaterial, Vector3 } from 'three';
 
 export interface Ability {
@@ -130,8 +131,8 @@ export function getElementAbilities(element: Element): Ability[] {
   return ELEMENT_ABILITIES[element] || ELEMENT_ABILITIES.fuego;
 }
 
-export function createActiveAbilities(nft: NftCharacter): ActiveAbility[] {
-  const abilities = getElementAbilities(nft.traits.element);
+export function createActiveAbilities(character: Character): ActiveAbility[] {
+  const abilities = getElementAbilities(character.traits.element);
   return abilities.map((a) => ({
     ...a,
     lastUsed: 0,

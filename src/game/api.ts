@@ -1,4 +1,11 @@
 import type { PlayerProfile } from './profile';
+import type {
+  StoreListResponse,
+  StoreDetailResponse,
+  PromotionsResponse,
+  ProductsResponse,
+} from './stores';
+import type { RedeemResult, RewardHistoryEntry, PendingRewards } from './reward-manager';
 
 const AUTH_KEY = 'reinos-auth-token';
 const PHONE_KEY = 'reinos-auth-phone';
@@ -30,7 +37,12 @@ export function clearAuth() {
   localStorage.removeItem(PHONE_KEY);
 }
 
-async function req<T>(path: string, body?: unknown, retries = 1, skipAuthCheck = false): Promise<T> {
+async function req<T>(
+  path: string,
+  body?: unknown,
+  retries = 1,
+  skipAuthCheck = false
+): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -67,15 +79,25 @@ async function req<T>(path: string, body?: unknown, retries = 1, skipAuthCheck =
 }
 
 export async function apiRegister(phoneStr: string, password: string): Promise<void> {
-  const data = await req<{ token: string; phone: string }>('/register', {
-    phone: phoneStr,
-    password,
-  }, 1, true);
+  const data = await req<{ token: string; phone: string }>(
+    '/register',
+    {
+      phone: phoneStr,
+      password,
+    },
+    1,
+    true
+  );
   setAuth(data.token, data.phone);
 }
 
 export async function apiLogin(phoneStr: string, password: string): Promise<void> {
-  const data = await req<{ token: string; phone: string }>('/login', { phone: phoneStr, password }, 1, true);
+  const data = await req<{ token: string; phone: string }>(
+    '/login',
+    { phone: phoneStr, password },
+    1,
+    true
+  );
   setAuth(data.token, data.phone);
 }
 
@@ -122,4 +144,34 @@ export function showNotification(
 
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
+}
+
+export async function getStores(): Promise<StoreListResponse> {
+  return req<StoreListResponse>('/stores');
+}
+
+export async function getStore(id: string): Promise<StoreDetailResponse> {
+  return req<StoreDetailResponse>(`/stores/${encodeURIComponent(id)}`);
+}
+
+export async function getPromotions(): Promise<PromotionsResponse> {
+  return req<PromotionsResponse>('/promotions');
+}
+
+export async function getProducts(storeId?: string): Promise<ProductsResponse> {
+  const qs = storeId ? `?store_id=${encodeURIComponent(storeId)}` : '';
+  return req<ProductsResponse>(`/products${qs}`);
+}
+
+export async function redeemCode(code: string): Promise<RedeemResult> {
+  return req<RedeemResult>('/redeem', { code });
+}
+
+export async function getRewardHistory(): Promise<RewardHistoryEntry[]> {
+  const data = await req<{ history: RewardHistoryEntry[] }>('/rewards/history');
+  return data.history;
+}
+
+export async function getPendingRewards(): Promise<PendingRewards> {
+  return req<PendingRewards>('/rewards/pending');
 }

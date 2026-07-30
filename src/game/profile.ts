@@ -1,6 +1,8 @@
 import type { NftCharacter } from './nft';
 import { type PlayerAchievement, createAchievements } from './achievements';
 import { type DailyQuestData, loadDailyQuests } from './daily-quests';
+import type { Character, CharacterCollection } from './characters';
+import { createEmptyCollection, ensureStarterCharacter } from './characters';
 
 export type Inventory = Record<'trigo' | 'mineral' | 'esencia' | 'madera' | 'hierba', number>;
 export type CraftedItems = Record<
@@ -50,7 +52,10 @@ export interface TradeOffer {
 }
 
 export interface PlayerProfile {
-  nft: NftCharacter;
+  version?: number;
+  nft?: NftCharacter;
+  characters?: CharacterCollection;
+  selectedCharacter?: string;
   inventory: Inventory;
   crafted: CraftedItems;
   redeemedRewards: string[];
@@ -62,6 +67,8 @@ export interface PlayerProfile {
   loot: LootEntry[];
   achievements: PlayerAchievement[];
   dailyQuests: DailyQuestData;
+  currency?: number;
+  crystals?: number;
 }
 
 const STORAGE_KEY = 'reinos-ancestrales-v3';
@@ -95,9 +102,14 @@ const defaultQuests = (): QuestState[] => [
   { id: 'ruinas_antiguo', completed: false },
 ];
 
-export function createProfile(nft: NftCharacter): PlayerProfile {
+export function createProfile(character: Character): PlayerProfile {
+  const chars = createEmptyCollection();
+  chars.characters.push(character);
+  chars.selectedId = character.id;
   return {
-    nft,
+    version: 2,
+    characters: chars,
+    selectedCharacter: character.id,
     inventory: defaultInventory(),
     crafted: defaultCrafted(),
     redeemedRewards: [],
@@ -110,6 +122,41 @@ export function createProfile(nft: NftCharacter): PlayerProfile {
     achievements: createAchievements(),
     dailyQuests: loadDailyQuests(),
   };
+}
+
+export function migrateProfile(profile: PlayerProfile): void {
+  if (profile.version && profile.version >= 2) return;
+  if (profile.nft && !profile.characters) {
+    const chars = createEmptyCollection();
+    const nft = profile.nft;
+    const character: Character = {
+      id: nft.id,
+      name: nft.name,
+      traits: nft.traits,
+      baseStats: nft.baseStats,
+      level: nft.level,
+      xp: nft.xp,
+      upgrades: nft.upgrades,
+      unlockedAt: Date.now(),
+      source: 'generated',
+      isStarter: false,
+    };
+    chars.characters.push(character);
+    chars.selectedId = character.id;
+    profile.characters = chars;
+    profile.selectedCharacter = character.id;
+  }
+  if (profile.characters) {
+    ensureStarterCharacter(profile.characters);
+    if (
+      !profile.selectedCharacter ||
+      !profile.characters.characters.find((c) => c.id === profile.selectedCharacter)
+    ) {
+      profile.selectedCharacter = profile.characters.characters[0]?.id || '';
+    }
+  }
+  profile.version = 2;
+  delete profile.nft;
 }
 
 export function saveProfile(profile: PlayerProfile) {

@@ -1,8 +1,7 @@
 import './styles.css';
 import { Game } from './game/game';
-import { createProfile, type PlayerProfile } from './game/profile';
+import { createProfile, migrateProfile, type PlayerProfile } from './game/profile';
 import {
-  generateNftFromPhone,
   buildNftModel,
   rarityLabel,
   rarityColor,
@@ -10,9 +9,10 @@ import {
   elementColor,
   statLabel,
   statIcon,
-  totalStats,
-  type NftCharacter,
 } from './game/nft';
+import { generateCharacterFromPhone, totalStats } from './game/characters';
+import type { Character } from './game/characters';
+import { CharacterManager } from './game/characters';
 import {
   apiRegister,
   apiLogin,
@@ -21,6 +21,21 @@ import {
   isLoggedIn,
   getPhone,
 } from './game/api';
+import { navigation } from './game/navigation';
+import type { AppScreen } from './game/navigation';
+import { mountHub, updateHubCharacter } from './game/hub-ui';
+import type { HubCallbacks } from './game/hub-ui';
+import { mountCharacters } from './game/characters-ui';
+import type { CharactersCallbacks } from './game/characters-ui';
+import { mountInventory } from './game/inventory-ui';
+import type { InventoryCallbacks } from './game/inventory-ui';
+import { mountStoresList, mountStoreDetail } from './game/stores-ui';
+import type { StoresCallbacks } from './game/stores-ui';
+import { mountRedeem } from './game/redeem-ui';
+import type { RedeemCallbacks } from './game/redeem-ui';
+import { mountRewardResult } from './game/reward-result-ui';
+import type { RewardResultCallbacks } from './game/reward-result-ui';
+import type { RedeemResult } from './game/reward-manager';
 import {
   Scene,
   PerspectiveCamera,
@@ -30,9 +45,6 @@ import {
   Color,
 } from 'three';
 
-const loginScreen = document.querySelector<HTMLElement>('#login-screen')!;
-const intro = document.querySelector<HTMLElement>('#intro')!;
-const nftScreen = document.querySelector<HTMLElement>('#nft-screen')!;
 const nftPreview = document.querySelector<HTMLElement>('#nft-preview')!;
 const nftGenerateBtn = document.querySelector<HTMLButtonElement>('#nft-generate')!;
 const nftEnterBtn = document.querySelector<HTMLButtonElement>('#nft-enter')!;
@@ -49,12 +61,16 @@ const loginRegister = document.querySelector<HTMLButtonElement>('#login-register
 const loginError = document.querySelector<HTMLElement>('#login-error')!;
 
 let deferredPrompt: BeforeInstallPromptEvent | undefined;
-let currentNft: NftCharacter | null = null;
+let currentCharacter: Character | null = null;
+let currentProfile: PlayerProfile | null = null;
+let currentManager: CharacterManager | null = null;
 let previewRenderer: WebGLRenderer | null = null;
 let previewScene: Scene | null = null;
 let previewCamera: PerspectiveCamera | null = null;
 let previewModel: ReturnType<typeof buildNftModel> | null = null;
 let previewFrame = 0;
+let _selectedStoreId = '';
+let _lastRedeemResult: RedeemResult | null = null;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -132,36 +148,56 @@ loginPhone.addEventListener('keydown', (e) => {
 async function onAuthSuccess() {
   const phoneStr = getPhone()!;
   const serverProfile = await apiGetProfile();
-  if (serverProfile?.nft) {
-    startGameWithProfile(serverProfile);
-  } else {
-    showNftCreation(phoneStr);
+  if (serverProfile) {
+    migrateProfile(serverProfile);
+    if (serverProfile.characters && serverProfile.characters.characters.length > 0) {
+      goToHub(serverProfile);
+      return;
+    }
+  }
+  showNftCreation(phoneStr);
+}
+
+function goToHub(profile: PlayerProfile) {
+  currentProfile = profile;
+  currentManager = new CharacterManager(profile.characters!);
+
+  const hubCbs: HubCallbacks = {
+    onCharacters: () => navigation.navigate('characters'),
+    onInventory: () => navigation.navigate('inventory'),
+    onStores: () => navigation.navigate('stores'),
+    onStartGame: () => startGameWithProfile(profile),
+    onRedeem: () => navigation.navigate('redeem'),
+  };
+  mountHub(profile, currentManager, hubCbs);
+  navigation.navigate('hub');
+}
+
+function startGameWithProfile(profile: PlayerProfile) {
+  navigation.navigate('game');
+  if (profile.characters && profile.characters.characters.length > 0) {
+    const active =
+      profile.characters.characters.find((c) => c.id === profile.selectedCharacter) ||
+      profile.characters.characters[0];
+    if (active) {
+      currentCharacter = active;
+      new Game(document.querySelector('#game-canvas')!, profile).start();
+    }
   }
 }
 
 function showNftCreation(phoneStr: string) {
-  loginScreen.classList.add('hidden');
-  nftScreen.classList.remove('hidden');
-  currentNft = generateNftFromPhone(phoneStr);
-  showNftInfo(currentNft);
+  navigation.navigate('nft');
+  currentCharacter = generateCharacterFromPhone(phoneStr);
+  showNftInfo(currentCharacter);
   initPreview();
   nftEnterBtn.hidden = false;
 }
 
-function startGameWithProfile(profile: PlayerProfile) {
-  loginScreen.classList.add('hidden');
-  intro.classList.add('hidden');
-  nftScreen.classList.add('hidden');
-  if (profile.nft) {
-    currentNft = profile.nft;
-    new Game(document.querySelector('#game-canvas')!, profile).start();
-  }
-}
-
 nftGenerateBtn.addEventListener('click', () => {
   if (!getPhone()) return;
-  currentNft = generateNftFromPhone(getPhone()!);
-  showNftInfo(currentNft);
+  currentCharacter = generateCharacterFromPhone(getPhone()!);
+  showNftInfo(currentCharacter);
   initPreview();
   nftEnterBtn.hidden = false;
 });
@@ -169,33 +205,83 @@ nftGenerateBtn.addEventListener('click', () => {
 nftEnterBtn.addEventListener(
   'click',
   () => {
-    if (!currentNft) return;
-    const profile = createProfile(currentNft);
+    if (!currentCharacter) return;
+    const profile = createProfile(currentCharacter);
     apiSaveProfile(profile);
-    startGameWithProfile(profile);
+    goToHub(profile);
   },
   { once: true }
 );
 
 document.querySelector('#nft-back')?.addEventListener('click', () => {
-  nftScreen.classList.add('hidden');
-  loginScreen.classList.remove('hidden');
+  navigation.navigate('login');
 });
 
-function showNftInfo(nft: NftCharacter) {
-  nftNameEl.textContent = nft.name;
-  nftIdEl.textContent = nft.id;
-  nftRarityEl.textContent = rarityLabel(nft.traits.rarity);
-  nftRarityEl.style.color = rarityColor(nft.traits.rarity);
-  nftElementEl.textContent = elementLabel(nft.traits.element);
-  nftElementEl.style.color = elementColor(nft.traits.element);
+navigation.onNavigate((screen: AppScreen) => {
+  if (screen === 'characters' && currentProfile && currentManager) {
+    const charCbs: CharactersCallbacks = {
+      onBack: () => {
+        if (currentManager) updateHubCharacter(currentManager.getActive());
+        navigation.navigate('hub');
+      },
+      onSelected: () => {
+        if (currentManager) updateHubCharacter(currentManager.getActive());
+      },
+    };
+    mountCharacters(currentProfile, currentManager, charCbs);
+  } else if (screen === 'inventory' && currentProfile) {
+    const invCbs: InventoryCallbacks = {
+      onBack: () => navigation.navigate('hub'),
+    };
+    mountInventory(currentProfile, invCbs);
+  } else if (screen === 'stores') {
+    const storeCbs: StoresCallbacks = {
+      onBack: () => navigation.navigate('hub'),
+      onStoreSelected: (storeId: string) => {
+        _selectedStoreId = storeId;
+        navigation.navigate('store-detail');
+      },
+      onRedeem: () => navigation.navigate('redeem'),
+    };
+    mountStoresList(storeCbs);
+  } else if (screen === 'store-detail') {
+    if (_selectedStoreId) mountStoreDetail(_selectedStoreId);
+  } else if (screen === 'redeem') {
+    const redeemCbs: RedeemCallbacks = {
+      onBack: () => navigation.goBack(),
+      onSuccess: (result: RedeemResult) => {
+        _lastRedeemResult = result;
+        navigation.navigate('reward-result');
+      },
+    };
+    mountRedeem(redeemCbs);
+  } else if (screen === 'reward-result') {
+    if (_lastRedeemResult) {
+      const resultCbs: RewardResultCallbacks = {
+        onContinue: () => {
+          _lastRedeemResult = null;
+          navigation.navigate('hub');
+        },
+      };
+      mountRewardResult(_lastRedeemResult, resultCbs);
+    }
+  }
+});
+
+function showNftInfo(character: Character) {
+  nftNameEl.textContent = character.name;
+  nftIdEl.textContent = character.id;
+  nftRarityEl.textContent = rarityLabel(character.traits.rarity);
+  nftRarityEl.style.color = rarityColor(character.traits.rarity);
+  nftElementEl.textContent = elementLabel(character.traits.element);
+  nftElementEl.style.color = elementColor(character.traits.element);
   nftBodyEl.textContent = {
     humanoid: 'Humanoide',
     bestia: 'Bestia',
     espectral: 'Espectral',
     golem: 'Golem',
-  }[nft.traits.bodyType];
-  const stats = totalStats(nft);
+  }[character.traits.bodyType];
+  const stats = totalStats(character);
   nftStatsEl.innerHTML = (['atk', 'def', 'spd', 'hp', 'ability'] as const)
     .map((s) => `<span>${statIcon(s)} ${statLabel(s)} <b>${stats[s]}</b></span>`)
     .join('');
@@ -203,7 +289,7 @@ function showNftInfo(nft: NftCharacter) {
 
 function initPreview() {
   if (!nftPreview) return;
-  if (!currentNft) return;
+  if (!currentCharacter) return;
   const w = nftPreview.clientWidth || 280;
   const h = nftPreview.clientHeight || 300;
   if (!previewRenderer) {
@@ -226,7 +312,7 @@ function initPreview() {
   }
   previewRenderer.setSize(w, h, false);
   if (previewModel && previewScene) previewScene.remove(previewModel);
-  previewModel = buildNftModel(currentNft);
+  previewModel = buildNftModel(currentCharacter as any);
   if (previewScene) previewScene.add(previewModel);
   if (previewFrame) cancelAnimationFrame(previewFrame);
   function animate() {

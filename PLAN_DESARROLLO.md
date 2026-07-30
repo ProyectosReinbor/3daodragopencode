@@ -1,9 +1,9 @@
 # PLAN DE DESARROLLO - REINOS ANCESTRALES (3DAODRAG)
 
-> **Fecha de análisis:** 2026-07-27
-> **Versión actual:** 0.3.0 (Gameplay parcial)
-> **Fases completadas:** 1 (Seguridad) + 2 (Infraestructura) + 3 (Gameplay parcial)
-> **Próxima fase:** Boss Battles, PVP, Guilds
+> **Fecha de análisis:** 2026-07-30
+> **Versión actual:** 0.8.0 (Extracción CombatManager)
+> **Fases completadas:** 1 (Seguridad) + 2 (Infraestructura) + 3 (Gameplay parcial) + 4 (Sistema de Personajes) + 5 (Hub y Navegación) + 6 (Tiendas Asociadas) + 7 (Canje de Facturas) + 3.7 (Extracción CombatManager)
+> **Próxima fase:** Refactorización de Game / Boss Battles
 
 ---
 
@@ -18,7 +18,17 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 - CI/CD: GitHub Actions
 - PWA: Service Worker + Web App Manifest
 
-**Estado actual:** MVP funcional con autenticación, generación procedural de personajes NFT, 3 zonas, 7 quests, 12 recetas de crafting, 2 habilidades por elemento, sistema de logros, y soporte QR.
+**Estado actual:** MVP funcional con autenticación, generación procedural de personajes NFT, 3 zonas, 7 quests, 12 recetas de crafting, 2 habilidades por elemento, sistema de logros, soporte QR. **Nuevo (v0.4.0):** Sistema de múltiples personajes por cuenta. **Nuevo (v0.5.0):** Hub Principal con navegación centralizada. **Nuevo (v0.6.0):** Tiendas Asociadas con backend SQLite, API REST y frontend lazy loading. **Nuevo (v0.7.0):** Sistema de Canje de Facturas con backend SQLite (invoice_codes, reward_history), transacciones atómicas, entrega de recompensas (personajes, items, moneda, cristales), compensación de duplicados, frontend redeem-ui y reward-result-ui con animación de pulso. **Nuevo (v0.8.0):** Extracción de CombatManager (~760 líneas) de Game. game.ts reducido de ~1600 a ~987 líneas. 39 tests de combate. 159 tests totales.
+
+**Cambio arquitectónico clave (v0.4.0):** Se creó `src/game/characters.ts` con el sistema `Character` + `CharacterCollection` + `CharacterManager`. Los perfiles ahora soportan múltiples personajes por cuenta en lugar de un único NFT. Migración automática de perfiles antiguos. `Game.ts` accede al personaje activo mediante `this.characters.getActive()`. 25 tests unitarios nuevos.
+
+**Cambio arquitectónico clave (v0.5.0):** Se crearon `src/game/navigation.ts`, `hub-ui.ts`, `characters-ui.ts`, `inventory-ui.ts`. Nuevo flujo: `Login → Hub → (Characters | Inventory) → Game`. Sistema de pantallas centralizado con `Navigation` class. 18 tests nuevos (navigation + UI).
+
+**Cambio arquitectónico clave (v0.6.0):** Se crearon `src/game/stores.ts`, `promotions.ts`, `products.ts`, `stores-ui.ts`. Backend: tablas SQLite `stores`, `promotions`, `products`, `promotion_products` con seed data. API REST: `/api/stores`, `/api/stores/:id`, `/api/promotions`, `/api/products`. Navegación lazy: lista de tiendas al cargar `stores`, detalle bajo demanda `store-detail`. Botón "Canjear factura" deshabilitado (preparado para Fase 4). 33 tests nuevos (stores, promotions, products).
+
+**Cambio arquitectónico clave (v0.7.0):** Se crearon `src/game/reward-manager.ts`, `redeem-ui.ts`, `reward-result-ui.ts`. Backend: tablas SQLite `invoice_codes` (AVAILABLE/REDEEMED/CANCELLED/EXPIRED) y `reward_history` con seed data de 11 códigos de prueba (RA-2026-000001…000010 + RA-EXP-000001 expirado). Servicio `CodeGenerator` para generación de códigos. API REST: `POST /api/redeem` (transacción atómica: validar código → validar producto → entregar recompensa → guardar perfil → marcar código REDEEMED → insertar historial), `GET /api/rewards/history`, `GET /api/rewards/pending`. Entrega de recompensas con compensación de personajes duplicados en cristales. Frontend redeem-ui.ts con formulario e historial, reward-result-ui.ts con animación de pulso. Botón "Canjear Factura" funcional en hub y detalle de tienda. 8 tests nuevos (reward-manager).
+
+**Cambio arquitectónico clave (v0.8.0):** Se creó `src/game/combat.ts` con la clase `CombatManager` (~760 líneas) que extrae toda la lógica de combate de Game: estado de combate (health, energy, enemies, activeBoss, bossMinions, abilities), métodos de ataque, daño, enemigos, bosses, habilidades, cooldowns, escudos, stuns, loot, Battle Pass, daily quests, respawn. `CombatManager` recibe dependencias vía constructor (player, camera, scene, audio, visuals, characters, ui) y callbacks `CombatServices` (hint, trackAchievement, updateQuest, updateProfilePanel, addExperience, notifyKill, onPlayerDeath). `game.ts` reducido de ~1600 a ~987 líneas. 39 tests de combate. Arquitectura limpia: CombatManager no interactúa con Game directamente, solo a través de callbacks.
 
 ---
 
@@ -30,24 +40,23 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 ┌─────────────────────────────────────────────────────┐
 │                     FRONTEND                        │
 │                                                     │
-│  main.ts ─── Login/Auth ─── NFT Creation ─── Game   │
-│                    │              │            │     │
-│               api.ts          nft.ts     game.ts    │
-│                                 │            │     │
-│                            profile.ts    world.ts   │
-│                                 │       zones.ts   │
-│                            achievements.ts  input.ts│
-│                                            abilities│
-│                                         qr-scanner  │
-│                                           rewards   │
-│                                          quality    │
+│  main.ts ─── Login/Auth ─── NFT Creation ─── Hub ───── Game   │
+│                    │              │            │         │     │
+│               api.ts          nft.ts     hub-ui.ts  game.ts    │
+│                                        chars-ui     world.ts   │
+│                                        inv-ui       zones.ts   │
+│                                        stores-ui    input.ts   │
+│                                                      abilities │
+│                                                   qr-scanner   │
+│                                                     rewards    │
+│                                                    quality    │
 ├─────────────────────────────────────────────────────┤
 │                     BACKEND                         │
 │                                                     │
 │  Express Server (server/index.js)                   │
 │  ├── JWT Authentication Middleware                   │
 │  ├── Rate Limiting (in-memory Map)                  │
-│  ├── REST API (register, login, profile)            │
+│  ├── REST API (register, login, profile, stores*)   │
 │  └── SQLite Database (better-sqlite3, WAL mode)     │
 └─────────────────────────────────────────────────────┘
 ```
@@ -70,7 +79,7 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 
 ### Limitaciones arquitectónicas
 
-1. **Monolito frontend:** La clase `Game` (1034 líneas) concentra demasiada responsabilidad
+1. **Monolito frontend:** La clase `Game` (987 líneas, antes 1600) se ha reducido significativamente extrayendo CombatManager. Aún concentra UI, crafting, interacciones y orquestación.
 2. **Sin state management:** Estado disperso en DOM y variables de clase
 3. **Sin WebSocket:** No hay soporte para chat, PvP, ni multiplayer
 4. **Backend single-file:** `server/index.js` (273 líneas) maneja auth, API, DB, y static serving
@@ -105,7 +114,8 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 
 | Sistema | Estado | Prioridad |
 |---------|--------|-----------|
-| Boss Battles | ❌ No implementado | Alta |
+| Minigames (Tiendas) | ✅ Completado v0.6.0 | Alta |
+| Boss Battles | ✅ Implementado v0.8.0 (CombatManager) | 3 bosses, fases, habilidades, minions |
 | PVP Arena | ❌ No implementado | Alta |
 | Guilds | ❌ No implementado | Media |
 | Audio | ❌ No implementado | Media |
@@ -126,29 +136,37 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 
 | Archivo | Líneas | Propósito | Dependencias |
 |---------|--------|-----------|--------------|
-| `src/main.ts` | 248 | Entry point, login, NFT creation, PWA install | game, profile, nft, api, three |
-| `src/styles.css` | 1011 | Todos los estilos CSS del juego | Ninguna |
-| `src/game/game.ts` | 1034 | Core game loop, combat, UI, interacciones | input, profile, world, zones, rewards, qr-scanner, quality, nft, api, abilities |
+| `src/main.ts` | 334 | Entry point, login, NFT creation, PWA install | game, profile, nft, api, three |
+| `src/styles.css` | 2212 | Todos los estilos CSS del juego | Ninguna |
+| `src/game/game.ts` | 987 | Core game loop, UI, interacciones, orquestación | input, profile, world, zones, rewards, qr-scanner, quality, nft, api, abilities |
+| `src/game/combat.ts` | 760 | CombatManager: ataque, enemigos, bosses, habilidades, daño | profile, world, bosses, abilities, daily-quests, battlepass, characters |
 | `src/game/world.ts` | 857 | Generación de mundo, enemigos, recursos, NPCs | profile, zones, three |
 | `src/game/nft.ts` | 450 | Sistema NFT: generación, traits, modelo 3D | three |
 | `src/game/abilities.ts` | 221 | Sistema de habilidades por elemento | nft, world, three |
 | `src/game/achievements.ts` | 237 | Sistema de logros (20 achievements) | Ninguna |
 | `src/game/profile.ts` | 260 | Perfil jugador, quests, trades | nft, achievements |
 | `src/game/rewards.ts` | 118 | Sistema de recompensas QR | nft |
-| `src/game/api.ts` | 125 | Cliente HTTP para auth/perfil | profile |
+| `src/game/api.ts` | 140 | Cliente HTTP para auth/perfil/stores | profile |
+| `src/game/stores.ts` | 64 | Interfaces: Store, Promotion, Product, StoreDetail | Ninguna |
+| `src/game/promotions.ts` | 36 | Utilidades de promociones (fechas, estado) | stores |
+| `src/game/products.ts` | 42 | Utilidades de productos (recompensas, rareza, precio) | stores |
+| `src/game/stores-ui.ts` | 140 | UI de Tiendas Asociadas: listado y detalle | api, stores, promotions, products, navigation |
+| `src/game/reward-manager.ts` | 78 | Cliente HTTP para canje de facturas | api |
+| `src/game/redeem-ui.ts` | 113 | UI de canje de código de factura | reward-manager |
+| `src/game/reward-result-ui.ts` | 58 | UI de animación de entrega de recompensa | reward-manager |
 | `src/game/zones.ts` | 112 | Configuración de zonas, detección proximidad | profile, world, three |
 | `src/game/input.ts` | 75 | Controlador de entrada (teclado + joystick) | three |
 | `src/game/qr-scanner.ts` | 67 | Scanner QR con Barcode Detection API | Ninguna |
 | `src/game/quality.ts` | 31 | Detección/configuración de calidad gráfica | Ninguna |
-| **Total frontend** | **4,247** | | |
+| **Total frontend** | **5,090** | | |
 
 ### Backend
 
 | Archivo | Líneas | Propósito |
 |---------|--------|-----------|
-| `server/index.js` | 273 | Express server: auth, API, DB, static serving |
+| `server/index.js` | 603 | Express server: auth, API (stores*, redeem*), DB, static serving |
 | `server/data/db.json` | 24 | Legacy JSON database (2 usuarios de prueba) |
-| **Total backend** | **297** | |
+| **Total backend** | **499** | |
 
 ### Tests
 
@@ -156,7 +174,13 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 |---------|--------|-------|-----------|
 | `src/game/nft.test.ts` | 180 | 24 | PRNG, hash, generación NFT, stats, labels |
 | `src/game/profile.test.ts` | 154 | 11 | Perfil, quests, trades |
-| **Total tests** | **334** | **35** | |
+| `src/game/characters.test.ts` | 274 | 25 | CharacterManager, colección, migración |
+| `src/game/navigation.test.ts` | 97 | 11 | Navegación entre pantallas |
+| `src/game/ui.test.ts` | 140 | 8 | Hub, Characters UI, Inventory UI |
+| `src/game/stores.test.ts` | 200 | 33 | Stores, promotions, products |
+| `src/game/combat.test.ts` | 650 | 39 | Sistema de combate: daño, ciclos, enemigos, bosses, habilidades, estados |
+| `src/game/reward-manager.test.ts` | 35 | 8 | Reward manager helpers |
+| **Total tests** | **1,730** | **159** | |
 
 ### Configuración
 
@@ -328,7 +352,7 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 
 | # | Elemento | Gravedad | Impacto | Prioridad | Tiempo Est. |
 |---|----------|----------|---------|-----------|-------------|
-| 1 | Clase `Game` monolítica (1034 líneas) | Alta | Alto | Alta | 8-12h |
+| 1 | Clase `Game` parcialmente refactorizada (987 líneas, -613) | Media | Alto | Media | 4-6h (extraer UI, crafting) |
 | 2 | Crafteo hardcodeado en `game.ts:545` | Media | Alto | Alta | 2-3h |
 | 3 | `nearestEnemy()` calculado 3x/frame | Media | Alto | Alta | 1-2h |
 | 4 | DOM queries sin cachear en game loop | Media | Alto | Alta | 2-3h |
@@ -382,6 +406,12 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 ## MEJORAS RECOMENDADAS
 
 ### Arquitectura
+
+0. ~~**Sistema de múltiples personajes por cuenta**~~ ✅ **COMPLETADO v0.4.0**
+   - Creación de `characters.ts` con `Character`, `CharacterCollection`, `CharacterManager`
+   - Migración automática de perfiles NFT únicos a colección de personajes
+   - `Game.ts` ahora accede al personaje activo mediante `this.characters.getActive()`
+   - 25 tests unitarios, lint/tsc sin errores, 60 tests pasando
 
 1. **Separar `Game` en módulos** - Extraer combat, crafting, UI, abilities a módulos independientes
    - Justificación: Reducir complejidad, mejorar testabilidad
@@ -489,14 +519,21 @@ Reinos Ancestrales es un RPG 3D browser game construido como PWA. Los jugadores 
 
 ```
 Fase 1 (Corrección de bugs críticos)
-  └── Fase 2 (Refactorización)
-        └── Fase 3 (Nuevas funcionalidades gameplay)
-              ├── 3.1 Boss Battles
-              ├── 3.2 PVP Arena
-              ├── 3.3 Guilds + Chat (requiere WebSocket)
-              └── 3.4 Audio + Animaciones
-                    └── Fase 4 (Monetización)
-                          └── Fase 5 (Optimización final)
+  └── Fase 2 (Sistema de Personajes ✅)
+        └── Fase 3 (Hub + Navegación ✅)
+              └── Fase 3.5 (Tiendas Asociadas ✅)
+                    └── Fase 3.6 (Canje de Facturas ✅)
+                          └── Fase 3.7 (Extracción CombatManager ✅)
+                                └── Fase 4 (Refactorización restante)
+                                └── Fase 5 (Nuevas funcionalidades gameplay)
+                    ├── 5.1 Boss Battles
+                    ├── 5.2 PVP Arena
+                    ├── 5.3 Guilds + Chat (requiere WebSocket)
+                    └── 5.4 Audio + Animaciones
+                          └── Fase 6 (UX/UI)
+                                └── Fase 7 (Monetización)
+                                      └── Fase 8 (Testing)
+                                            └── Fase 9 (Optimización final)
 ```
 
 ### Tareas paralelizables
@@ -504,6 +541,7 @@ Fase 1 (Corrección de bugs críticos)
 - **En paralelo:** Audio, Minimap, Visual improvements
 - **En paralelo:** Tests backend, Logging, Error tracking
 - **En paralelo:** CORS fix, Helmet, Security headers
+- **Secuencial:** Personajes → Hub/Navegación → Tiendas → Canje de facturas
 - **Secuencial:** WebSocket → Chat → PVP → Guilds
 
 ---
@@ -530,162 +568,264 @@ Fase 1 (Corrección de bugs críticos)
 
 ---
 
-### FASE 2: Refactorización (PRIORIDAD ALTA)
+### FASE 2: Sistema de Personajes ✅ (COMPLETADO v0.4.0)
+
+**Duración estimada:** 6-8h
+**Objetivo:** Soportar múltiples personajes por cuenta en lugar de un único NFT
+
+| # | Tarea | Archivos | Tiempo | Dificultad |
+|---|-------|----------|--------|------------|
+| 2.1 | Crear interfaces Character, CharacterCollection, CharacterManager | `characters.ts` | 1.5h | Media |
+| 2.2 | Migración automática de perfiles NFT antiguos a colección | `profile.ts` | 1h | Media |
+| 2.3 | Integrar CharacterManager en Game.ts | `game.ts` | 1h | Media |
+| 2.4 | Actualizar abilities.ts para usar Character | `abilities.ts` | 0.5h | Baja |
+| 2.5 | Actualizar main.ts flujo de autenticación | `main.ts` | 1h | Media |
+| 2.6 | Tests unitarios (25 tests) | `characters.test.ts`, `profile.test.ts` | 2h | Alta |
+| 2.7 | Lint + tsc + verificar 60 tests pasando | - | 0.5h | Baja |
+
+**Resultado:** 0 errores lint, 3 warnings esperados (any casts), TypeScript compila, 60 tests pasan.
+---
+
+### FASE 3: Hub + Navegación ✅ (COMPLETADO v0.5.0)
+
+**Duración estimada:** 6-8h
+**Objetivo:** Crear Hub Principal, sistema de pantallas, selección de personajes e inventario
+
+| # | Tarea | Archivos | Tiempo | Dificultad |
+|---|-------|----------|--------|------------|
+| 3.1 | Sistema de pantallas (Navigation) | `navigation.ts` | 1h | Media |
+| 3.2 | Hub Principal con bienvenida y personaje activo | `hub-ui.ts` | 1.5h | Media |
+| 3.3 | Pantalla Mis Personajes con selección | `characters-ui.ts` | 2h | Alta |
+| 3.4 | Pantalla Inventario con categorías | `inventory-ui.ts` | 1.5h | Media |
+| 3.5 | Nuevos paneles en index.html | `index.html` | 1h | Baja |
+| 3.6 | Estilos responsive para Hub y pantallas | `styles.css` | 1.5h | Media |
+| 3.7 | Integrar nueva navegación en main.ts | `main.ts` | 1.5h | Alta |
+| 3.8 | Tiendas Asociadas placeholder + Noticias | `hub-ui.ts` | 0.5h | Baja |
+| 3.9 | Persistencia al seleccionar personaje | `characters-ui.ts`, `main.ts` | 0.5h | Media |
+| 3.10 | Tests (navigation, hub, characters, inventory UI) | `navigation.test.ts`, `ui.test.ts` | 2h | Alta |
+
+**Resultado:** 0 errores lint, 3 warnings esperados, 78 tests pasan (5 test files).
+
+---
+
+### FASE 3.5: Tiendas Asociadas ✅ (COMPLETADO v0.6.0)
+
+**Duración estimada:** 4-6h
+**Objetivo:** Crear sistema de tiendas asociadas con backend SQLite, API REST y frontend lazy loading
+
+| # | Tarea | Archivos | Tiempo | Dificultad |
+|---|-------|----------|--------|------------|
+| 3.5.1 | Interfaces Store, Promotion, Product | `stores.ts` | 0.5h | Baja |
+| 3.5.2 | Utilidades promotions (fechas, estado) | `promotions.ts` | 0.5h | Baja |
+| 3.5.3 | Utilidades products (recompensas, rareza) | `products.ts` | 0.5h | Baja |
+| 3.5.4 | Backend: tablas SQLite + seed data (5 stores, 5 promos, 5 products) | `server/index.js` | 1.5h | Media |
+| 3.5.5 | API routes: /api/stores, /api/stores/:id, /api/promotions, /api/products | `server/index.js` | 1h | Media |
+| 3.5.6 | UI stores list + store detail | `stores-ui.ts` | 1.5h | Media |
+| 3.5.7 | Integración con navigation (lazy loading) | `main.ts`, `navigation.ts` | 0.5h | Media |
+| 3.5.8 | Paneles + estilos stores | `index.html`, `styles.css` | 1h | Media |
+| 3.5.9 | Tests (33 tests) | `stores.test.ts`, `navigation.test.ts` | 1.5h | Alta |
+| 3.5.10 | Lint + tsc + 112 tests | - | 0.5h | Baja |
+
+**Resultado:** 0 errores lint, 3 warnings esperados, 112 tests pasan (6 test files). Backend con 6 tablas SQLite. Frontend con navegación lazy a detalle. Botón "Canjear factura" deshabilitado (preparado para Fase 4).
+
+### FASE 3.6: Canje de Facturas y Entrega de Recompensas ✅ (COMPLETADO v0.7.0)
+
+**Duración estimada:** 6-8h
+**Objetivo:** Implementar sistema completo de canje de códigos de factura con transacciones atómicas y entrega de recompensas
+
+| # | Tarea | Archivos | Tiempo | Dificultad |
+|---|-------|----------|--------|------------|
+| 3.6.1 | Tablas SQLite invoice_codes + reward_history | `server/index.js` | 1h | Media |
+| 3.6.2 | Seed codes (10 disponibles + 1 expirado) | `server/index.js` | 0.5h | Baja |
+| 3.6.3 | Servicio CodeGenerator | `server/index.js` | 0.5h | Media |
+| 3.6.4 | Funciones de entrega de recompensas (character, item, currency, crystals) | `server/index.js` | 1.5h | Alta |
+| 3.6.5 | POST /api/redeem con transacción atómica | `server/index.js` | 1.5h | Alta |
+| 3.6.6 | GET /api/rewards/history + GET /api/rewards/pending | `server/index.js` | 0.5h | Media |
+| 3.6.7 | Cliente reward-manager.ts | `reward-manager.ts` | 0.5h | Baja |
+| 3.6.8 | Pantalla de canje redeem-ui.ts | `redeem-ui.ts` | 1.5h | Media |
+| 3.6.9 | Pantalla de resultado reward-result-ui.ts | `reward-result-ui.ts` | 1h | Media |
+| 3.6.10 | Botón Canjear Factura en hub y store-detail | `hub-ui.ts`, `stores-ui.ts` | 0.5h | Baja |
+| 3.6.11 | Estilos CSS para canje y resultado | `styles.css` | 1h | Media |
+| 3.6.12 | Tests reward-manager (8 tests) | `reward-manager.test.ts` | 1h | Alta |
+| 3.6.13 | Lint + tsc + 120 tests | - | 0.5h | Baja |
+
+**Resultado:** 0 errores lint, 3 warnings esperados, 120 tests pasan (7 test files). Backend con 8 tablas SQLite. Frontend con canje funcional desde hub y tiendas, historial de canjes, animación de recompensa con compensación de duplicados.
+
+### FASE 3.7: Extracción CombatManager ✅ (COMPLETADO v0.8.0)
+
+**Duración estimada:** 4-6h
+**Objetivo:** Extraer toda la lógica de combate de Game a un módulo CombatManager independiente
+
+| # | Tarea | Archivos | Tiempo | Dificultad |
+|---|-------|----------|--------|------------|
+| 3.7.1 | Crear `combat.ts` con interfaz CombatServices y clase CombatManager | `combat.ts` | 2h | Alta |
+| 3.7.2 | Mover estado de combate (health, energy, enemies, boss, abilities) | `combat.ts`, `game.ts` | 1h | Media |
+| 3.7.3 | Mover métodos de combate (attack, damage, enemies, boss, abilities) | `combat.ts`, `game.ts` | 2h | Alta |
+| 3.7.4 | Conectar CombatManager en Game (constructor, update) | `game.ts` | 0.5h | Media |
+| 3.7.5 | Eliminar imports/métodos huérfanos de Game | `game.ts` | 0.5h | Baja |
+| 3.7.6 | Tests unitarios (39 tests) | `combat.test.ts` | 2h | Alta |
+| 3.7.7 | Lint + tsc + 159 tests | - | 0.5h | Baja |
+
+**Resultado:** 0 errores lint, 3 warnings esperados, 159 tests pasan (8 test files). game.ts reducido de ~1600 a ~987 líneas. CombatManager (~760 líneas) maneja todo el combate. Arquitectura limpia: dependencias vía constructor, callbacks para efectos secundarios.
+
+---
+
+### FASE 4: Refactorización (PRIORIDAD ALTA)
 
 **Duración estimada:** 3-5 días
 **Objetivo:** Mejorar arquitectura para soportar nuevas features
 
 | # | Tarea | Archivos | Tiempo | Dificultad |
 |---|-------|----------|--------|------------|
-| 2.1 | Extraer CombatManager de Game class | `game.ts` → `combat.ts` | 4h | Alta |
-| 2.2 | Extraer CraftingManager | `game.ts` → `crafting.ts` | 2h | Media |
-| 2.3 | Extraer UIManager (HUD, panels, hints) | `game.ts` → `ui.ts` | 4h | Alta |
-| 2.4 | Cachear DOM references en constructor | `game.ts` | 2h | Baja |
-| 2.5 | Calcular nearestEnemy una vez por frame | `game.ts` | 1h | Baja |
-| 2.6 | Mover recetas a archivo dedicado | `recipes.ts` | 1h | Baja |
-| 2.7 | Material sharing en world.ts | `world.ts` | 3h | Media |
-| 2.8 | Modularizar backend (routes, middleware, db) | `server/` | 6h | Alta |
-| 2.9 | Configurar CORS restrictivo | `server/index.js` | 1h | Baja |
-| 2.10 | Agregar helmet middleware | `server/index.js` | 0.5h | Baja |
+| 4.1 | Extraer CombatManager de Game class | `game.ts` → `combat.ts` | 4h | Alta |
+| 4.2 | Extraer CraftingManager | `game.ts` → `crafting.ts` | 2h | Media |
+| 4.3 | Extraer UIManager (HUD, panels, hints) | `game.ts` → `ui.ts` | 4h | Alta |
+| 4.4 | Cachear DOM references en constructor | `game.ts` | 2h | Baja |
+| 4.5 | Calcular nearestEnemy una vez por frame | `game.ts` | 1h | Baja |
+| 4.6 | Mover recetas a archivo dedicado | `recipes.ts` | 1h | Baja |
+| 4.7 | Material sharing en world.ts | `world.ts` | 3h | Media |
+| 4.8 | Modularizar backend (routes, middleware, db) | `server/` | 6h | Alta |
+| 4.9 | Configurar CORS restrictivo | `server/index.js` | 1h | Baja |
+| 4.10 | Agregar helmet middleware | `server/index.js` | 0.5h | Baja |
 
-**Total Fase 2:** ~24 horas
+**Total Fase 4:** ~24 horas
 
 ---
 
-### FASE 3: Gameplay Nuevo (PRIORIDAD MEDIA)
+### FASE 5: Gameplay Nuevo (PRIORIDAD MEDIA)
 
 **Duración estimada:** 2-4 semanas
 **Objetivo:** Agregar contenido y funcionalidades principales
 
-#### 3.1 Boss Battles (1 semana)
+#### 5.1 Boss Battles (1 semana)
 
 | # | Tarea | Archivos | Tiempo |
 |---|-------|----------|--------|
-| 3.1.1 | Definir stats y comportamiento de bosses | `bosses.ts` | 3h |
-| 3.1.2 | Implementar sistema de fases de boss | `combat.ts` | 4h |
-| 3.1.3 | Mecánicas: invocar minions, AoE, enrage | `combat.ts` | 6h |
-| 3.1.4 | Loot exclusivo de boss | `loot.ts` | 2h |
-| 3.1.5 | UI de boss health bar especial | `ui.ts` | 2h |
-| 3.1.6 | Tests para boss mechanics | `bosses.test.ts` | 3h |
+| 5.1.1 | Definir stats y comportamiento de bosses | `bosses.ts` | 3h |
+| 5.1.2 | Implementar sistema de fases de boss | `combat.ts` | 4h |
+| 5.1.3 | Mecánicas: invocar minions, AoE, enrage | `combat.ts` | 6h |
+| 5.1.4 | Loot exclusivo de boss | `loot.ts` | 2h |
+| 5.1.5 | UI de boss health bar especial | `ui.ts` | 2h |
+| 5.1.6 | Tests para boss mechanics | `bosses.test.ts` | 3h |
 
 **Subtotal:** ~20 horas
 
-#### 3.2 PVP Arena (1 semana)
+#### 5.2 PVP Arena (1 semana)
 
 | # | Tarea | Archivos | Tiempo |
 |---|-------|----------|--------|
-| 3.2.1 | WebSocket server setup | `server/ws.js` | 4h |
-| 3.2.2 | Matchmaking por nivel/rareza | `matchmaking.ts` | 4h |
-| 3.2.3 | Combate sincronizado 1v1 | `pvp.ts` | 8h |
-| 3.2.4 | Sistema de ranking ELO | `ranking.ts` | 4h |
-| 3.2.5 | UI de arena y leaderboard | `ui.ts` | 4h |
-| 3.2.6 | Tests para matchmaking y ELO | `pvp.test.ts` | 3h |
+| 5.2.1 | WebSocket server setup | `server/ws.js` | 4h |
+| 5.2.2 | Matchmaking por nivel/rareza | `matchmaking.ts` | 4h |
+| 5.2.3 | Combate sincronizado 1v1 | `pvp.ts` | 8h |
+| 5.2.4 | Sistema de ranking ELO | `ranking.ts` | 4h |
+| 5.2.5 | UI de arena y leaderboard | `ui.ts` | 4h |
+| 5.2.6 | Tests para matchmaking y ELO | `pvp.test.ts` | 3h |
 
 **Subtotal:** ~27 horas
 
-#### 3.3 Guilds + Chat (1-2 semanas)
+#### 5.3 Guilds + Chat (1-2 semanas)
 
 | # | Tarea | Archivos | Tiempo |
 |---|-------|----------|--------|
-| 3.3.1 | API de guilds (CRUD) | `server/guilds.js` | 4h |
-| 3.3.2 | Modelo de guild en DB | `server/db.js` | 2h |
-| 3.3.3 | Chat WebSocket (Global, Guild, Party) | `server/ws.js` | 6h |
-| 3.3.4 | Guild bank compartido | `guild-bank.ts` | 4h |
-| 3.3.5 | Guild quests (misiones grupales) | `guild-quests.ts` | 6h |
-| 3.3.6 | UI de guild y chat | `ui.ts` | 6h |
-| 3.3.7 | Tests | `guilds.test.ts` | 3h |
+| 5.3.1 | API de guilds (CRUD) | `server/guilds.js` | 4h |
+| 5.3.2 | Modelo de guild en DB | `server/db.js` | 2h |
+| 5.3.3 | Chat WebSocket (Global, Guild, Party) | `server/ws.js` | 6h |
+| 5.3.4 | Guild bank compartido | `guild-bank.ts` | 4h |
+| 5.3.5 | Guild quests (misiones grupales) | `guild-quests.ts` | 6h |
+| 5.3.6 | UI de guild y chat | `ui.ts` | 6h |
+| 5.3.7 | Tests | `guilds.test.ts` | 3h |
 
 **Subtotal:** ~31 horas
 
-#### 3.4 Audio + Animaciones (1 semana)
+#### 5.4 Audio + Animaciones (1 semana)
 
 | # | Tarea | Archivos | Tiempo |
 |---|-------|----------|--------|
-| 3.4.1 | Sistema de audio (Web Audio API) | `audio.ts` | 4h |
-| 3.4.2 | Efectos de sonido (ataque, daño, recolecta) | `audio.ts` | 4h |
-| 3.4.3 | Música ambiental por zona | `audio.ts` | 3h |
-| 3.4.4 | Animación de ataque (swing) | `animations.ts` | 3h |
-| 3.4.5 | Animación de recibir daño (flash rojo) | `animations.ts` | 2h |
-| 3.4.6 | Animación de muerte (caída + fade) | `animations.ts` | 3h |
-| 3.4.7 | Partículas de habilidades | `particles.ts` | 4h |
+| 5.4.1 | Sistema de audio (Web Audio API) | `audio.ts` | 4h |
+| 5.4.2 | Efectos de sonido (ataque, daño, recolecta) | `audio.ts` | 4h |
+| 5.4.3 | Música ambiental por zona | `audio.ts` | 3h |
+| 5.4.4 | Animación de ataque (swing) | `animations.ts` | 3h |
+| 5.4.5 | Animación de recibir daño (flash rojo) | `animations.ts` | 2h |
+| 5.4.6 | Animación de muerte (caída + fade) | `animations.ts` | 3h |
+| 5.4.7 | Partículas de habilidades | `particles.ts` | 4h |
 
 **Subtotal:** ~23 horas
 
-**Total Fase 3:** ~101 horas (2.5-4 semanas)
+**Total Fase 5:** ~101 horas (2.5-4 semanas)
 
 ---
 
-### FASE 4: UX/UI Mejorada (PRIORIDAD MEDIA)
+### FASE 6: UX/UI Mejorada (PRIORIDAD MEDIA)
 
 **Duración estimada:** 1-2 semanas
 
 | # | Tarea | Archivos | Tiempo |
 |---|-------|----------|--------|
-| 4.1 | Minimap con fog of war | `minimap.ts`, `ui.ts` | 8h |
-| 4.2 | Sistema de mensajes/notificaciones | `notifications.ts` | 4h |
-| 4.3 | Iluminación dinámica por zona | `world.ts` | 4h |
-| 4.4 | Efectos de clima (lluvia, nieve) | `weather.ts` | 6h |
-| 4.5 | Post-processing (bloom, vignette) | `renderer.ts` | 4h |
-| 4.6 | LOD para enemigos lejanos | `world.ts` | 3h |
-| 4.7 | Mejoras de sombras (shadow maps) | `renderer.ts` | 3h |
+| 6.1 | Minimap con fog of war | `minimap.ts`, `ui.ts` | 8h |
+| 6.2 | Sistema de mensajes/notificaciones | `notifications.ts` | 4h |
+| 6.3 | Iluminación dinámica por zona | `world.ts` | 4h |
+| 6.4 | Efectos de clima (lluvia, nieve) | `weather.ts` | 6h |
+| 6.5 | Post-processing (bloom, vignette) | `renderer.ts` | 4h |
+| 6.6 | LOD para enemigos lejanos | `world.ts` | 3h |
+| 6.7 | Mejoras de sombras (shadow maps) | `renderer.ts` | 3h |
 
-**Total Fase 4:** ~32 horas
+**Total Fase 6:** ~32 horas
 
 ---
 
-### FASE 5: Monetización y Retención (PRIORIDAD BAJA)
+### FASE 7: Monetización y Retención (PRIORIDAD BAJA)
 
 **Duración estimada:** 2-3 semanas
 
 | # | Tarea | Archivos | Tiempo |
 |---|-------|----------|--------|
-| 5.1 | Marketplace de NFTs | `marketplace.ts`, `server/` | 12h |
-| 5.2 | Battle Pass (gratuito + premium) | `battlepass.ts` | 10h |
-| 5.3 | Tienda de cosmetics | `cosmetics.ts` | 8h |
-| 5.4 | Quests diarias + login streak | `daily-quests.ts` | 6h |
-| 5.5 | Eventos de temporada | `events.ts` | 8h |
-| 5.6 | Sistema de amigos | `friends.ts` | 8h |
-| 5.7 | Leaderboard global | `leaderboard.ts` | 4h |
+| 7.1 | Marketplace de NFTs | `marketplace.ts`, `server/` | 12h |
+| 7.2 | Battle Pass (gratuito + premium) | `battlepass.ts` | 10h |
+| 7.3 | Tienda de cosmetics | `cosmetics.ts` | 8h |
+| 7.4 | Quests diarias + login streak | `daily-quests.ts` | 6h |
+| 7.5 | Eventos de temporada | `events.ts` | 8h |
+| 7.6 | Sistema de amigos | `friends.ts` | 8h |
+| 7.7 | Leaderboard global | `leaderboard.ts` | 4h |
 
-**Total Fase 5:** ~56 horas
+**Total Fase 7:** ~56 horas
 
 ---
 
-### FASE 6: Testing y Calidad (PRIORIDAD MEDIA)
+### FASE 8: Testing y Calidad (PRIORIDAD MEDIA)
 
 **Duración estimada:** 1 semana
 
 | # | Tarea | Archivos | Tiempo |
 |---|-------|----------|--------|
-| 6.1 | Tests de integración para API | `server/*.test.js` | 6h |
-| 6.2 | Tests para combat system | `combat.test.ts` | 4h |
-| 6.3 | Tests para crafting | `crafting.test.ts` | 3h |
-| 6.4 | Tests para abilities | `abilities.test.ts` | 3h |
-| 6.5 | Tests para boss battles | `bosses.test.ts` | 3h |
-| 6.6 | Tests para PVP | `pvp.test.ts` | 4h |
-| 6.7 | Tests para guilds | `guilds.test.ts` | 3h |
-| 6.8 | E2E tests (Playwright) | `e2e/` | 8h |
-| 6.9 | Aumentar coverage a >80% | Various | 4h |
+| 8.1 | Tests de integración para API | `server/*.test.js` | 6h |
+| 8.2 | Tests para combat system | `combat.test.ts` | 4h |
+| 8.3 | Tests para crafting | `crafting.test.ts` | 3h |
+| 8.4 | Tests para abilities | `abilities.test.ts` | 3h |
+| 8.5 | Tests para boss battles | `bosses.test.ts` | 3h |
+| 8.6 | Tests para PVP | `pvp.test.ts` | 4h |
+| 8.7 | Tests para guilds | `guilds.test.ts` | 3h |
+| 8.8 | E2E tests (Playwright) | `e2e/` | 8h |
+| 8.9 | Aumentar coverage a >80% | Various | 4h |
 
-**Total Fase 6:** ~38 horas
+**Total Fase 8:** ~38 horas
 
 ---
 
-### FASE 7: Optimización Final (PRIORIDAD BAJA)
+### FASE 9: Optimización Final (PRIORIDAD BAJA)
 
 **Duración estimada:** 1 semana
 
 | # | Tarea | Archivos | Tiempo |
 |---|-------|----------|--------|
-| 7.1 | Object pooling (damage nums, projectiles) | `pool.ts` | 4h |
-| 7.2 | Frustum culling manual | `renderer.ts` | 3h |
-| 7.3 | Compresión de assets | `vite.config.ts` | 2h |
-| 7.4 | Lazy loading de zonas | `world.ts` | 4h |
-| 7.5 | Profile de rendimiento y profiling | Various | 3h |
-| 7.6 | CDN setup para assets estáticos | `deploy.sh` | 2h |
-| 7.7 | Backup automático de SQLite | `server/` | 2h |
+| 9.1 | Object pooling (damage nums, projectiles) | `pool.ts` | 4h |
+| 9.2 | Frustum culling manual | `renderer.ts` | 3h |
+| 9.3 | Compresión de assets | `vite.config.ts` | 2h |
+| 9.4 | Lazy loading de zonas | `world.ts` | 4h |
+| 9.5 | Profile de rendimiento y profiling | Various | 3h |
+| 9.6 | CDN setup para assets estáticos | `deploy.sh` | 2h |
+| 9.7 | Backup automático de SQLite | `server/` | 2h |
 
-**Total Fase 7:** ~20 horas
+**Total Fase 9:** ~20 horas
 
 ---
 
@@ -695,25 +835,25 @@ Fase 1 (Corrección de bugs críticos)
 - 1.1 Buff tracking cleanup
 - 1.3 World generation desierto/cueva
 - 1.6 Validar profile completo en backend
-- 2.9 CORS restrictivo
+- 4.9 CORS restrictivo
 
 ### Alta (Hacer después)
 - 1.5 Integrar achievements
-- 2.1-2.7 Refactorización de Game class
-- 2.8 Modularizar backend
-- 2.10 Helmet middleware
-- 3.1 Boss Battles
+- 4.1-4.7 Refactorización de Game class
+- 4.8 Modularizar backend
+- 4.10 Helmet middleware
+- 5.1 Boss Battles
 
 ### Media (Hacer cuando haya tiempo)
-- 3.2 PVP Arena
-- 3.3 Guilds + Chat
-- 3.4 Audio + Animaciones
-- 4.1-4.7 UX/UI mejoras
-- 6.1-6.9 Testing
+- 5.2 PVP Arena
+- 5.3 Guilds + Chat
+- 5.4 Audio + Animaciones
+- 6.1-6.7 UX/UI mejoras
+- 8.1-8.9 Testing
 
 ### Baja (Hacer al final)
-- 5.1-5.7 Monetización
-- 7.1-7.7 Optimización final
+- 7.1-7.7 Monetización
+- 9.1-9.7 Optimización final
 
 ---
 
@@ -722,23 +862,28 @@ Fase 1 (Corrección de bugs críticos)
 | Fase | Horas estimadas | Días (8h/día) | Semanas |
 |------|----------------|---------------|---------|
 | Fase 1: Bugs críticos | 12h | 1.5 días | - |
-| Fase 2: Refactorización | 24h | 3 días | - |
-| Fase 3: Gameplay nuevo | 101h | 12.5 días | 2.5-4 semanas |
-| Fase 4: UX/UI | 32h | 4 días | 1-2 semanas |
-| Fase 5: Monetización | 56h | 7 días | 1.5-2 semanas |
-| Fase 6: Testing | 38h | 5 días | 1 semana |
-| Fase 7: Optimización | 20h | 2.5 días | 0.5-1 semana |
-| **TOTAL** | **~283h** | **~35 días** | **7-9 semanas** |
+| Fase 2: Sistema de Personajes ✅ | 8h | 1 día | - |
+| Fase 3: Hub + Navegación ✅ | 8h | 1 día | - |
+| Fase 3.5: Tiendas Asociadas ✅ | 8h | 1 día | - |
+| Fase 3.6: Canje de Facturas ✅ | 8h | 1 día | - |
+| Fase 3.7: Extracción CombatManager ✅ | 6h | 0.75 día | - |
+| Fase 4: Refactorización | 18h | 2.25 días | - |
+| Fase 5: Gameplay nuevo | 101h | 12.5 días | 2.5-4 semanas |
+| Fase 6: UX/UI | 32h | 4 días | 1-2 semanas |
+| Fase 7: Monetización | 56h | 7 días | 1.5-2 semanas |
+| Fase 8: Testing | 38h | 5 días | 1 semana |
+| Fase 9: Optimización | 20h | 2.5 días | 0.5-1 semana |
+| **TOTAL** | **~313h** | **~39 días** | **7-9 semanas** |
 
 ---
 
 ## PRÓXIMOS PASOS INMEDIATOS
 
-1. **Corregir bugs críticos** (Fase 1) - Estabilizar el sistema actual
-2. **Refactorizar Game class** (Fase 2.1-2.5) - Preparar para nuevas features
-3. **Implementar Boss Battles** (Fase 3.1) - Primera feature nueva de gameplay
-4. **Configurar CORS y helmet** (Fase 2.9-2.10) - Seguridad básica
+1. **Extraer CraftingManager y UI de Game** (Fase 4.2-4.3) - Continuar refactorización
+2. **Boss UI avanzada** (Fase 5.1) - Mejorar interfaz de jefes
+3. **World generation para desierto y cueva** (Fase 1.3) - Completar zonas faltantes
+4. **PVP Arena** (Fase 5.2) - Nueva feature de alto impacto
 
 ---
 
-*Documento generado automáticamente por análisis del código fuente. Última actualización: 2026-07-27*
+*Documento generado automáticamente por análisis del código fuente. Última actualización: 2026-07-30*
