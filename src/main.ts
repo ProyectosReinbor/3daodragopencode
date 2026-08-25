@@ -48,7 +48,6 @@ import {
 } from 'three';
 
 const nftPreview = document.querySelector<HTMLElement>('#nft-preview')!;
-const nftGenerateBtn = document.querySelector<HTMLButtonElement>('#nft-generate')!;
 const nftEnterBtn = document.querySelector<HTMLButtonElement>('#nft-enter')!;
 const nftNameEl = document.querySelector<HTMLElement>('#nft-name')!;
 const nftIdEl = document.querySelector<HTMLElement>('#nft-id')!;
