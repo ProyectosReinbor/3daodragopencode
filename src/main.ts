@@ -12,7 +12,7 @@ import {
   phoneHash,
   mulberry32,
 } from './game/nft';
-import { generateCharacterFromPhone, generateSlimeCharacter, totalStats } from './game/characters';
+import { generateSlimeCharacter, totalStats } from './game/characters';
 import type { Character } from './game/characters';
 import { CharacterManager } from './game/characters';
 import {
@@ -322,8 +322,202 @@ function initPreview() {
 if ('serviceWorker' in navigator)
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
 
+/* ── Landing Page ─────────────────────────────────── */
+
+const STAT_MAX: Record<string, number> = { atk: 20, def: 20, spd: 20, hp: 20, ability: 20 };
+const STAT_COLORS: Record<string, string> = {
+  atk: '#e74c3c',
+  def: '#3498db',
+  spd: '#2ecc71',
+  hp: '#e67e22',
+  ability: '#9b59b6',
+};
+
+let landingInterval: ReturnType<typeof setInterval> | null = null;
+const landingRenderers: WebGLRenderer[] = [];
+const landingScenes: Scene[] = [];
+const landingCameras: PerspectiveCamera[] = [];
+const landingModels: ReturnType<typeof buildNftModel>[] = [];
+const landingFrames: number[] = [];
+
+function createLandingParticles() {
+  const container = document.getElementById('landing-particles');
+  if (!container) return;
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'landing-particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = Math.random() * 100 + '%';
+    p.style.animationDelay = Math.random() * 6 + 's';
+    p.style.animationDuration = 4 + Math.random() * 4 + 's';
+    p.style.width = p.style.height = 2 + Math.random() * 3 + 'px';
+    container.appendChild(p);
+  }
+}
+
+function randomCharacter(excludeIds: string[] = []): Character {
+  let c: Character;
+  let attempts = 0;
+  do {
+    c = generateSlimeCharacter();
+    attempts++;
+  } while (excludeIds.includes(c.id) && attempts < 20);
+  return c;
+}
+
+function renderLandingChar(
+  containerId: string,
+  character: Character,
+  _idx: number
+): {
+  renderer: WebGLRenderer;
+  scene: Scene;
+  camera: PerspectiveCamera;
+  model: ReturnType<typeof buildNftModel>;
+  frame: number;
+} {
+  const container = document.getElementById(containerId);
+  if (!container)
+    return {
+      renderer: null as unknown as WebGLRenderer,
+      scene: null as unknown as Scene,
+      camera: null as unknown as PerspectiveCamera,
+      model: null as unknown as ReturnType<typeof buildNftModel>,
+      frame: 0,
+    };
+
+  const w = container.clientWidth || 280;
+  const h = container.clientHeight || 180;
+
+  const renderer = new WebGLRenderer({
+    antialias: false,
+    alpha: true,
+    powerPreference: 'low-power',
+  });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  renderer.setSize(w, h, false);
+  container.innerHTML = '';
+  container.appendChild(renderer.domElement);
+
+  const scene = new Scene();
+  scene.background = new Color(0x0d1510);
+
+  const camera = new PerspectiveCamera(35, w / h, 0.1, 30);
+  camera.position.set(0, 1.5, 3.8);
+
+  scene.add(new HemisphereLight(0xd8edff, 0x273b28, 2.0));
+  const sun = new DirectionalLight(0xfff0c9, 1.4);
+  sun.position.set(5, 8, 4);
+  scene.add(sun);
+
+  const model = buildNftModel(character as any);
+  scene.add(model);
+
+  let frame = 0;
+  function animate() {
+    frame = requestAnimationFrame(animate);
+    model.rotation.y += 0.01;
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  return { renderer, scene, camera, model, frame };
+}
+
+function updateLandingChar(side: 'a' | 'b', character: Character) {
+  const nameEl = document.getElementById(`landing-name-${side}`);
+  const elementEl = document.getElementById(`landing-element-${side}`);
+  const rarityEl = document.getElementById(`landing-rarity-${side}`);
+  const statsEl = document.getElementById(`landing-stats-${side}`);
+  const card = document.getElementById(`landing-char-${side}`);
+
+  if (!nameEl || !elementEl || !rarityEl || !statsEl || !card) return;
+
+  card.classList.add('fade-out');
+
+  setTimeout(() => {
+    nameEl.textContent = character.name;
+    elementEl.textContent = elementLabel(character.traits.element);
+    elementEl.style.color = elementColor(character.traits.element);
+    rarityEl.textContent = rarityLabel(character.traits.rarity);
+    rarityEl.style.color = rarityColor(character.traits.rarity);
+
+    const stats = totalStats(character);
+    const statKeys = ['atk', 'def', 'spd', 'hp', 'ability'] as const;
+    statsEl.innerHTML = statKeys
+      .map((s) => {
+        const val = stats[s];
+        const max = STAT_MAX[s];
+        const pct = Math.min((val / max) * 100, 100);
+        return `<div class="landing-stat">
+          <span class="landing-stat-icon">${statIcon(s)}</span>
+          <span>${statLabel(s)} <b>${val}</b></span>
+          <div class="landing-stat-bar"><div class="landing-stat-fill" style="width:${pct}%;background:${STAT_COLORS[s]}"></div></div>
+        </div>`;
+      })
+      .join('');
+
+    const idx = side === 'a' ? 0 : 1;
+    if (landingRenderers[idx]) {
+      landingRenderers[idx].dispose();
+      if (landingModels[idx] && landingScenes[idx]) landingScenes[idx].remove(landingModels[idx]);
+    }
+    if (landingFrames[idx]) cancelAnimationFrame(landingFrames[idx]);
+
+    const result = renderLandingChar(`landing-3d-${side}`, character, idx);
+    landingRenderers[idx] = result.renderer;
+    landingScenes[idx] = result.scene;
+    landingCameras[idx] = result.camera;
+    landingModels[idx] = result.model;
+    landingFrames[idx] = result.frame;
+
+    card.classList.remove('fade-out');
+    card.classList.add('fade-in');
+    setTimeout(() => card.classList.remove('fade-in'), 500);
+  }, 400);
+}
+
+function showLandingPair() {
+  const charA = randomCharacter([]);
+  const charB = randomCharacter([charA.id]);
+
+  updateLandingChar('a', charA);
+  updateLandingChar('b', charB);
+}
+
+function initLanding() {
+  createLandingParticles();
+  showLandingPair();
+  landingInterval = setInterval(showLandingPair, 7000);
+}
+
+const landingJoinBtn = document.getElementById('landing-join');
+if (landingJoinBtn) {
+  landingJoinBtn.addEventListener('click', () => {
+    if (landingInterval) clearInterval(landingInterval);
+    landingInterval = null;
+    navigation.navigate('login');
+  });
+}
+
+navigation.onNavigate((screen: AppScreen) => {
+  if (screen === 'landing') {
+    if (!landingInterval) {
+      initLanding();
+    }
+  } else {
+    if (landingInterval) {
+      clearInterval(landingInterval);
+      landingInterval = null;
+    }
+  }
+});
+
 if (isLoggedIn()) {
   onAuthSuccess();
 } else if (getPhone()) {
   loginPhone.value = getPhone()!;
+  navigation.navigate('login');
+} else {
+  navigation.navigate('landing');
 }

@@ -101,6 +101,6 @@ describe('Navigation', () => {
     const intro = document.getElementById('intro');
     expect(intro?.classList.contains('hidden')).toBe(true);
     navigation.navigate('login');
-    expect(intro?.classList.contains('hidden')).toBe(false);
+    expect(intro?.classList.contains('hidden')).toBe(true);
   });
 });

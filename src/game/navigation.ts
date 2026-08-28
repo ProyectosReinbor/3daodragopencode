@@ -1,4 +1,5 @@
 export type AppScreen =
+  | 'landing'
   | 'login'
   | 'nft'
   | 'hub'
@@ -13,6 +14,7 @@ export type AppScreen =
 type Listener = (screen: AppScreen) => void;
 
 const SCREENS: AppScreen[] = [
+  'landing',
   'login',
   'nft',
   'hub',
@@ -31,7 +33,7 @@ class Navigation {
 
   navigate(screen: AppScreen): void {
     if (this.current === screen) return;
-    if (this.current !== 'game') this.history.push(this.current);
+    if (this.current !== 'game' && this.current !== 'landing') this.history.push(this.current);
     this.current = screen;
 
     for (const id of SCREENS) {
@@ -43,7 +45,7 @@ class Navigation {
     if (canvas) canvas.style.display = screen === 'game' ? 'block' : 'none';
 
     const intro = document.getElementById('intro');
-    if (intro) intro.classList.toggle('hidden', screen !== 'login');
+    if (intro) intro.classList.add('hidden');
 
     for (const cb of this.listeners) cb(screen);
   }
@@ -62,7 +64,7 @@ class Navigation {
     const canvas = document.querySelector<HTMLElement>('#game-canvas');
     if (canvas) canvas.style.display = screen === 'game' ? 'block' : 'none';
     const intro = document.getElementById('intro');
-    if (intro) intro.classList.toggle('hidden', screen !== 'login');
+    if (intro) intro.classList.add('hidden');
     for (const cb of this.listeners) cb(screen);
   }
 
