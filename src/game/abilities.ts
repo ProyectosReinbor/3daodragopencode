@@ -131,8 +131,10 @@ export function getElementAbilities(element: Element): Ability[] {
   return ELEMENT_ABILITIES[element] || ELEMENT_ABILITIES.fuego;
 }
 
+export function getAllAbilities(): Ability[] { return Object.values(ELEMENT_ABILITIES).flat(); }
+
 export function createActiveAbilities(character: Character): ActiveAbility[] {
-  const abilities = getElementAbilities(character.traits.element);
+  const abilities = character.powers?.length ? getAllAbilities().filter(a => character.powers!.includes(a.id)) : getElementAbilities(character.traits.element);
   return abilities.map((a) => ({
     ...a,
     lastUsed: 0,

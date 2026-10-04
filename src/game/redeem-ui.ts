@@ -1,12 +1,20 @@
 import { redeemCode, getRewardHistory } from './reward-manager';
 import type { RedeemResult, RewardHistoryEntry } from './reward-manager';
+import type { PlayerProfile } from './profile';
+import { QrScanner } from './qr-scanner';
+import { navigation } from './navigation';
+
+let activeScanner: QrScanner | null = null;
+navigation.onNavigate((screen) => {
+  if (screen !== 'redeem') activeScanner?.stop();
+});
 
 export interface RedeemCallbacks {
   onBack: () => void;
   onSuccess: (result: RedeemResult) => void;
 }
 
-export function mountRedeem(callbacks: RedeemCallbacks): void {
+export function mountRedeem(callbacks: RedeemCallbacks, profile?: PlayerProfile): void {
   const input = document.getElementById('redeem-code-input') as HTMLInputElement;
   const button = document.getElementById('redeem-submit') as HTMLButtonElement;
   const message = document.getElementById('redeem-message');
@@ -21,7 +29,37 @@ export function mountRedeem(callbacks: RedeemCallbacks): void {
   button.disabled = false;
   button.textContent = 'Canjear';
 
-  backBtn?.addEventListener('click', callbacks.onBack, { once: true });
+  if (backBtn) backBtn.onclick = callbacks.onBack;
+
+  const select = document.getElementById('redeem-pet') as HTMLSelectElement | null;
+  if (select && profile?.characters) {
+    select.replaceChildren(
+      ...profile.characters.characters.map((pet) => new Option(pet.name, pet.id))
+    );
+    select.value = profile.characters.selectedId;
+  }
+  activeScanner?.stop();
+  const video = document.getElementById('redeem-camera') as HTMLVideoElement | null;
+  const scanStatus = document.getElementById('redeem-scan-status');
+  const scanButton = document.getElementById('redeem-scan');
+  const stopButton = document.getElementById('redeem-scan-stop');
+  if (video && scanStatus && scanButton && stopButton) {
+    video.hidden = true;
+    scanStatus.textContent = '';
+    activeScanner = new QrScanner(video, scanStatus, (code) => {
+      input.value = code.trim();
+      video.hidden = true;
+      scanStatus.textContent = 'Código detectado. Revisa el Pet elegido y confirma el canje.';
+    });
+    scanButton.onclick = () => {
+      video.hidden = false;
+      void activeScanner?.start();
+    };
+    stopButton.onclick = () => {
+      activeScanner?.stop();
+      video.hidden = true;
+    };
+  }
 
   loadHistory(historyContainer);
 
@@ -40,7 +78,8 @@ export function mountRedeem(callbacks: RedeemCallbacks): void {
     button.textContent = 'Canjeando...';
 
     try {
-      const result = await redeemCode(code);
+      const result = await redeemCode(code, select?.value);
+      activeScanner?.stop();
       button.textContent = 'Canjeado';
       showMessage(message, '¡Código canjeado exitosamente!', 'success');
       loadHistory(historyContainer);

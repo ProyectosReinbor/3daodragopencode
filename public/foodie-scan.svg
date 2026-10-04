@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 400" fill="none">
+  <rect width="880" height="400" rx="36" fill="#F1E9DB"/>
+  <circle cx="700" cy="200" r="144" fill="#F7D774" opacity=".6"/>
+  <circle cx="200" cy="230" r="128" fill="#DFE6CB"/>
+  <ellipse cx="442" cy="351" rx="320" ry="15" fill="#3A322C" opacity=".08"/>
+  <path d="M271 330V231c0-45 93-61 121-13l21 112" fill="#E77952"/>
+  <path d="m322 112 52 2-6 61-44 3Z" fill="#DEA47F"/>
+  <circle cx="346" cy="107" r="44" fill="#EBB990"/>
+  <path d="M302 105c-9-73 99-77 90-5l-38-32-52 37Z" fill="#47372D"/>
+  <path d="M378 226 456 195" stroke="#EBB990" stroke-width="28" stroke-linecap="round"/>
+  <rect x="435" y="129" width="55" height="92" rx="10" fill="#373D32" transform="rotate(12 435 129)"/>
+  <rect x="442" y="141" width="41" height="65" rx="4" fill="#B8DAB2" transform="rotate(12 442 141)"/>
+  <path d="m189 291 20-127 7 8 10-6 9 9 9-6 10 9 9-6 9 9-21 125Z" fill="#FFFCF5" stroke="#D6CDBF" stroke-width="2"/>
+  <g fill="#454A3A" transform="translate(213 202)"><path d="M0 0h16v16H0Zm24 0h16v16H24ZM0 24h16v16H0Zm24 24h7v-7h9v23h-9v-7h-7Zm-3-4h8v9h-8Z"/><path d="M5 5h6v6H5Zm24 0h6v6h-6ZM5 29h6v6H5Z" fill="#FFFCF5"/></g>
+  <path d="M149 292h124" stroke="#A69880" stroke-width="9" stroke-linecap="round"/>
+  <g transform="translate(540 195)"><path d="M2 72C-25-17 20-47 48-20c30-34 81-3 58 78 25 11 20 73-5 75H14C-11 129-13 82 2 72Z" fill="#99BD7C"/><ellipse cx="31" cy="51" rx="7" ry="10" fill="#354231"/><ellipse cx="77" cy="51" rx="7" ry="10" fill="#354231"/><path d="M42 66q12 18 23 0" stroke="#354231" stroke-width="5" stroke-linecap="round"/><circle cx="18" cy="67" r="9" fill="#ECA285"/><circle cx="89" cy="67" r="9" fill="#ECA285"/></g>
+  <g transform="translate(702 218)"><path d="M-5 50C-30 18-22-24 15-17l14 15 16-20C84-35 103 10 84 40c19 26 13 70-17 71H16C-15 110-25 72-5 50Z" fill="#EAAF6D"/><ellipse cx="19" cy="42" rx="6" ry="9" fill="#553C2A"/><ellipse cx="61" cy="42" rx="6" ry="9" fill="#553C2A"/><path d="M29 57q10 15 21 0" stroke="#553C2A" stroke-width="4" stroke-linecap="round"/></g>
+  <rect x="555" y="91" width="110" height="44" rx="22" fill="#FFF9EC"/><text x="610" y="119" text-anchor="middle" fill="#4B623A" font-family="sans-serif" font-weight="bold" font-size="17">+1 NIVEL ✦</text>
+  <g transform="translate(744 130)"><rect width="46" height="38" rx="5" fill="#D47F8F"/><path d="M23 0v38M0 12h46" stroke="#FFE3A3" stroke-width="7"/><path d="M23 0c-37-22-16-29 0 0 17-29 39-22 0 0" stroke="#D47F8F" stroke-width="5"/></g>
+  <path d="m508 95 5 16 16 5-16 5-5 16-5-16-16-5 16-5Zm178 82 4 12 12 4-12 4-4 12-4-12-12-4 12-4Z" fill="#D39646"/>
+</svg>

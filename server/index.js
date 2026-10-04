@@ -2,10 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import Database from 'better-sqlite3';
+import { createDatabase } from './database.js';
 import { existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { mountFoodieOnboarding } from './foodie-onboarding.js';
+import { applyPurchaseExperience } from './foodie-growth.js';
+import { randomUUID } from 'node:crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -16,13 +19,14 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
   }
   return 'reinos-ancestrales-dev-secret';
 })();
-const DATA_DIR = join(__dirname, 'data');
+const DATA_DIR = process.env.NODE_ENV === 'test' && process.env.FOODIE_TEST_DATA_DIR
+  ? resolve(process.env.FOODIE_TEST_DATA_DIR) : join(__dirname, 'data');
 const DB_FILE = join(DATA_DIR, 'game.db');
 const FRONTEND_DIR = join(__dirname, '..', 'dist');
 
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 
-const db = new Database(DB_FILE);
+const db = await createDatabase(DB_FILE);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -120,6 +124,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_reward_history_user ON reward_history(user_phone);
   CREATE INDEX IF NOT EXISTS idx_reward_history_created ON reward_history(created_at);
 `);
+
+if (!db.prepare('PRAGMA table_info(products)').all().some((column) => column.name === 'purchase_xp')) {
+  db.exec('ALTER TABLE products ADD COLUMN purchase_xp INTEGER NOT NULL DEFAULT 25');
+}
+db.exec(`CREATE TABLE IF NOT EXISTS foodie_purchases (
+  store_id TEXT NOT NULL REFERENCES stores(id), reference TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE REFERENCES invoice_codes(code),
+  PRIMARY KEY (store_id, reference)
+)`);
 
 function seedStores() {
   const existing = db.prepare('SELECT COUNT(*) AS cnt FROM stores').get();
@@ -432,6 +445,7 @@ function getProfile(phone) {
 }
 
 function saveProfile(phone, profile) {
+  profile.revision = (getProfile(phone)?.revision || 0) + 1;
   const data = JSON.stringify(profile);
   const existing = db.prepare('SELECT phone FROM profiles WHERE phone = ?').get(phone);
   if (existing) {
@@ -553,15 +567,22 @@ app.get('/api/profile', auth, (req, res) => {
   res.json(profile);
 });
 
+mountFoodieOnboarding(app, { db, auth, getProfile, saveProfile });
+
 app.put('/api/profile', auth, (req, res) => {
   const existing = getProfile(req.phone);
-  if (!existing) {
-    saveProfile(req.phone, { nft: null, game: null });
+  if (!existing?.nft && !existing?.characters?.characters?.length) {
+    return res.status(400).json({ error: 'Completa primero la creación de tu Foodie Pet.' });
+  }
+  if (existing && (req.body.revision || 0) !== (existing.revision || 0)) {
+    return res.status(409).json({ error: 'Tu perfil cambió. Vuelve a abrir tu colección antes de guardar.' });
   }
 
   const { nft, inventory, crafted, redeemedRewards, quest, quests, attributePoints, currentZone, unlockedZones, loot, achievements, characters, currency, crystals } = req.body;
 
-  if (!nft || typeof nft !== 'object') return res.status(400).json({ error: 'Perfil invalido: nft requerido' });
+  if ((!nft || typeof nft !== 'object') && (!characters || !Array.isArray(characters.characters) || !characters.characters.length)) {
+    return res.status(400).json({ error: 'Perfil inválido: personaje requerido' });
+  }
   if (typeof attributePoints !== 'number' || attributePoints < 0 || attributePoints > 100) {
     return res.status(400).json({ error: 'attributePoints invalido' });
   }
@@ -611,15 +632,18 @@ app.put('/api/profile', auth, (req, res) => {
     return res.status(400).json({ error: 'Loot invalido' });
   }
 
-  if (nft.level && (typeof nft.level !== 'number' || nft.level < 1 || nft.level > 100)) {
+  if (nft?.level && (typeof nft.level !== 'number' || nft.level < 1 || nft.level > 100)) {
     return res.status(400).json({ error: 'Nivel invalido' });
   }
 
   const profileData = {
+    version: 2,
+    selectedCharacter: req.body.selectedCharacter,
+    dailyQuests: req.body.dailyQuests,
     nft,
     inventory,
-    crafted,
-    redeemedRewards,
+    crafted: existing?.characters?.characters?.some((c) => c.id.startsWith('FP-')) ? existing.crafted : crafted,
+    redeemedRewards: existing?.redeemedRewards || redeemedRewards,
     quest,
     quests,
     attributePoints,
@@ -628,16 +652,28 @@ app.put('/api/profile', auth, (req, res) => {
     loot,
     achievements: Array.isArray(achievements) ? achievements : [],
     characters: characters || { characters: [], selectedId: '' },
-    currency: typeof currency === 'number' ? currency : 0,
-    crystals: typeof crystals === 'number' ? crystals : 0,
+    currency: existing?.currency ?? (typeof currency === 'number' ? currency : 0),
+    crystals: existing?.crystals ?? (typeof crystals === 'number' ? crystals : 0),
   };
 
+  // Foodie Pets are created and improved by dedicated server operations.
+  if (existing?.characters?.characters?.some((c) => c.id.startsWith('FP-'))) {
+    profileData.characters = existing.characters;
+    const selected = req.body.selectedCharacter;
+    if (existing.characters.characters.some((c) => c.id === selected)) {
+      profileData.characters.selectedId = selected;
+      profileData.selectedCharacter = selected;
+    } else {
+      profileData.selectedCharacter = existing.characters.selectedId;
+    }
+  }
+
   saveProfile(req.phone, profileData);
-  res.json({ ok: true });
+  res.json({ ok: true, revision: profileData.revision });
 });
 
 app.post('/api/redeem', auth, (req, res) => {
-  const { code } = req.body;
+  const { code, characterId } = req.body;
   if (!code || typeof code !== 'string') {
     return res.status(400).json({ error: 'Código de factura requerido.' });
   }
@@ -657,6 +693,8 @@ app.post('/api/redeem', auth, (req, res) => {
 
     const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(invoice.product_id);
     if (!product) return { error: 'Producto asociado no encontrado.' };
+    const store = db.prepare('SELECT id FROM stores WHERE id = ? AND active = 1').get(product.store_id);
+    if (!store) return { error: 'El restaurante no está disponible.' };
 
     const promo = db.prepare(`
       SELECT p.* FROM promotions p
@@ -679,6 +717,9 @@ app.post('/api/redeem', auth, (req, res) => {
       return { error: 'Ya has canjeado este código anteriormente.' };
     }
 
+    let growth;
+    try { growth = applyPurchaseExperience(profile, product.purchase_xp, characterId); }
+    catch (error) { return { error: error.message }; }
     const deliveryResult = deliverReward(profile, product);
 
     if (!Array.isArray(profile.redeemedRewards)) profile.redeemedRewards = [];
@@ -694,12 +735,13 @@ app.post('/api/redeem', auth, (req, res) => {
       req.phone, trimmedCode,
       deliveryResult.rewardType,
       deliveryResult.rewardId,
-      deliveryResult.rewardName,
+      `${deliveryResult.rewardName} · +${growth.amount} XP para ${growth.name}`,
       deliveryResult.quantity
     );
 
     return {
       success: true,
+      growth,
       reward: {
         type: deliveryResult.rewardType,
         id: deliveryResult.rewardId,
@@ -980,6 +1022,33 @@ app.post('/api/admin/stores', adminAuth, (req, res) => {
 });
 
 // --- Admin: Create invoice (store creates it, auto-delivers to user) ---
+app.post('/api/admin/stores/:id/invoice-codes', adminAuth, (req, res) => {
+  const { product_id, purchase_reference } = req.body;
+  if (typeof purchase_reference !== 'string' || !purchase_reference.trim() || purchase_reference.length > 100) {
+    return res.status(400).json({ error: 'Referencia de compra requerida (máximo 100 caracteres).' });
+  }
+  const store = db.prepare('SELECT id FROM stores WHERE id = ? AND active = 1').get(req.params.id);
+  const product = db.prepare('SELECT id FROM products WHERE id = ? AND store_id = ? AND active = 1').get(product_id, req.params.id);
+  if (!store || !product) return res.status(404).json({ error: 'Restaurante o producto no disponible.' });
+  const reference = purchase_reference.trim();
+  try {
+    const issue = db.transaction(() => {
+      const existing = db.prepare('SELECT code FROM foodie_purchases WHERE store_id = ? AND reference = ?').get(store.id, reference);
+      if (existing) return existing.code;
+      const code = `FP-${randomUUID().toUpperCase()}`;
+      db.prepare('INSERT INTO invoice_codes (code, product_id, status, campaign_id, created_at, metadata) VALUES (?, ?, ?, ?, ?, ?)').run(
+        code, product.id, 'AVAILABLE', 'foodie-purchase', Date.now(), JSON.stringify({ purchase_reference: reference, store_id: store.id })
+      );
+      db.prepare('INSERT INTO foodie_purchases (store_id, reference, code) VALUES (?, ?, ?)').run(store.id, reference, code);
+      return code;
+    });
+    const code = issue();
+    res.json({ code, qrPayload: code, status: 'AVAILABLE' });
+  } catch {
+    res.status(400).json({ error: 'No se pudo emitir el código de esta compra.' });
+  }
+});
+
 app.post('/api/admin/stores/:id/invoices', adminAuth, (req, res) => {
   const { product_id, user_phone } = req.body;
   if (!product_id || !user_phone) return res.status(400).json({ error: 'product_id y user_phone requeridos' });
@@ -1044,7 +1113,7 @@ if (existsSync(FRONTEND_DIR)) {
   app.get('*', (_req, res) => res.status(500).json({ error: 'Frontend not built. Run: npm run build' }));
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[Reinos Ancestrales] http://localhost:${PORT}`);
+app.listen(PORT, process.env.NODE_ENV === 'test' ? '127.0.0.1' : '0.0.0.0', () => {
+  console.log(`[Foodie Pets] http://localhost:${PORT}`);
   console.log(`[Frontend] ${existsSync(FRONTEND_DIR) ? 'serving from ' + FRONTEND_DIR : 'NOT BUILT'}`);
 });

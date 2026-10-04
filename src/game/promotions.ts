@@ -29,7 +29,17 @@ export function getPromotionStatus(
 }
 
 export function formatPromotionDates(promo: Promotion): string {
-  const start = new Date(promo.start_date).toLocaleDateString('es-ES');
-  const end = new Date(promo.end_date).toLocaleDateString('es-ES');
+  const format = (value: string) => {
+    // A date without a time is a calendar day, not a UTC instant.
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? new Date(`${value}T12:00:00`)
+      : new Date(value);
+    return date.toLocaleDateString(
+      'es-ES',
+      /^\d{4}-\d{2}-\d{2}$/.test(value) ? undefined : { timeZone: 'UTC' }
+    );
+  };
+  const start = format(promo.start_date);
+  const end = format(promo.end_date);
   return `${start} → ${end}`;
 }

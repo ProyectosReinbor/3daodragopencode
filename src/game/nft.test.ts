@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { Box3 } from 'three';
 import {
+  buildNftModel,
   mulberry32,
   phoneHash,
   generateNftFromPhone,
@@ -176,5 +178,21 @@ describe('label and color helpers', () => {
   it('statIcon returns emoji icons', () => {
     expect(statIcon('atk')).toBe('⚔');
     expect(statIcon('def')).toBe('🛡');
+  });
+});
+
+
+describe('custom Pet anatomy', () => {
+  it('renders the chosen limb count on every body and reflects limb length', () => {
+    const pet = generateNftFromPhone('55512345');
+    for (const bodyType of ['bestia', 'golem', 'humanoid', 'espectral'] as const) {
+      for (const limbCount of [0, 2, 4, 6, 8]) {
+        const model = buildNftModel({ ...pet, traits: { ...pet.traits, rarity: 'comun', bodyType, headShape: 'diamond', limbCount, limbLength: 0.5 } });
+        expect(model.children.filter(child => child.name === 'custom-limb')).toHaveLength(limbCount);
+      }
+    }
+    const short = buildNftModel({ ...pet, traits: { ...pet.traits, rarity: 'comun', headShape: 'round', limbCount: 4, limbLength: 0.5 } });
+    const long = buildNftModel({ ...pet, traits: { ...pet.traits, rarity: 'comun', headShape: 'round', limbCount: 4, limbLength: 1.8 } });
+    expect(new Box3().setFromObject(long).max.y).toBeGreaterThan(new Box3().setFromObject(short).max.y);
   });
 });

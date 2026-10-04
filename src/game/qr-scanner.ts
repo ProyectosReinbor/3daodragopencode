@@ -6,6 +6,7 @@ type BarcodeDetectorFactory = new (options: { formats: string[] }) => BarcodeDet
 export class QrScanner {
   private stream?: MediaStream;
   private active = false;
+  private session = 0;
   private readonly detector?: BarcodeDetectorLike;
 
   constructor(
@@ -19,13 +20,15 @@ export class QrScanner {
   }
 
   async start() {
+    this.stop();
+    const session = this.session;
     if (!this.detector) {
       this.status.textContent =
-        'QR camera scan is not supported on this browser. Use the code field.';
+        'Este navegador no permite leer QR con la cámara. Escribe el código de tu factura.';
       return;
     }
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
           width: { ideal: 640 },
@@ -33,17 +36,28 @@ export class QrScanner {
         },
         audio: false,
       });
+      if (session !== this.session) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      this.stream = stream;
       this.video.srcObject = this.stream;
       await this.video.play();
+      if (session !== this.session) return;
       this.active = true;
-      this.status.textContent = 'Point the camera at the invoice QR code.';
+      this.status.textContent = 'Apunta al código QR Foodie Pets de tu factura.';
       this.readFrame();
     } catch {
-      this.status.textContent = 'Camera permission was not granted. Use the code field.';
+      if (session !== this.session) return;
+      this.stream?.getTracks().forEach((track) => track.stop());
+      this.stream = undefined;
+      this.status.textContent =
+        'No se pudo abrir la cámara. Puedes escribir el código de tu factura.';
     }
   }
 
   stop() {
+    this.session++;
     this.active = false;
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = undefined;
@@ -52,8 +66,10 @@ export class QrScanner {
 
   private readFrame = async () => {
     if (!this.active || !this.detector) return;
+    const session = this.session;
     try {
       const codes = await this.detector.detect(this.video);
+      if (!this.active || session !== this.session) return;
       if (codes[0]?.rawValue) {
         this.onCode(codes[0].rawValue);
         this.stop();
@@ -62,6 +78,6 @@ export class QrScanner {
     } catch {
       /* A frame can be unreadable while the camera starts. */
     }
-    requestAnimationFrame(this.readFrame);
+    if (session === this.session && this.active) requestAnimationFrame(this.readFrame);
   };
 }

@@ -41,7 +41,8 @@ async function req<T>(
   path: string,
   body?: unknown,
   retries = 1,
-  skipAuthCheck = false
+  skipAuthCheck = false,
+  method: 'GET' | 'POST' | 'PUT' = body ? 'POST' : 'GET'
 ): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -50,7 +51,7 @@ async function req<T>(
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(`/api${path}`, {
-        method: body ? 'POST' : 'GET',
+        method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
       });
@@ -102,16 +103,13 @@ export async function apiLogin(phoneStr: string, password: string): Promise<void
 }
 
 export async function apiGetProfile(): Promise<PlayerProfile | null> {
-  try {
-    return await req<PlayerProfile>('/profile');
-  } catch {
-    return null;
-  }
+  return req<PlayerProfile>('/profile');
 }
 
 export async function apiSaveProfile(profile: PlayerProfile): Promise<boolean> {
   try {
-    await req('/profile', profile, 2);
+    const result = await req<{ revision: number }>('/profile', profile, 0, false, 'PUT');
+    profile.revision = result.revision;
     return true;
   } catch {
     return false;

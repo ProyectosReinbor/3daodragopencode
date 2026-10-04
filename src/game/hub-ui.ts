@@ -1,7 +1,28 @@
 import type { PlayerProfile } from './profile';
 import type { CharacterManager, Character } from './characters';
 import { totalStats } from './characters';
-import { rarityLabel, rarityColor, elementLabel, elementColor, statLabel, statIcon } from './nft';
+import {
+  rarityLabel,
+  rarityColor,
+  elementLabel,
+  elementColor,
+  statLabel,
+  statIcon,
+  xpForLevel,
+} from './nft';
+import { mountPetPreview } from './pet-preview';
+import { navigation } from './navigation';
+
+let hubPet: Character | undefined;
+let stopPreview: (() => void) | undefined;
+function showHubPet() {
+  stopPreview?.();
+  stopPreview = undefined;
+  const container = document.getElementById('hub-pet-visual');
+  if (container && hubPet && navigation.getCurrent() === 'hub')
+    stopPreview = mountPetPreview(container, hubPet);
+}
+navigation.onNavigate(showHubPet);
 
 export interface HubCallbacks {
   onCharacters: () => void;
@@ -9,10 +30,12 @@ export interface HubCallbacks {
   onStores: () => void;
   onStartGame: () => void;
   onRedeem: () => void;
+  onHome?: () => void;
+  onLogout?: () => void;
 }
 
 export function mountHub(
-  profile: PlayerProfile,
+  _profile: PlayerProfile,
   characterManager: CharacterManager,
   callbacks: HubCallbacks
 ): void {
@@ -25,16 +48,21 @@ export function mountHub(
   const storeBtn = document.getElementById('hub-stores');
   const startBtn = document.getElementById('hub-start');
   const redeemBtn = document.getElementById('hub-redeem');
+  const homeBtn = document.getElementById('hub-home');
+  if (homeBtn) homeBtn.onclick = callbacks.onHome || null;
+  const logoutBtn = document.getElementById('hub-logout');
+  if (logoutBtn) logoutBtn.onclick = callbacks.onLogout || null;
 
-  charBtn?.addEventListener('click', callbacks.onCharacters);
-  invBtn?.addEventListener('click', callbacks.onInventory);
-  startBtn?.addEventListener('click', callbacks.onStartGame);
-
-  storeBtn?.addEventListener('click', callbacks.onStores);
-  redeemBtn?.addEventListener('click', callbacks.onRedeem);
+  if (charBtn) charBtn.onclick = callbacks.onCharacters;
+  if (invBtn) invBtn.onclick = callbacks.onInventory;
+  if (startBtn) startBtn.onclick = callbacks.onStartGame;
+  if (storeBtn) storeBtn.onclick = callbacks.onStores;
+  if (redeemBtn) redeemBtn.onclick = callbacks.onRedeem;
 }
 
 export function updateHubCharacter(character: Character): void {
+  hubPet = character;
+  showHubPet();
   const nameEl = document.getElementById('hub-char-name');
   const levelEl = document.getElementById('hub-char-level');
   const rarityEl = document.getElementById('hub-char-rarity');
@@ -44,6 +72,12 @@ export function updateHubCharacter(character: Character): void {
 
   if (nameEl) nameEl.textContent = character.name;
   if (levelEl) levelEl.textContent = `Nivel ${character.level}`;
+  const xpEl = document.getElementById('hub-char-xp');
+  if (xpEl)
+    xpEl.textContent =
+      character.level >= 100
+        ? 'Nivel máximo'
+        : `${character.xp} / ${xpForLevel(character.level)} XP`;
   if (rarityEl) {
     rarityEl.textContent = rarityLabel(character.traits.rarity);
     rarityEl.style.color = rarityColor(character.traits.rarity);
@@ -73,9 +107,21 @@ function updateHubNews(): void {
   const container = document.getElementById('hub-news');
   if (!container) return;
   const news = [
-    { icon: '⚔', title: 'Nuevo Evento', desc: 'Tormenta de almas — próximamente.' },
-    { icon: '👤', title: 'Nuevos Personajes', desc: 'Más héroes llegarán al reino.' },
-    { icon: '🔮', title: 'Próxima Actualización', desc: 'Mejoras y contenido en camino.' },
+    {
+      icon: '✦',
+      title: 'Tu colección',
+      desc: 'Cada compañero tiene su propio elemento y personalidad.',
+    },
+    {
+      icon: '🍴',
+      title: 'Restaurantes asociados',
+      desc: 'Descubre los negocios y sus promociones disponibles.',
+    },
+    {
+      icon: '🎁',
+      title: 'Tus recompensas',
+      desc: 'Canjea el código de tus compras y consulta tu historial.',
+    },
   ];
   container.innerHTML = news
     .map(

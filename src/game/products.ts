@@ -18,6 +18,7 @@ export function getRarityLabel(rarity: string): string {
     raro: 'Raro',
     epico: 'Épico',
     legendario: 'Legendario',
+    especial: 'Especial',
   };
   return labels[rarity] ?? rarity;
 }
@@ -28,6 +29,7 @@ export function getRarityColor(rarity: string): string {
     raro: '#4488ff',
     epico: '#aa44ff',
     legendario: '#ffaa00',
+    especial: '#df6499',
   };
   return colors[rarity] ?? '#aabbaa';
 }

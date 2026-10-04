@@ -52,6 +52,7 @@ export interface TradeOffer {
 }
 
 export interface PlayerProfile {
+  revision?: number;
   version?: number;
   nft?: NftCharacter;
   characters?: CharacterCollection;
@@ -125,7 +126,6 @@ export function createProfile(character: Character): PlayerProfile {
 }
 
 export function migrateProfile(profile: PlayerProfile): void {
-  if (profile.version && profile.version >= 2) return;
   if (profile.nft && !profile.characters) {
     const chars = createEmptyCollection();
     const nft = profile.nft;
@@ -146,7 +146,7 @@ export function migrateProfile(profile: PlayerProfile): void {
     profile.characters = chars;
     profile.selectedCharacter = character.id;
   }
-  if (profile.characters) {
+  if (profile.characters && profile.characters.characters.length > 0) {
     ensureStarterCharacter(profile.characters);
     if (
       !profile.selectedCharacter ||
@@ -154,6 +154,7 @@ export function migrateProfile(profile: PlayerProfile): void {
     ) {
       profile.selectedCharacter = profile.characters.characters[0]?.id || '';
     }
+    profile.characters.selectedId = profile.selectedCharacter || profile.characters.selectedId;
   }
   profile.version = 2;
   delete profile.nft;

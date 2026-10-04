@@ -24,8 +24,11 @@ export function mountRewardResult(result: RedeemResult, callbacks: RewardResultC
       <p class="reward-result-detail">
         ${getRewardDescription(result)}
       </p>
+      ${result.growth ? `<p class="foodie-growth-result">+${result.growth.amount} XP para <strong id="growth-pet-name"></strong><br />Nivel ${result.growth.before.level} → Nivel ${result.growth.after.level}</p>` : ''}
     </div>
   `;
+  const petName = document.getElementById('growth-pet-name');
+  if (petName && result.growth) petName.textContent = result.growth.name;
 
   continueBtn.onclick = () => {
     callbacks.onContinue();

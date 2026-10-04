@@ -1,11 +1,11 @@
 {
-  "name": "Reinos Ancestrales",
-  "short_name": "Reinos",
-  "description": "Aventura medieval 3D de bajo consumo.",
+  "name": "Foodie Pets",
+  "short_name": "Foodie Pets",
+  "description": "Colecciona compañeros únicos y mejóralos con tus compras en restaurantes.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#17251d",
-  "theme_color": "#17251d",
+  "background_color": "#fff7eb",
+  "theme_color": "#fff7eb",
   "orientation": "any",
   "icons": [
     { "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },

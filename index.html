@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#17251d" />
-    <meta name="description" content="MVP de Reinos Ancestrales" />
+    <meta name="theme-color" content="#fff7eb" />
+    <meta name="description" content="Personajes únicos coleccionables que crecen con tus compras en restaurantes." />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-    <title>Reinos Ancestrales</title>
+    <title>Foodie Pets</title>
   </head>
   <body>
     <main id="app">
@@ -18,7 +18,7 @@
       <section class="hud" aria-label="Estado del personaje">
         <div class="brand">
           <span>*</span>
-          <div><strong>REINOS</strong><small>ANCESTRALES</small></div>
+          <div><strong>FOODIE</strong><small>PETS</small></div>
         </div>
         <div class="bars">
           <label
@@ -221,14 +221,11 @@
       <section class="landing-screen" id="landing-screen">
         <div class="landing-particles" id="landing-particles"></div>
         <div class="landing-content">
+          <nav class="foodie-nav" aria-label="Navegación principal"><a class="foodie-wordmark" href="#">foodie<span>pets ✦</span></a><button id="landing-login" class="foodie-text-button">Ya tengo una cuenta ↗</button></nav>
           <div class="landing-hero">
-            <p class="eyebrow">MUNDO 3D • PWA • RPG</p>
-            <h1 class="landing-title">Reinos<br><span>Ancestrales</span></h1>
-            <p class="landing-desc">
-              Forja tu guerrero unico en un mundo de fantasia. Combate criaturas ancestrales,
-              recolecta recursos raros, sube de nivel y desafiate en misiones epicas.
-              Cada personaje es unico — tu destino esta en tus manos.
-            </p>
+            <p class="foodie-kicker">BUENA COMIDA. GRANDES AVENTURAS.</p>
+            <h1 class="landing-title">Foodie <span>Pets</span><i>✦</i></h1>
+            <p class="landing-desc">Tu próximo compañero<br />podría estar aquí.</p>
           </div>
           <div class="landing-showcase">
             <div class="landing-char-card" id="landing-char-a">
@@ -242,7 +239,7 @@
                 <div class="landing-char-stats" id="landing-stats-a"></div>
               </div>
             </div>
-            <div class="landing-vs">VS</div>
+            <div class="landing-vs" aria-hidden="true">✦</div>
             <div class="landing-char-card" id="landing-char-b">
               <div class="landing-char-3d" id="landing-3d-b"></div>
               <div class="landing-char-info">
@@ -256,17 +253,30 @@
             </div>
           </div>
           <button class="landing-join-btn" id="landing-join">
-            <span>UNIRSE AL MUNDO</span>
+            <span>Unirse al mundo ↗</span>
           </button>
-          <p class="landing-footer">Combate · Explora · Conquista</p>
+          <div class="foodie-collection-note"><span>Dos de los compañeros que puedes descubrir.</span><button id="landing-next" class="foodie-text-button">Ver otros Pets ↻</button></div>
+          <section class="foodie-how" aria-labelledby="foodie-how-title">
+            <p class="foodie-kicker">CADA COMPRA CUENTA</p>
+            <h2 id="foodie-how-title">Come rico.<br /><span>Hazlos crecer.</span></h2>
+            <p>Apoya a tus restaurantes favoritos y mejora tus Foodie Pets. Compra, escanea el código QR de tu factura y desbloquea niveles, regalos y habilidades para tus personajes únicos.</p>
+            <div class="foodie-steps"><span><b>01</b> Descubre tu Pet</span><span><b>02</b> Compra y escanea</span><span><b>03</b> Mejora tu colección</span></div>
+            <div class="foodie-animation-slot"><img src="/foodie-scan.svg" alt="Una persona escanea el QR de su factura junto a sus Foodie Pets felices, con señales de nuevos niveles y regalos." width="880" height="400" loading="lazy" /><span class="foodie-animation-caption">Un pequeño antojo. Una gran aventura.</span></div>
+          </section>
+          <section class="foodie-business" aria-labelledby="foodie-business-title"><div><p class="foodie-kicker">PARA NEGOCIOS DE COMIDA</p><h2 id="foodie-business-title">Tu restaurante puede ser<br />parte de su próxima aventura.</h2><p>Únete a Foodie Pets y convierte las compras de tus clientes en una experiencia que los invita a volver. Contáctanos para implementar el software en tu negocio.</p></div><div><a id="foodie-whatsapp" class="foodie-primary" target="_blank" rel="noopener noreferrer" aria-disabled="true">Contáctanos por WhatsApp ↗</a><small id="whatsapp-pending">Contacto por WhatsApp disponible próximamente.</small></div></section>
+          <footer class="foodie-footer"><strong>foodie pets ✦</strong><span>Tu comida favorita. Tus compañeros únicos.</span></footer>
         </div>
+      </section>
+      <section class="onboarding-screen hidden" id="onboarding-screen">
+        <div class="foodie-onboarding-panel"><button id="onboarding-back" class="foodie-text-button">← Volver a Foodie Pets</button><p class="foodie-kicker" id="onboarding-status"></p><div id="onboarding-content"></div><p id="onboarding-error" role="alert"></p></div>
       </section>
       <section class="login-screen hidden" id="login-screen">
         <div class="login-panel">
+          <button id="login-back" class="foodie-text-button">← Volver a Foodie Pets</button>
           <p class="eyebrow">INICIAR SESION</p>
-          <h1>Reinos Ancestrales</h1>
+          <h1>Foodie Pets</h1>
           <p class="login-subtitle">
-            Crea tu guerrero unico. Combate, recolecta y sube de nivel en un mundo 3D.
+            Guarda a tu compañero único y empieza tu colección Foodie Pets.
           </p>
           <div class="login-form">
             <label
@@ -298,19 +308,23 @@
             >Tu personaje se guarda en el servidor. Accede desde cualquier dispositivo.</small
           >
           <button class="clear-cache-button" id="clear-cache-button">Limpiar cache</button>
-          <small>Usa joystick/WASD. Espacio ataca; E interactua.</small>
+          <small>Tu colección te espera. Guarda tu Pet para continuar desde cualquier dispositivo.</small>
         </div>
       </section>
       <section class="hub-screen hidden" id="hub-screen">
         <div class="hub-panel">
+          <button id="hub-home" class="foodie-text-button">← Volver a Foodie Pets</button>
+          <button id="hub-logout" class="foodie-text-button">Cerrar sesión</button>
           <div class="hub-welcome">
             <p class="eyebrow">BIENVENIDO</p>
-            <h1>Reinos Ancestrales</h1>
+            <h1>Foodie Pets</h1>
           </div>
           <div class="hub-character-card">
+            <div id="hub-pet-visual" class="onboarding-pet-preview"></div>
             <div class="hub-char-info">
               <strong id="hub-char-name">-</strong>
               <span id="hub-char-level">Nivel 1</span>
+              <span id="hub-char-xp"></span>
               <div class="hub-char-tags">
                 <span id="hub-char-rarity">-</span>
                 <span id="hub-char-element">-</span>
@@ -320,11 +334,11 @@
             <div class="hub-char-stats" id="hub-char-stats"></div>
           </div>
           <div class="hub-actions">
-            <button class="hub-btn" id="hub-characters">Mis Personajes</button>
+            <button class="hub-btn" id="hub-characters">Mis Foodie Pets</button>
             <button class="hub-btn" id="hub-inventory">Inventario</button>
-            <button class="hub-btn" id="hub-stores">Tiendas Asociadas</button>
-            <button class="hub-btn" id="hub-redeem">Canjear Factura</button>
-            <button class="hub-btn primary" id="hub-start">Entrar al Mundo</button>
+            <button class="hub-btn" id="hub-stores">Restaurantes</button>
+            <button class="hub-btn" id="hub-redeem">Escanear factura</button>
+            <button class="hub-btn primary" id="hub-start">Explorar el mundo 3D</button>
           </div>
           <div class="hub-news" id="hub-news"></div>
         </div>
@@ -333,7 +347,7 @@
         <div class="characters-panel">
           <button class="close-panel" id="characters-back" aria-label="Volver">x</button>
           <p class="eyebrow">COLECCION</p>
-          <h2>Mis Personajes</h2>
+          <h2>Mis Foodie Pets</h2>
           <div class="characters-list" id="characters-list"></div>
         </div>
       </section>
@@ -349,7 +363,7 @@
         <div class="stores-panel">
           <button class="close-panel" id="stores-back" aria-label="Volver">x</button>
           <p class="eyebrow">TIENDAS</p>
-          <h2>Tiendas Asociadas</h2>
+          <h2>Restaurantes</h2>
           <div class="stores-list" id="stores-list"></div>
         </div>
       </section>
@@ -364,7 +378,12 @@
         <div class="redeem-panel">
           <button class="close-panel" id="redeem-back" aria-label="Volver">x</button>
           <p class="eyebrow">CANJE</p>
-          <h2>Canjear Factura</h2>
+          <h2>Escanear factura</h2>
+          <label for="redeem-pet">¿Qué Pet quieres mejorar?</label>
+          <select id="redeem-pet"></select>
+          <div class="foodie-scan-actions"><button id="redeem-scan" class="redeem-btn">Abrir cámara</button><button id="redeem-scan-stop" class="redeem-btn">Cerrar cámara</button></div>
+          <video id="redeem-camera" playsinline muted hidden></video>
+          <p id="redeem-scan-status" role="status"></p>
           <div class="redeem-form">
             <label for="redeem-code-input">Código de factura</label>
             <input
@@ -388,6 +407,7 @@
       <section class="reward-result-screen hidden" id="reward-result-screen">
         <div class="reward-result-panel">
           <div class="reward-result-content" id="reward-result-content"></div>
+          <p id="reward-result-message" role="alert"></p>
           <div class="reward-result-actions">
             <button class="redeem-btn primary" id="reward-result-continue">Continuar</button>
           </div>
@@ -396,7 +416,7 @@
       <section class="intro hidden" id="intro">
         <div class="intro-panel">
           <p class="eyebrow">MVP WEB - PWA</p>
-          <h1>Reinos Ancestrales</h1>
+          <h1>Foodie Pets</h1>
           <p>Entrena tu guerrero unico. Combate, recolecta y sube de nivel en un mundo 3D.</p>
         </div>
       </section>

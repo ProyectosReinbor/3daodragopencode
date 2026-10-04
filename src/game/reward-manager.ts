@@ -1,5 +1,12 @@
 export interface RedeemResult {
   success: boolean;
+  growth?: {
+    characterId: string;
+    name: string;
+    amount: number;
+    before: { level: number; xp: number };
+    after: { level: number; xp: number };
+  };
   reward: {
     type: string;
     id: string;
@@ -31,7 +38,7 @@ export interface PendingRewards {
   recent: RewardHistoryEntry[];
 }
 
-export async function redeemCode(code: string): Promise<RedeemResult> {
+export async function redeemCode(code: string, characterId?: string): Promise<RedeemResult> {
   const token = localStorage.getItem('reinos-auth-token');
   const res = await fetch('/api/redeem', {
     method: 'POST',
@@ -39,7 +46,7 @@ export async function redeemCode(code: string): Promise<RedeemResult> {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, characterId }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Error al canjear código');

@@ -1,7 +1,7 @@
 import type { CharacterManager, Character } from './characters';
 import { totalStats } from './characters';
 import { rarityLabel, rarityColor, elementLabel, elementColor, statIcon } from './nft';
-import { apiSaveProfile } from './api';
+import { apiSaveProfile, showNotification } from './api';
 import type { PlayerProfile } from './profile';
 
 export interface CharactersCallbacks {
@@ -16,12 +16,13 @@ export function mountCharacters(
 ): void {
   renderCharacters(characterManager);
 
-  document.getElementById('characters-back')?.addEventListener('click', callbacks.onBack);
+  const back = document.getElementById('characters-back');
+  if (back) back.onclick = callbacks.onBack;
 
   const container = document.getElementById('characters-list');
   if (!container) return;
 
-  container.addEventListener('click', (e) => {
+  container.onclick = async (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-char-id]');
     if (!btn) return;
     const charId = btn.dataset.charId;
@@ -31,10 +32,17 @@ export function mountCharacters(
     characterManager.selectCharacter(charId);
     profile.selectedCharacter = charId;
     profile.characters = characterManager.getCollection();
-    apiSaveProfile(profile);
+    if (!(await apiSaveProfile(profile))) {
+      characterManager.selectCharacter(active.id);
+      profile.selectedCharacter = active.id;
+      showNotification(
+        'No se pudo guardar la selección. Vuelve a abrir tu colección e intenta de nuevo.',
+        'error'
+      );
+    }
     renderCharacters(characterManager);
     callbacks.onSelected();
-  });
+  };
 }
 
 function renderCharacters(characterManager: CharacterManager): void {
@@ -44,6 +52,9 @@ function renderCharacters(characterManager: CharacterManager): void {
   const active = characterManager.getActive();
 
   container.innerHTML = all.map((c) => renderCharacterCard(c, c.id === active.id)).join('');
+  container.querySelectorAll('.char-card-name').forEach((element, index) => {
+    element.textContent = all[index].name;
+  });
 }
 
 function renderCharacterCard(character: Character, isActive: boolean): string {
@@ -62,7 +73,7 @@ function renderCharacterCard(character: Character, isActive: boolean): string {
   return `
     <div class="char-card ${isActive ? 'active' : ''}">
       <div class="char-card-header">
-        <strong class="char-card-name">${character.name}</strong>
+        <strong class="char-card-name"></strong>
         ${isActive ? '<span class="char-active-badge">ACTIVO</span>' : ''}
       </div>
       <div class="char-card-meta">

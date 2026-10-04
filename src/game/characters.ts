@@ -22,33 +22,13 @@ export interface Character {
   unlockedAt: number;
   source: 'generated' | 'starter' | 'promo' | 'exclusive';
   isStarter: boolean;
+  powers?: string[];
 }
 
 export interface CharacterCollection {
   characters: Character[];
   selectedId: string;
 }
-
-const SLIME_TRAITS: NftTraits = {
-  element: 'agua',
-  rarity: 'comun',
-  bodyType: 'golem',
-  primaryColor: 0x44cc88,
-  secondaryColor: 0x33aa77,
-  accentColor: 0x88eecc,
-  eyeStyle: 0,
-  hornStyle: 0,
-  wingStyle: 0,
-  pattern: 0,
-};
-
-const SLIME_STATS: NftStats = {
-  atk: 4,
-  def: 4,
-  spd: 4,
-  hp: 4,
-  ability: 4,
-};
 
 const ELEMENT_PREFIXES: Record<Element, string[]> = {
   fuego: ['Ignis', 'Pyro', 'Ember', 'Flam', 'Scorch', 'Cinder'],
@@ -172,7 +152,7 @@ function makeCharacter(rng: Rng): Character {
   const element = pick<Element>(['fuego', 'agua', 'tierra', 'aire', 'sombra', 'luz'], rng);
   const bodyType = pick<BodyType>(['humanoid', 'bestia', 'espectral', 'golem'], rng);
   const colors = ELEMENT_COLORS[element];
-  const pools: Record<Rarity, number> = { comun: 28, raro: 38, epico: 52, legendario: 72 };
+  const pools: Record<Rarity, number> = { comun: 28, raro: 38, epico: 52, legendario: 72, especial: 84 };
   return {
     id,
     name: genName(element, id, rng),
@@ -284,6 +264,11 @@ export class CharacterManager {
   getActive(): Character {
     const active = this.collection.characters.find((c) => c.id === this.collection.selectedId);
     if (!active) {
+      const existing = this.collection.characters[0];
+      if (existing) {
+        this.collection.selectedId = existing.id;
+        return existing;
+      }
       const starter = createStarterCharacter();
       this.collection.characters.push(starter);
       this.collection.selectedId = starter.id;

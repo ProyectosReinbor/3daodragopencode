@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createProfile, currentQuestDef, advanceQuest, QUESTS, TRADES } from './profile';
+import {
+  createProfile,
+  migrateProfile,
+  currentQuestDef,
+  advanceQuest,
+  QUESTS,
+  TRADES,
+} from './profile';
 import { generateCharacterFromPhone } from './characters';
 
 const localStorageMock = (() => {
@@ -24,6 +31,25 @@ beforeEach(() => {
 });
 
 describe('createProfile', () => {
+  it('does not generate a starter while migrating an empty server collection', () => {
+    const profile = createProfile(generateCharacterFromPhone('1234567890'));
+    profile.characters!.characters = [];
+    profile.characters!.selectedId = '';
+    profile.selectedCharacter = '';
+    migrateProfile(profile);
+    expect(profile.characters!.characters).toHaveLength(0);
+  });
+
+  it('repairs selection without adding another character to an existing profile', () => {
+    const character = generateCharacterFromPhone('1234567890');
+    const profile = createProfile(character);
+    profile.characters!.selectedId = 'missing';
+    profile.selectedCharacter = 'missing';
+    migrateProfile(profile);
+    expect(profile.characters!.selectedId).toBe(character.id);
+    expect(profile.selectedCharacter).toBe(character.id);
+    expect(profile.characters!.characters).toHaveLength(1);
+  });
   it('creates profile with default values', () => {
     const character = generateCharacterFromPhone('1234567890');
     const profile = createProfile(character);

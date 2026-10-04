@@ -1,6 +1,8 @@
-# Reinos Ancestrales
+# Foodie Pets
 
-RPG 3D browser game built as a Progressive Web App (PWA). Players create unique NFT-style characters, explore zones, fight creatures, collect resources, craft items, and progress through quests.
+Colecciona personajes únicos y mejóralos con compras verificadas en restaurantes. Incluye portada, ruleta de elementos, nombre personalizado, dardo inicial, colección y canje de facturas. El mundo 3D original permanece como actividad secundaria.
+
+Consulta [DESARROLLO-FOODIE-PETS.md](DESARROLLO-FOODIE-PETS.md) para conocer el avance, ejecutar la versión local y revisar lo pendiente. La documentación del RPG que sigue corresponde al sistema heredado.
 
 ## Tech Stack
 

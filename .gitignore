@@ -7,3 +7,4 @@ vendor/
 *.db-journal
 *.db-wal
 *.db-shm
+.foodie-test-data/

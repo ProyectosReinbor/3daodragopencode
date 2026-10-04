@@ -10,11 +10,14 @@ import {
 } from 'three';
 
 export type Element = 'fuego' | 'agua' | 'tierra' | 'aire' | 'sombra' | 'luz';
-export type Rarity = 'comun' | 'raro' | 'epico' | 'legendario';
+export type Rarity = 'comun' | 'raro' | 'epico' | 'legendario' | 'especial';
 export type BodyType = 'humanoid' | 'bestia' | 'espectral' | 'golem';
 export type StatName = 'atk' | 'def' | 'spd' | 'hp' | 'ability';
 
 export interface NftTraits {
+  headShape?: 'round' | 'cube' | 'diamond';
+  limbLength?: number;
+  limbCount?: number;
   element: Element;
   rarity: Rarity;
   bodyType: BodyType;
@@ -140,12 +143,14 @@ const RARITY_LABELS: Record<Rarity, string> = {
   raro: 'Raro',
   epico: 'Epico',
   legendario: 'Legendario',
+    especial: 'Especial',
 };
 const RARITY_CSS: Record<Rarity, string> = {
   comun: '#aaaaaa',
   raro: '#4499dd',
   epico: '#aa55ee',
   legendario: '#eeaa00',
+    especial: '#df6499',
 };
 const ELEMENT_CSS: Record<Element, string> = {
   fuego: '#dd4422',
@@ -237,7 +242,7 @@ function makeNft(rng: Rng): NftCharacter {
   const element = pick<Element>(['fuego', 'agua', 'tierra', 'aire', 'sombra', 'luz'], rng);
   const bodyType = pick<BodyType>(['humanoid', 'bestia', 'espectral', 'golem'], rng);
   const colors = ELEMENT_COLORS[element];
-  const pools: Record<Rarity, number> = { comun: 28, raro: 38, epico: 52, legendario: 72 };
+  const pools: Record<Rarity, number> = { comun: 28, raro: 38, epico: 52, legendario: 72, especial: 84 };
   return {
     id,
     phoneId: '',
@@ -332,6 +337,40 @@ export function buildNftModel(nft: NftCharacter): Group {
   const sm = mat(t.secondaryColor);
   const am = mat(t.accentColor);
 
+  if (t.headShape) {
+    const length = t.limbLength ?? 1;
+    const count = t.limbCount ?? 4;
+    const legHeight = count ? 0.55 * length : 0.15;
+    const bodyY = legHeight + 0.5;
+    const bodyGeometry = t.bodyType === 'golem' ? new BoxGeometry(0.85, 0.9, 0.65)
+      : t.bodyType === 'bestia' ? new CapsuleGeometry(0.4, 0.55, 6, 10)
+      : t.bodyType === 'espectral' ? new SphereGeometry(0.5, 12, 10)
+      : new CapsuleGeometry(0.32, 0.45, 6, 10);
+    const body = new Mesh(bodyGeometry, pm); body.position.y = bodyY;
+    if (t.bodyType === 'bestia') body.rotation.z = Math.PI / 2;
+    g.add(body);
+    const headGeometry = t.headShape === 'cube' ? new BoxGeometry(0.58, 0.55, 0.55)
+      : t.headShape === 'diamond' ? new SphereGeometry(0.4, 4, 2)
+      : new SphereGeometry(0.34, 14, 10);
+    const headY = bodyY + 0.72;
+    const head = new Mesh(headGeometry, pm); head.position.set(0, headY, 0.04); g.add(head);
+    for (const x of [-0.12, 0.12]) {
+      const eye = new Mesh(new SphereGeometry(0.07, 8, 6), mat(0xffffff)); eye.position.set(x, headY + 0.04, 0.34); g.add(eye);
+      const pupil = new Mesh(new SphereGeometry(0.035, 8, 6), mat(0x273224)); pupil.position.set(x, headY + 0.04, 0.395); g.add(pupil);
+    }
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const limb = new Mesh(new CapsuleGeometry(0.08, 0.4 * length, 4, 6), pm);
+      limb.name = 'custom-limb';
+      limb.position.set(Math.cos(angle) * 0.48, legHeight / 2 + 0.02, Math.sin(angle) * 0.38);
+      limb.rotation.z = -Math.cos(angle) * 0.3; g.add(limb);
+    }
+    if (['epico', 'legendario', 'especial'].includes(t.rarity)) {
+      const halo = new Mesh(new TorusGeometry(0.46, 0.035, 8, 24), am);
+      halo.position.y = headY + 0.55; halo.rotation.x = Math.PI / 2; g.add(halo);
+    }
+    return g;
+  }
   if (t.bodyType === 'humanoid') {
     const head = new Mesh(new SphereGeometry(0.32, 7, 5), mat(0xe0ad7d));
     head.position.y = 1.42;
