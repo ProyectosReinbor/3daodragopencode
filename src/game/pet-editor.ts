@@ -1,4 +1,5 @@
 import type { Character } from './characters';
+import { randomizePet } from './pet-random';
 import { elementLabel } from './nft';
 import { getAllAbilities, getElementAbilities } from './abilities';
 import {
@@ -55,7 +56,8 @@ const select = (label: string, path: string, values: string[]) =>
 export function mountPetEditor(
   container: HTMLElement,
   initial: Character,
-  onSubmit: (pet: Character) => Promise<void>
+  onSubmit: (pet: Character) => Promise<void>,
+  options: { showStartChoice?: boolean } = {}
 ): () => void {
   let draft = structuredClone(initial);
   draft.traits.headShape ??= 'round';
@@ -75,6 +77,7 @@ export function mountPetEditor(
     <div class="studio-title"><span class="studio-eyebrow">EL TALLER FOODIE</span><h2>Pequeña criatura.<br/>Gran personalidad.</h2><p>Mezcla especies, moldea sus formas y crea una mascota que solo podría ser tuya.</p></div>
     <div class="studio-layout">
       <aside class="studio-stage"><div class="studio-stage-heading"><span id="studio-pet-badge">TU COMPAÑERO</span><span>VISTA 3D EN VIVO</span></div>
+        <button id="studio-random" class="studio-random" type="button" aria-label="Random: generar un Pet aleatorio">🎲 Random</button>
         <div id="studio-canvas" class="studio-canvas"></div>
         <div class="studio-tools" aria-label="Herramientas de edición 3D"><button type="button" data-mode="orbit" aria-pressed="true">↻ Girar vista</button><button type="button" data-mode="eyes" aria-pressed="false">◉ Mover ojos</button><button type="button" data-mode="raise" aria-pressed="false">△ Levantar</button><button type="button" data-mode="lower" aria-pressed="false">▽ Hundir</button></div>
         <p id="studio-tip" role="status">Arrastra para girar la vista. Usa la rueda o dos dedos para acercarte.</p>
@@ -395,6 +398,40 @@ export function mountPetEditor(
         button.disabled = false;
       });
   };
+  const randomButton = query<HTMLButtonElement>('#studio-random');
+  const randomize = () => {
+    draft = randomizePet(draft);
+    commit();
+    refresh(true);
+    message('Nuevo Pet aleatorio. Modifícalo, pulsa Random otra vez o continúa a los dados.');
+  };
+  randomButton.onclick = randomize;
+  let choice: HTMLDialogElement | undefined;
+  if (options.showStartChoice) {
+    choice = document.createElement('dialog');
+    choice.className = 'studio-start-choice';
+    choice.setAttribute('aria-labelledby', 'studio-choice-title');
+    choice.setAttribute('aria-describedby', 'studio-choice-description');
+    choice.innerHTML = `<span class="studio-choice-icon">✦</span><h2 id="studio-choice-title">¿Cómo quieres empezar?</h2><p id="studio-choice-description">Elige un Pet aleatorio con una mezcla inesperada de rasgos o empieza con el modelo común. Después puedes modificarlo todo.</p><div class="studio-choice-actions"><button type="button" data-choice="random"><b>🎲 Aleatorio</b><small>Sorpréndeme con un Pet extraño y único</small></button><button type="button" data-choice="common"><b>🐾 Común</b><small>Empieza con el modelo y dale tu estilo</small></button></div><p class="studio-choice-note">Puedes volver a usar Random tantas veces como quieras.</p>`;
+    container.append(choice);
+    choice.querySelectorAll<HTMLButtonElement>('[data-choice]').forEach((button) => {
+      button.onclick = () => {
+        if (button.dataset.choice === 'random') randomize();
+        choice?.close();
+        choice?.remove();
+        randomButton.focus({ preventScroll: true });
+      };
+    });
+    choice.addEventListener('cancel', () => {
+      choice?.remove();
+      randomButton.focus({ preventScroll: true });
+    });
+    choice.showModal();
+  }
   sync();
-  return () => view?.dispose();
+  return () => {
+    choice?.close();
+    choice?.remove();
+    view?.dispose();
+  };
 }

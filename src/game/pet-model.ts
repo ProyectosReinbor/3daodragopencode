@@ -64,6 +64,15 @@ export function buildDesignedPet(traits: NftTraits): Group {
     length = traits.limbLength ?? 1;
   const bodyY = (count ? 0.45 * length : 0.15) + 0.5 * a.bodyHeight;
   const bodyRadius = new Vector3(0.46 * a.bodyWidth, 0.5 * a.bodyHeight, 0.39 * a.bodyWidth);
+  // Anchor appendages inside the torso even for narrow, tall or hybrid anatomy.
+  const attachToBody = (point: Vector3) => {
+    const local = point
+      .clone()
+      .sub(new Vector3(0, bodyY, 0))
+      .divide(bodyRadius);
+    if (local.length() > 0.86) local.setLength(0.86);
+    return local.multiply(bodyRadius).add(new Vector3(0, bodyY, 0));
+  };
   const bodyGeometry =
     traits.bodyType === 'golem'
       ? new BoxGeometry(2, 2, 2, 20, 20, 20)
@@ -313,6 +322,8 @@ export function buildDesignedPet(traits: NftTraits): Group {
         (pair - 1) * 0.29 + 0.08
       );
     }
+    start.copy(attachToBody(start));
+    limb.userData.attachment = start.clone();
     if (a.limbKind === 'tentacles') {
       limb.add(
         curve(
@@ -376,7 +387,7 @@ export function buildDesignedPet(traits: NftTraits): Group {
     root.add(
       curve(
         [
-          new Vector3(0, bodyY - 0.25, -bodyRadius.z),
+          attachToBody(new Vector3(0, bodyY - 0.25, -bodyRadius.z)),
           new Vector3(0.35, bodyY, -0.85),
           new Vector3(0.55, bodyY + 0.4, -0.7),
           end,
@@ -395,7 +406,7 @@ export function buildDesignedPet(traits: NftTraits): Group {
     for (const side of [-1, 1]) {
       const wing = new Group();
       wing.name = 'wing';
-      wing.position.set(side * bodyRadius.x * 0.7, bodyY + 0.22, -0.15);
+      wing.position.copy(attachToBody(new Vector3(side * bodyRadius.x * 0.7, bodyY + 0.22, -0.15)));
       const membrane = new MeshStandardMaterial({
         color: traits.accentColor,
         transparent: a.wings === 'insect',

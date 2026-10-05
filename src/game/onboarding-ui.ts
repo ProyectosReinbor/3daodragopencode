@@ -74,6 +74,7 @@ export function mountOnboarding(onClaim: (profile: PlayerProfile) => void) {
   const panel = document.getElementById('onboarding-content')!;
   const error = document.getElementById('onboarding-error')!;
   const status = document.getElementById('onboarding-status')!;
+  let designChoiceShown = false;
   const busy = async (button: HTMLButtonElement, action: () => Promise<void>) => {
     button.disabled = true;
     error.textContent = '';
@@ -157,25 +158,32 @@ export function mountOnboarding(onClaim: (profile: PlayerProfile) => void) {
         } as Character);
       const wrapper = panel.closest<HTMLElement>('.foodie-onboarding-panel')!;
       wrapper.classList.add('studio-panel');
-      const dispose = mountPetEditor(panel, draft, async (edited) => {
-        const t = edited.traits;
-        accept(
-          await request<Session>(`/${session!.id}/customize`, {
-            name: edited.name,
-            element: t.element,
-            bodyType: t.bodyType,
-            headShape: t.headShape,
-            limbCount: t.limbCount,
-            limbLength: t.limbLength,
-            color: `#${t.primaryColor.toString(16).padStart(6, '0')}`,
-            secondaryColor: `#${t.secondaryColor.toString(16).padStart(6, '0')}`,
-            accentColor: `#${t.accentColor.toString(16).padStart(6, '0')}`,
-            appearance: t.appearance,
-            powers: edited.powers,
-          })
-        );
-        draw();
-      });
+      const showStartChoice = !designChoiceShown;
+      designChoiceShown = true;
+      const dispose = mountPetEditor(
+        panel,
+        draft,
+        async (edited) => {
+          const t = edited.traits;
+          accept(
+            await request<Session>(`/${session!.id}/customize`, {
+              name: edited.name,
+              element: t.element,
+              bodyType: t.bodyType,
+              headShape: t.headShape,
+              limbCount: t.limbCount,
+              limbLength: t.limbLength,
+              color: `#${t.primaryColor.toString(16).padStart(6, '0')}`,
+              secondaryColor: `#${t.secondaryColor.toString(16).padStart(6, '0')}`,
+              accentColor: `#${t.accentColor.toString(16).padStart(6, '0')}`,
+              appearance: t.appearance,
+              powers: edited.powers,
+            })
+          );
+          draw();
+        },
+        { showStartChoice }
+      );
       stopPreview = () => {
         dispose();
         wrapper.classList.remove('studio-panel');

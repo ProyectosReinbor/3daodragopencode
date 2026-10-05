@@ -19,10 +19,11 @@ npm install
 cd server && npm install && cd ..
 
 # Start development (frontend + backend)
-npm run start
+npm run dev     # Frontend (5173) + backend (3000)
+# npm run start does the same
 
-# Or start separately
-npm run dev      # Frontend only (port 5173)
+# Or start separately, in two terminals
+npm run dev:web  # Frontend only (port 5173)
 npm run server   # Backend only (port 3000)
 ```
 
@@ -30,9 +31,10 @@ npm run server   # Backend only (port 3000)
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start Vite dev server |
+| `npm run dev` | Start frontend and backend together |
+| `npm run dev:web` | Start Vite only (requires a running backend) |
 | `npm run server` | Start Express backend |
-| `npm run start` | Start both (concurrently) |
+| `npm run start` | Same as `npm run dev` |
 | `npm run build` | TypeScript check + production build |
 | `npm run preview` | Preview production build |
 

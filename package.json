@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --configLoader runner",
+    "dev": "concurrently --kill-others --names api,web \"npm run server\" \"npm run dev:web\"",
     "server": "node server/index.js",
-    "start": "concurrently \"npm run server\" \"npm run dev\"",
+    "start": "npm run dev",
     "build": "tsc --noEmit && vite build --configLoader runner",
     "preview": "vite preview --configLoader runner",
     "lint": "eslint src/",
@@ -16,7 +16,8 @@
     "test": "vitest run --configLoader runner",
     "test:watch": "vitest --configLoader runner",
     "test:coverage": "vitest run --coverage --configLoader runner",
-    "check": "npm run lint && npm run format:check && tsc --noEmit && npm run test"
+    "check": "npm run lint && npm run format:check && tsc --noEmit && npm run test",
+    "dev:web": "vite --configLoader runner"
   },
   "dependencies": {
     "three": "^0.179.1"
