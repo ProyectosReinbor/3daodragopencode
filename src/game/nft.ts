@@ -1,3 +1,5 @@
+import type { PetAppearance } from '../../shared/pet-appearance.js';
+import { buildDesignedPet } from './pet-model';
 import {
   BoxGeometry,
   ConeGeometry,
@@ -15,6 +17,7 @@ export type BodyType = 'humanoid' | 'bestia' | 'espectral' | 'golem';
 export type StatName = 'atk' | 'def' | 'spd' | 'hp' | 'ability';
 
 export interface NftTraits {
+  appearance?: PetAppearance;
   headShape?: 'round' | 'cube' | 'diamond';
   limbLength?: number;
   limbCount?: number;
@@ -337,6 +340,7 @@ export function buildNftModel(nft: NftCharacter): Group {
   const sm = mat(t.secondaryColor);
   const am = mat(t.accentColor);
 
+  if (t.appearance) return buildDesignedPet(t);
   if (t.headShape) {
     const length = t.limbLength ?? 1;
     const count = t.limbCount ?? 4;

@@ -183,3 +183,29 @@ test('editing and rerolling preserve identity and replace the welcome gift', asy
   assert.equal(gift.data.pet.upgrades.length, 1);
   assert.equal(gift.data.pet.upgrades[0].stat, 'def');
 });
+
+
+test('advanced appearance persists through editing, dice, welcome gift and account creation', async () => {
+  const id = (await request('/onboarding', {})).data.id;
+  const appearance = { species:'alien',mood:'odd',coat:'dirty',limbKind:'hands',wings:'insect',headSize:1.4,eyeLeft:{x:0.2,y:0.1,z:0.05},eyeRight:{x:-0.1,y:0,z:0},sculpt:[{part:'head',x:0,y:1,z:0,radius:0.3,strength:0.2}] };
+  const choices = {name:'Alien Foodie',element:'sombra',bodyType:'humanoid',headShape:'round',limbCount:6,limbLength:1,color:'#98b7cc',secondaryColor:'#e4e1f2',accentColor:'#c4a5dc',powers:['shadow_step','heal_wave'],appearance};
+  const configured = await request(`/onboarding/${id}/customize`, choices);
+  assert.equal(configured.status,200);
+  assert.deepEqual(configured.data.pet.traits.appearance.eyeLeft,appearance.eyeLeft);
+  assert.deepEqual(configured.data.pet.traits.appearance.sculpt,appearance.sculpt);
+  assert.equal(configured.data.pet.traits.accentColor,0xc4a5dc);
+  assert.equal((await request(`/onboarding/${id}/customize`, {...choices,appearance:{eyeSize:999}})).status,400);
+  assert.equal((await request(`/onboarding/${id}/customize`, {...choices,appearance:{sculpt:[{part:'head',x:100,y:0,z:0,radius:0.3,strength:0.1}]}})).status,400);
+  assert.equal((await request(`/onboarding/${id}`)).data.pet.traits.appearance.species,'alien');
+  await request(`/onboarding/${id}/roll`,{attemptId:'advanced-roll'});
+  await request(`/onboarding/${id}/dart/start`,{stat:'ability'});
+  await request(`/onboarding/${id}/dart/throw`,{accessible:true});
+  const user=await request('/register',{phone:'900000003',password:'foodie-test-only'},'POST',null);
+  const claimed=await request(`/onboarding/${id}/claim`,{},'POST',user.data.token);
+  assert.equal(claimed.status,200);
+  const stored=(await request('/profile',undefined,'GET',user.data.token)).data.characters.characters[0];
+  assert.equal(stored.traits.appearance.species,'alien');
+  assert.deepEqual(stored.traits.appearance.sculpt,appearance.sculpt);
+  assert.deepEqual(stored.traits.appearance.eyeLeft,appearance.eyeLeft);
+  assert.equal((await request(`/onboarding/${id}/customize`,choices)).status,400);
+});

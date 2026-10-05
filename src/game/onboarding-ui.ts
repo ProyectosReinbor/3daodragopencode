@@ -1,3 +1,4 @@
+import { mountPetEditor } from './pet-editor';
 import { mountPetTrial } from './pet-trial';
 import { getAllAbilities } from './abilities';
 import type { Character } from './characters';
@@ -16,7 +17,6 @@ type Session = {
   serverNow: number;
 };
 const SESSION_KEY = 'foodie-pets-onboarding';
-const elements = ['fuego', 'agua', 'tierra', 'aire', 'sombra', 'luz'] as const;
 let session: Session | null = null;
 let frame = 0;
 let serverTime = 0;
@@ -127,114 +127,58 @@ export function mountOnboarding(onClaim: (profile: PlayerProfile) => void) {
             ? '02 / Tus estadísticas'
             : '01 / Diseña tu Foodie Pet';
     if (session.stage === 'customize' || session.stage === 'wheel') {
-      panel.innerHTML = `<h2>Un Foodie Pet a tu manera</h2><p>Elige su personalidad. Los dados decidirán sus estadísticas y tu puntería, su rareza.</p>
-      <div class="onboarding-pet-preview" id="custom-preview"></div>
-      <form id="custom-form" class="pet-custom-form">
-      <label for="pet-name">Nombre</label><input id="pet-name" required minlength="2" maxlength="24" placeholder="Por ejemplo, Mochi" />
-      <div class="custom-pair"><div><label for="pet-element">Elemento</label><select id="pet-element">${elements.map((el) => `<option value="${el}">${elementLabel(el)}</option>`).join('')}</select></div>
-      <div><label for="pet-shape">Tipo de cuerpo</label><select id="pet-shape"><option value="bestia">Bestia</option><option value="golem">Gólem</option><option value="espectral">Espíritu</option><option value="humanoid">Guardián</option></select></div></div>
-      <div class="custom-pair"><div><label for="pet-head">Forma de la cabeza</label><select id="pet-head"><option value="round">Redonda</option><option value="cube">Cuadrada</option><option value="diamond">Diamante</option></select></div>
-      <div><label for="pet-limbs">Cantidad de extremidades</label><select id="pet-limbs">${[0, 2, 4, 6, 8].map((n) => `<option value="${n}" ${n === 4 ? 'selected' : ''}>${n} extremidades</option>`).join('')}</select></div></div>
-      <label for="pet-length">Largo de las extremidades · <span id="limb-length-value">1.0</span></label><input id="pet-length" type="range" min="0.5" max="1.8" step="0.1" value="1" />
-      <label for="pet-color">Color de tu Pet</label><input type="color" id="pet-color" value="#f47752" />
-      <fieldset class="power-choices"><legend>Elige dos poderes · <span id="power-count">0/2</span></legend>${getAllAbilities()
-        .map(
-          (a) =>
-            `<label><input type="checkbox" name="power" value="${a.id}" /><span>${a.icon} ${a.name}</span></label>`
-        )
-        .join('')}</fieldset>
-      <button class="foodie-primary" type="submit">Continuar a los dados</button></form>`;
-      const select = (id: string) => panel.querySelector<HTMLInputElement | HTMLSelectElement>(id)!;
-      const draft = pet
-        ? structuredClone(pet)
-        : ({
-            id: 'preview',
-            name: 'Tu Pet',
-            traits: {
-              headShape: 'round',
-              limbCount: 4,
-              limbLength: 1,
-              element: 'fuego',
-              bodyType: 'bestia',
-              primaryColor: 0xf47752,
-              secondaryColor: 0xffd4a3,
-              accentColor: 0xfff4db,
-              rarity: 'comun',
-              eyeStyle: 0,
-              hornStyle: 0,
-              wingStyle: 0,
-              pattern: 0,
-            },
-            baseStats: { atk: 2, def: 2, spd: 2, hp: 2, ability: 2 },
-            level: 1,
-            xp: 0,
-            upgrades: [],
-            unlockedAt: 0,
-            source: 'starter',
-            isStarter: true,
-          } as Character);
-      if (pet) {
-        select('#pet-name').value = pet.name;
-        select('#pet-element').value = pet.traits.element;
-        select('#pet-shape').value = pet.traits.bodyType;
-        select('#pet-head').value = pet.traits.headShape ?? 'round';
-        select('#pet-limbs').value = String(pet.traits.limbCount ?? 4);
-        select('#pet-length').value = String(pet.traits.limbLength ?? 1);
-        select('#pet-color').value = `#${pet.traits.primaryColor.toString(16).padStart(6, '0')}`;
-      }
-      const refresh = () => {
-        draft.traits.element = select('#pet-element').value as Character['traits']['element'];
-        draft.traits.bodyType = select('#pet-shape').value as Character['traits']['bodyType'];
-        draft.traits.headShape = select('#pet-head').value as 'round' | 'cube' | 'diamond';
-        draft.traits.limbCount = Number(select('#pet-limbs').value);
-        draft.traits.limbLength = Number(select('#pet-length').value);
-        panel.querySelector('#limb-length-value')!.textContent = draft.traits.limbLength.toFixed(1);
-        draft.traits.primaryColor = parseInt(select('#pet-color').value.slice(1), 16);
-        stopPreview?.();
-        stopPreview = mountPetPreview(panel.querySelector('#custom-preview')!, draft);
-      };
-      [
-        '#pet-element',
-        '#pet-shape',
-        '#pet-color',
-        '#pet-head',
-        '#pet-limbs',
-        '#pet-length',
-      ].forEach((id) => {
-        select(id).onchange = refresh;
+      const draft =
+        pet ??
+        ({
+          id: 'preview',
+          name: '',
+          traits: {
+            headShape: 'round',
+            limbCount: 4,
+            limbLength: 1,
+            element: 'fuego',
+            bodyType: 'bestia',
+            primaryColor: 0xeab385,
+            secondaryColor: 0xfff0d8,
+            accentColor: 0xf4a6a1,
+            rarity: 'comun',
+            eyeStyle: 0,
+            hornStyle: 0,
+            wingStyle: 0,
+            pattern: 0,
+          },
+          baseStats: { atk: 2, def: 2, spd: 2, hp: 2, ability: 2 },
+          level: 1,
+          xp: 0,
+          upgrades: [],
+          unlockedAt: 0,
+          source: 'starter',
+          isStarter: true,
+        } as Character);
+      const wrapper = panel.closest<HTMLElement>('.foodie-onboarding-panel')!;
+      wrapper.classList.add('studio-panel');
+      const dispose = mountPetEditor(panel, draft, async (edited) => {
+        const t = edited.traits;
+        accept(
+          await request<Session>(`/${session!.id}/customize`, {
+            name: edited.name,
+            element: t.element,
+            bodyType: t.bodyType,
+            headShape: t.headShape,
+            limbCount: t.limbCount,
+            limbLength: t.limbLength,
+            color: `#${t.primaryColor.toString(16).padStart(6, '0')}`,
+            secondaryColor: `#${t.secondaryColor.toString(16).padStart(6, '0')}`,
+            accentColor: `#${t.accentColor.toString(16).padStart(6, '0')}`,
+            appearance: t.appearance,
+            powers: edited.powers,
+          })
+        );
+        draw();
       });
-      refresh();
-      const checks = Array.from(panel.querySelectorAll<HTMLInputElement>('input[name="power"]'));
-      checks.forEach((check) => {
-        check.checked = !!pet?.powers?.includes(check.value);
-        check.onchange = () => {
-          const count = checks.filter((c) => c.checked).length;
-          panel.querySelector('#power-count')!.textContent = `${count}/2`;
-          checks.forEach((c) => {
-            c.disabled = count >= 2 && !c.checked;
-          });
-        };
-      });
-      checks[0].onchange?.(new Event('change'));
-      panel.querySelector<HTMLFormElement>('form')!.onsubmit = (event) => {
-        event.preventDefault();
-        const button = panel.querySelector<HTMLButtonElement>('button')!;
-        void busy(button, async () => {
-          const powers = checks.filter((c) => c.checked).map((c) => c.value);
-          if (powers.length !== 2) throw new Error('Elige dos poderes para tu Foodie Pet.');
-          const next = await request<Session>(`/${session!.id}/customize`, {
-            name: select('#pet-name').value,
-            element: select('#pet-element').value,
-            bodyType: select('#pet-shape').value,
-            headShape: select('#pet-head').value,
-            limbCount: Number(select('#pet-limbs').value),
-            limbLength: Number(select('#pet-length').value),
-            color: select('#pet-color').value,
-            powers,
-          });
-          accept(next);
-          draw();
-        });
+      stopPreview = () => {
+        dispose();
+        wrapper.classList.remove('studio-panel');
       };
     } else if ((session.stage === 'dice' || session.stage === 'name') && pet) {
       panel.innerHTML = `<h2>Los dados de tu Pet</h2><p>Dos dados por estadística. Puedes volver a lanzarlos hasta encontrar las estadísticas que prefieras.</p>

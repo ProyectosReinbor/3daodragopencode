@@ -1,3 +1,4 @@
+import { normalizeAppearance } from '../shared/pet-appearance.js';
 import { randomInt, randomUUID } from 'node:crypto';
 
 export const ELEMENTS = ['fuego', 'agua', 'tierra', 'aire', 'sombra', 'luz'];
@@ -34,11 +35,15 @@ function createPet(choice) {
   const limbLength = choice.limbLength ?? 1;
   const limbCount = choice.limbCount ?? 4;
   if (!['round', 'cube', 'diamond'].includes(headShape) || !Number.isFinite(limbLength) || limbLength < 0.5 || limbLength > 1.8 || ![0, 2, 4, 6, 8].includes(limbCount)) throw new Error('Revisa la cabeza y las extremidades elegidas.');
+  const appearance = normalizeAppearance(choice.appearance);
+  for (const key of ['secondaryColor', 'accentColor']) {
+    if (choice[key] !== undefined && !/^#[0-9a-f]{6}$/i.test(choice[key])) throw new Error('Elige colores válidos para los detalles.');
+  }
   const dice = Object.fromEntries(STAT_KEYS.map(key => [key, [randomInt(1, 7), randomInt(1, 7)]]));
   return { dice, pet: {
     id: `FP-${randomUUID()}`, name, powers: choice.powers,
-    traits: { headShape, limbLength, limbCount, element: choice.element, rarity: 'comun', bodyType: choice.bodyType,
-      primaryColor: parseInt(choice.color.slice(1), 16), secondaryColor: 0xffd4a3, accentColor: 0xfff4db,
+    traits: { appearance, headShape, limbLength, limbCount, element: choice.element, rarity: 'comun', bodyType: choice.bodyType,
+      primaryColor: parseInt(choice.color.slice(1), 16), secondaryColor: choice.secondaryColor ? parseInt(choice.secondaryColor.slice(1), 16) : 0xffd4a3, accentColor: choice.accentColor ? parseInt(choice.accentColor.slice(1), 16) : 0xfff4db,
       eyeStyle: randomInt(5), hornStyle: randomInt(2), wingStyle: 0, pattern: randomInt(4) },
     baseStats: Object.fromEntries(STAT_KEYS.map(key => [key, dice[key][0] + dice[key][1]])),
     level: 1, xp: 0, upgrades: [], unlockedAt: Date.now(), source: 'starter', isStarter: true,

@@ -97,3 +97,15 @@ Esta actualización reemplaza la regla anterior de un único lanzamiento de dado
 - Tras detener el indicador de puntería, un dardo vuela durante dos segundos hacia una diana roja y blanca. El impacto corresponde al resultado calculado; el centro concede el premio máximo.
 - Volver atrás elimina el regalo previo; el siguiente lanzamiento lo reemplaza, sin acumular bonus.
 - El resumen permite crear una cuenta o probar el Pet sin registro en el campo de la aldea existente. Incluye movimiento por teclado y controles táctiles, poderes visuales y regreso al creador; la prueba no modifica el progreso de la cuenta.
+
+
+## El taller Foodie: editor de mascotas
+
+- Seis bases combinables: gatito, insecto, extraterrestre, monstruito, dragoncito y espíritu. Cada familia tiene anatomía, colores y acabados propios.
+- Cabeza, cuerpo, proporciones y posición; ojos con tamaño, tipo, separación e inclinación; desplazamiento individual de cada ojo en la vista 3D o con controles de precisión.
+- Pelaje con geometría propia, rayas, manchas, suciedad y escamas. Patas, manos con dedos, garras o tentáculos; orejas, antenas, colas, cuernos y alas de insecto, plumas o murciélago.
+- Pincel sobre cabeza/cuerpo para levantar y hundir vértices: hasta 48 trazos, con tamaño y fuerza ajustables. Incluye deshacer/rehacer y restaurar superficie.
+- Vista con órbita, acercamiento, frente y rotación; inspector por secciones. En móvil los controles tienen su propia área de desplazamiento para mantener la mascota visible sin cubrir las pestañas.
+- La anatomía se valida mediante un catálogo compartido entre web y servidor. Colores, ojos y escultura se guardan en los rasgos; se restauran al volver o recargar después de continuar y se usan en la colección y el mundo.
+- Los cambios que aún no se han confirmado con «Continuar» se mantienen en el editor actual. Los dados y el dardo mantienen sus animaciones de dos segundos.
+- Verificación: generación real de geometría y familias, validación de rangos y trazos, guardado completo hasta crear la cuenta; pruebas del editor por navegador, incluida manipulación de ojos y pincel.

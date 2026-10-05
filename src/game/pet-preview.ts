@@ -1,4 +1,7 @@
 import {
+  Box3,
+  Vector3,
+  InstancedMesh,
   Scene,
   PerspectiveCamera,
   WebGLRenderer,
@@ -26,6 +29,14 @@ export function mountPetPreview(container: HTMLElement, pet: Character): () => v
     scene.add(sun);
     const model = buildNftModel({ ...pet, phoneId: '' });
     scene.add(model);
+    const bounds = new Box3().setFromObject(model),
+      size = bounds.getSize(new Vector3()),
+      center = bounds.getCenter(new Vector3());
+    const distance =
+      (Math.max(size.y, size.x / camera.aspect) / (2 * Math.tan((camera.fov * Math.PI) / 360))) *
+      1.2;
+    camera.position.set(0, center.y + 0.2, Math.max(3.5, distance));
+    camera.lookAt(0, center.y, 0);
     container.replaceChildren(renderer.domElement);
     let frame = 0;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -41,6 +52,7 @@ export function mountPetPreview(container: HTMLElement, pet: Character): () => v
       cancelAnimationFrame(frame);
       model.traverse((object) => {
         const mesh = object as Mesh;
+        if (mesh instanceof InstancedMesh) mesh.dispose();
         mesh.geometry?.dispose();
         if (mesh.material)
           (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) =>
