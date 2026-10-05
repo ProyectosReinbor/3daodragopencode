@@ -141,7 +141,7 @@ test('moving dart awards the displayed position once and rejects invented timest
   const start = await request(`/onboarding/${id}/dart/start`, { stat: 'def' });
   assert.equal((await request(`/onboarding/${id}/dart/throw`, { elapsed: -100 })).status, 400);
   assert.equal((await request(`/onboarding/${id}/dart/throw`, { elapsed: 999999 })).status, 400);
-  const elapsed = Date.now() - start.data.dart.startedAt;
+  const elapsed = Math.max(0, Date.now() - start.data.dart.startedAt);
   const hit = await request(`/onboarding/${id}/dart/throw`, { elapsed });
   assert.equal(hit.status, 200);
   assert.deepEqual({ bonus: hit.data.dart.bonus, rarity: hit.data.pet.traits.rarity }, dartPrize(hit.data.dart.position));
@@ -208,4 +208,40 @@ test('advanced appearance persists through editing, dice, welcome gift and accou
   assert.deepEqual(stored.traits.appearance.sculpt,appearance.sculpt);
   assert.deepEqual(stored.traits.appearance.eyeLeft,appearance.eyeLeft);
   assert.equal((await request(`/onboarding/${id}/customize`,choices)).status,400);
+});
+
+
+test('world rewards are server-owned, persisted, and cannot be replayed or forged', async () => {
+  const before = (await request('/profile')).data;
+  const pet = before.characters.characters[0];
+  assert.equal((await request('/world/start', {characterId:'not-owned'})).status,400);
+  const start = await request('/world/start',{characterId:pet.id});
+  assert.equal(start.status,200);
+  const session = start.data.session;
+  assert.equal(start.data.profile.world.coins,40);
+  const buy = await request('/world/action',{session,action:'buy',item:'potions'});
+  assert.equal(buy.data.profile.world.coins,25);
+  assert.equal(buy.data.profile.world.potions,4);
+  assert.equal((await request('/world/action',{session,action:'equip',item:'blade'})).status,400);
+  assert.equal((await request('/world/action',{session,action:'attack',slot:99,kind:'wolf',enemy:'aldea:0'})).status,400);
+  const hit = await request('/world/action',{session,action:'attack',slot:3,kind:'wolf',enemy:'aldea:0'});
+  assert.equal(hit.status,200);
+  assert.equal(hit.data.enemyHealth,0);
+  assert.equal(hit.data.reward.coins,12);
+  assert.equal(hit.data.reward.xp,15);
+  assert.equal(hit.data.profile.world.kills,1);
+  assert.equal((await request('/world/action',{session,action:'attack',slot:3,kind:'wolf',enemy:'aldea:0'})).status,429);
+  assert.equal((await request('/world/action',{session,action:'attack',slot:-1,kind:'wolf',enemy:'aldea:0'})).status,400);
+  const forged = structuredClone(hit.data.profile); forged.world.coins=999999;
+  assert.equal((await request('/profile',forged,'PUT')).status,200);
+  const saved=(await request('/profile')).data;
+  assert.equal(saved.world.coins,37);
+  assert.equal(saved.world.kills,1);
+  assert.equal(saved.characters.characters[0].level,hit.data.profile.characters.characters[0].level);
+  const consume=await request('/world/action',{session,action:'consume',item:'potions'});
+  assert.equal(consume.data.profile.world.potions,hit.data.profile.world.potions-1);
+  assert.equal((await request('/world/action',{session,action:'consume',item:'potions'})).status,400);
+  const other=await request('/world/start',{characterId:pet.id});
+  assert.equal(other.status,200);
+  assert.equal((await request('/world/action',{session,action:'buy',item:'mana'})).status,409);
 });

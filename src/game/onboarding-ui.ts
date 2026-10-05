@@ -325,8 +325,8 @@ export function mountOnboarding(onClaim: (profile: PlayerProfile) => void) {
         stopPreview?.();
         stopPreview = undefined;
         panel.innerHTML =
-          '<h2>El campo de tu Foodie Pet</h2><p>Explora con WASD, las flechas o los botones. Prueba tus poderes y vuelve cuando estés listo.</p><div id="pet-trial"></div><button class="foodie-primary" id="leave-trial">Volver a mi Pet</button>';
-        stopPreview = mountPetTrial(panel.querySelector('#pet-trial')!, pet);
+          '<h2>El campo de tu Foodie Pet</h2><p>Muévete con las flechas o el joystick. Usa Q, W, E y R para probar tus poderes contra un rival sencillo.</p><div id="pet-trial"></div><button class="foodie-primary" id="leave-trial">Volver a mi Pet</button>';
+        stopPreview = mountPetTrial(panel.querySelector('#pet-trial')!, pet, draw);
         panel.querySelector<HTMLButtonElement>('#leave-trial')!.onclick = draw;
       };
       const button = panel.querySelector<HTMLButtonElement>('#claim-pet')!;

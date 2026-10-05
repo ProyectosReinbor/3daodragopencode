@@ -1,6 +1,7 @@
 import './styles.css';
 import './foodie.css';
-import { Game } from './game/game';
+import { mountWorldPlay } from './game/world-play';
+let stopWorld: (() => void) | undefined;
 import { migrateProfile, type PlayerProfile } from './game/profile';
 import { initFoodieLanding } from './game/landing-ui';
 import { mountOnboarding, claimFoodiePet, hasPendingPet } from './game/onboarding-ui';
@@ -157,12 +158,14 @@ function startGameWithProfile(profile: PlayerProfile) {
       profile.characters.characters.find((c) => c.id === profile.selectedCharacter) ||
       profile.characters.characters[0];
     if (active) {
-      new Game(document.querySelector('#game-canvas')!, profile).start();
+      stopWorld?.();
+      stopWorld = mountWorldPlay({pet: active, profile, onExit: updated => { stopWorld = undefined; goToHub(updated || profile); }});
     }
   }
 }
 
 navigation.onNavigate((screen: AppScreen) => {
+  if (screen !== 'game') { stopWorld?.(); stopWorld = undefined; }
   if (screen === 'login') document.getElementById('login-back')!.textContent = hasPendingPet() ? '← Volver a mi personaje' : '← Volver a Foodie Pets';
   if (screen === 'onboarding') mountOnboarding(goToHub);
   if (screen === 'characters' && currentProfile && currentManager) {

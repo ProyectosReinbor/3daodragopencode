@@ -54,7 +54,7 @@ export function mountHub(
   if (logoutBtn) logoutBtn.onclick = callbacks.onLogout || null;
 
   if (charBtn) charBtn.onclick = callbacks.onCharacters;
-  if (invBtn) invBtn.onclick = callbacks.onInventory;
+  if (invBtn) invBtn.hidden = true;
   if (startBtn) startBtn.onclick = callbacks.onStartGame;
   if (storeBtn) storeBtn.onclick = callbacks.onStores;
   if (redeemBtn) redeemBtn.onclick = callbacks.onRedeem;

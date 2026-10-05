@@ -6,6 +6,7 @@ import { createDatabase } from './database.js';
 import { existsSync, mkdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { mountFoodieWorld } from './foodie-world.js';
 import { mountFoodieOnboarding } from './foodie-onboarding.js';
 import { applyPurchaseExperience } from './foodie-growth.js';
 import { randomUUID } from 'node:crypto';
@@ -568,6 +569,7 @@ app.get('/api/profile', auth, (req, res) => {
 });
 
 mountFoodieOnboarding(app, { db, auth, getProfile, saveProfile });
+mountFoodieWorld(app, { auth, getProfile, saveProfile });
 
 app.put('/api/profile', auth, (req, res) => {
   const existing = getProfile(req.phone);
@@ -638,6 +640,7 @@ app.put('/api/profile', auth, (req, res) => {
 
   const profileData = {
     version: 2,
+    world: existing?.world,
     selectedCharacter: req.body.selectedCharacter,
     dailyQuests: req.body.dailyQuests,
     nft,

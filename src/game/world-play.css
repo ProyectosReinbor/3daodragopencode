@@ -1,0 +1,551 @@
+.world-playing {
+  overflow: hidden !important;
+}
+.foodie-world {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  height: 100dvh;
+  width: 100%;
+  background: #213b34;
+  color: #f1faf7;
+  font: 14px system-ui;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+.foodie-world canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.foodie-world button {
+  font: inherit;
+  color: inherit;
+  border: 1px solid #ffffff40;
+  background: #14343de8;
+  padding: 10px 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.foodie-world button:hover {
+  background: #2c5256;
+}
+.foodie-world button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.foodie-world header {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: start;
+}
+.world-vitals {
+  width: 230px;
+  background: #13343de0;
+  padding: 12px 16px;
+  border: 1px solid #fff3;
+  border-radius: 18px;
+}
+.world-vitals strong {
+  font-size: 18px;
+}
+.world-vitals small {
+  display: block;
+  color: #b6d9d3;
+  font-size: 11px;
+  margin: 3px 0 7px;
+}
+.world-health,
+.world-mana {
+  height: 19px;
+  position: relative;
+  background: #0005;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-top: 5px;
+}
+.world-health i,
+.world-mana i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #28aa74, #8bdf9d);
+  transition: width 0.15s;
+}
+.world-mana i {
+  background: linear-gradient(90deg, #287dc7, #89d3ff);
+}
+.world-health span,
+.world-mana span {
+  position: relative;
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  line-height: 19px;
+  text-shadow: 0 1px 2px #000;
+}
+.world-title {
+  background: #12343bda;
+  padding: 10px 16px;
+  border-radius: 16px;
+  text-align: center;
+}
+.world-title b {
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+.world-title small {
+  display: block;
+  font-size: 11px;
+  color: #cfdfda;
+  margin-top: 4px;
+}
+.foodie-world nav {
+  display: flex;
+  gap: 6px;
+}
+.world-target {
+  position: absolute;
+  top: 126px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #193841dd;
+  border-radius: 14px;
+  padding: 9px 16px;
+  font-size: 12px;
+  text-align: center;
+}
+.world-target:empty {
+  display: none;
+}
+.world-notice {
+  position: absolute;
+  top: 170px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 48vw;
+  background: #12343ddd;
+  border: 1px solid #fff2;
+  border-radius: 18px;
+  padding: 8px 14px;
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+.world-joystick {
+  position: absolute;
+  left: max(28px, env(safe-area-inset-left));
+  bottom: max(48px, env(safe-area-inset-bottom));
+  width: 170px;
+  height: 170px;
+  border: 2px solid #fff6;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, #fff1, #173e4aaa);
+  box-shadow:
+    inset 0 0 30px #fff1,
+    0 8px 24px #0003;
+  touch-action: none;
+}
+.world-joystick span {
+  line-height: 52px;
+  text-align: center;
+  font-size: 24px;
+  color: #c9ebe966;
+  pointer-events: none;
+}
+.world-joystick i {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border: 2px solid #fff9;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #b7e4ddc9, #347b80dd);
+  box-shadow: 0 6px 20px #0004;
+  pointer-events: none;
+}
+.world-quick {
+  position: absolute;
+  bottom: 235px;
+  left: 36px;
+  display: flex;
+  gap: 10px;
+}
+.world-quick button {
+  width: 74px;
+  font-size: 25px;
+  padding: 8px 4px;
+}
+.world-quick span,
+.world-quick small {
+  display: block;
+  font-size: 10px;
+  margin-top: 4px;
+}
+.world-quick small {
+  color: #eac67a;
+  font-size: 12px;
+}
+.world-actions {
+  position: absolute;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(48px, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 16px;
+  align-items: end;
+}
+.world-spells {
+  display: flex;
+  gap: 10px;
+}
+.world-spells button {
+  position: relative;
+  width: 84px;
+  height: 105px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  border-radius: 18px;
+}
+.world-spells b {
+  font-size: 28px;
+  margin: 5px 0;
+}
+.world-spells span {
+  font-size: 9px;
+  text-align: center;
+  line-height: 12px;
+}
+.world-spells small {
+  font-size: 9px;
+  color: #a1cef0;
+  margin-top: 5px;
+}
+.foodie-world kbd {
+  font: 10px system-ui;
+  border: 1px solid #fff4;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.world-spells kbd {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+}
+.world-spells em {
+  position: absolute;
+  inset: 0;
+  background: #122b3ae8;
+  border-radius: 17px;
+  font-size: 26px;
+  font-style: normal;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.world-spells em:empty {
+  display: none;
+}
+.world-spells .ultimate {
+  border: 2px solid #e9c87b;
+  background: linear-gradient(145deg, #5a4a31dd, #203640ee);
+}
+.world-attack {
+  width: 96px;
+  height: 96px;
+  border-radius: 50% !important;
+  background: #ae6945ed !important;
+  font-size: 30px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.world-attack span {
+  font-size: 11px;
+  margin: 3px 0;
+}
+.world-attack kbd {
+  font-size: 9px;
+}
+.world-interact {
+  position: absolute;
+  bottom: 125px;
+  right: 0;
+  white-space: nowrap;
+}
+.world-help {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: #13343dcc;
+  font-size: 10px;
+  padding: 7px 14px;
+  border-radius: 12px;
+}
+.world-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: #092637bb;
+  backdrop-filter: blur(5px);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  touch-action: pan-y;
+}
+.world-modal[hidden] {
+  display: none;
+}
+.world-modal article {
+  position: relative;
+  background: #173b43;
+  border: 1px solid #fff3;
+  border-radius: 24px;
+  padding: 24px;
+  width: min(540px, 90vw);
+  max-height: calc(100dvh - 48px);
+  box-sizing: border-box;
+  overflow: auto;
+  touch-action: pan-y;
+}
+.world-modal h2 {
+  font-size: 21px;
+  margin-top: 0;
+}
+.world-modal p {
+  font-size: 13px;
+  color: #bed7d2;
+  line-height: 1.6;
+}
+.world-modal article > button:not([data-close]) {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  text-align: left;
+}
+.world-modal button small {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #b5d3ce;
+}
+.world-modal [data-close] {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.world-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 18px 0;
+}
+.world-slots div {
+  border: 1px solid #fff3;
+  border-radius: 12px;
+  padding: 10px;
+}
+.world-slots small,
+.world-slots strong {
+  display: block;
+  font-size: 11px;
+}
+.world-slots small {
+  color: #a8c9c3;
+  margin-bottom: 6px;
+}
+.world-rotate {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: #173849f2;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 24px;
+}
+.world-rotate b {
+  font-size: 70px;
+  color: #92e2cd;
+}
+.world-rotate strong {
+  font-size: 25px;
+}
+.world-rotate p {
+  max-width: 270px;
+  color: #bfddd5;
+}
+@media (max-height: 500px) {
+  .foodie-world header {
+    top: max(8px, env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+    gap: 8px;
+  }
+  .world-vitals {
+    width: 185px;
+    padding: 8px 12px;
+    border-radius: 14px;
+  }
+  .world-vitals strong {
+    font-size: 14px;
+  }
+  .world-vitals small {
+    font-size: 9px;
+    margin: 2px 0 3px;
+  }
+  .world-health,
+  .world-mana {
+    height: 14px;
+    margin-top: 3px;
+  }
+  .world-health span,
+  .world-mana span {
+    font-size: 9px;
+    line-height: 14px;
+  }
+  .world-title {
+    padding: 7px 12px;
+  }
+  .world-title b {
+    font-size: 10px;
+  }
+  .world-title small {
+    font-size: 9px;
+  }
+  .foodie-world nav button {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+  .world-target {
+    top: 95px;
+    font-size: 10px;
+    padding: 5px 10px;
+  }
+  .world-notice {
+    top: 130px;
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+  .world-joystick {
+    width: 142px;
+    height: 142px;
+    left: max(18px, env(safe-area-inset-left));
+    bottom: max(20px, env(safe-area-inset-bottom));
+  }
+  .world-joystick i {
+    width: 62px;
+    height: 62px;
+  }
+  .world-joystick span {
+    line-height: 43px;
+  }
+  .world-quick {
+    bottom: 177px;
+    left: 20px;
+    gap: 8px;
+  }
+  .world-quick button {
+    width: 62px;
+    padding: 6px 3px;
+    font-size: 20px;
+  }
+  .world-quick span {
+    font-size: 9px;
+    margin-top: 2px;
+  }
+  .world-quick small {
+    font-size: 10px;
+    margin-top: 2px;
+  }
+  .world-actions {
+    right: max(18px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
+    gap: 10px;
+  }
+  .world-spells {
+    gap: 6px;
+  }
+  .world-spells button {
+    width: 62px;
+    height: 83px;
+    border-radius: 14px;
+  }
+  .world-spells b {
+    font-size: 22px;
+    margin: 3px 0;
+  }
+  .world-spells span {
+    font-size: 8px;
+  }
+  .world-spells small {
+    font-size: 8px;
+    margin-top: 3px;
+  }
+  .world-attack {
+    width: 76px;
+    height: 76px;
+    font-size: 26px !important;
+  }
+  .world-interact {
+    bottom: 96px;
+    padding: 7px 12px !important;
+    font-size: 10px !important;
+  }
+  .world-help {
+    display: none;
+  }
+}
+@media (max-width: 700px) and (orientation: landscape) {
+  .world-title {
+    display: none;
+  }
+  .world-spells button {
+    width: 55px;
+  }
+  .world-actions {
+    gap: 7px;
+    right: 10px;
+  }
+  .world-joystick {
+    width: 132px;
+    height: 132px;
+    left: 14px;
+  }
+  .world-quick {
+    left: 16px;
+    bottom: 162px;
+  }
+  .world-attack {
+    width: 68px;
+    height: 68px;
+  }
+  .world-notice {
+    max-width: 44vw;
+    top: 125px;
+  }
+  .world-target {
+    top: 84px;
+  }
+}
+@media (orientation: portrait) and (pointer: coarse) {
+  .world-rotate {
+    display: flex;
+  }
+}

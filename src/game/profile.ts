@@ -52,6 +52,7 @@ export interface TradeOffer {
 }
 
 export interface PlayerProfile {
+  world?: import('../../shared/world-items').WorldProgress;
   revision?: number;
   version?: number;
   nft?: NftCharacter;
