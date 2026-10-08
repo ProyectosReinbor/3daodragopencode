@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#fff7eb" />
-    <meta name="description" content="Personajes únicos coleccionables que crecen con tus compras en restaurantes." />
+    <meta name="theme-color" content="#07151d" />
+    <meta name="description" content="Cría tu Pet, descubre negocios locales y explora tu ciudad. AODASE PETS comienza en Villavicencio." />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-    <title>Foodie Pets</title>
+    <title>AODASE PETS</title>
   </head>
   <body>
     <main id="app">
@@ -18,7 +18,7 @@
       <section class="hud" aria-label="Estado del personaje">
         <div class="brand">
           <span>*</span>
-          <div><strong>FOODIE</strong><small>PETS</small></div>
+          <div><strong>AODASE</strong><small>PETS</small></div>
         </div>
         <div class="bars">
           <label
@@ -143,12 +143,34 @@
       <section class="landing-screen" id="landing-screen">
         <div class="landing-particles" id="landing-particles"></div>
         <div class="landing-content">
-          <nav class="foodie-nav" aria-label="Navegación principal"><a class="foodie-wordmark" href="#">foodie<span>pets ✦</span></a><button id="landing-login" class="foodie-text-button">Ya tengo una cuenta ↗</button></nav>
-          <div class="landing-hero">
-            <p class="foodie-kicker">BUENA COMIDA. GRANDES AVENTURAS.</p>
-            <h1 class="landing-title">Foodie <span>Pets</span><i>✦</i></h1>
-            <p class="landing-desc">Tu próximo compañero<br />podría estar aquí.</p>
-          </div>
+          <nav class="foodie-nav" aria-label="Navegación principal"><a class="foodie-wordmark" href="#" aria-label="AODASE PETS"><span class="aodase-emblem" aria-hidden="true">◈</span> AODASE<span> PETS</span></a><button id="landing-login" class="foodie-text-button">Ya tengo una cuenta ↗</button></nav>
+          <section class="aodase-hero" aria-labelledby="aodase-title">
+            <div class="landing-hero">
+              <p class="foodie-kicker"><span class="aodase-live-dot" aria-hidden="true"></span> UN NUEVO UNIVERSO URBANO</p>
+              <h1 class="landing-title" id="aodase-title">AODASE<br /><span>PETS</span></h1>
+              <h2 class="aodase-promise">Tu ciudad. Tu Pet.<br /><span>Tu evolución.</span></h2>
+              <p class="landing-desc">Cría una criatura única. Descubre lo que te rodea.<br />Villavicencio es solo el comienzo.</p>
+              <button class="landing-join-btn" id="landing-join"><span>Entrar al mundo ↗</span></button>
+              <p class="aodase-entry-note">Tu aventura comienza con un huevo. Jugar es gratis.</p>
+            </div>
+            <div class="aodase-city-scene">
+              <div class="aodase-city-topline"><span>PRIMER MUNDO</span><strong>VILLAVICENCIO · COLOMBIA</strong></div>
+              <svg class="aodase-city-map" viewBox="0 0 500 430" role="img" aria-label="Ilustración conceptual de una ciudad conectada por negocios, parques y criaturas. No es un mapa geográfico.">
+                <defs><pattern id="aodase-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#437685" stroke-width=".6" opacity=".35" /></pattern><linearGradient id="aodase-route" x2="1" y2="1"><stop stop-color="#83f5d6"/><stop offset="1" stop-color="#6d8afa"/></linearGradient><radialGradient id="aodase-halo"><stop stop-color="#82efc5" stop-opacity=".25"/><stop offset="1" stop-color="#82efc5" stop-opacity="0"/></radialGradient></defs>
+                <rect width="500" height="430" fill="url(#aodase-grid)"/><ellipse cx="250" cy="240" rx="225" ry="178" fill="url(#aodase-halo)"/>
+                <g class="aodase-map-blocks" fill="#153b46" stroke="#38707b" stroke-width="1.5"><path d="m80 118 80-25 43 27-77 29Z M134 161l70-21 40 24-67 28Z M295 130l58-18 46 32-58 19Z M69 245l67-21 37 25-64 23Z M346 229l62-19 37 25-60 24Z M247 315l64-20 38 27-61 23Z"/><path d="m80 118v24l46 31v-24Zm54 43v29l43 28v-26Zm161-31v27l46 34v-28Zm51 99v26l39 29v-25Z" fill="#0e2e37"/></g>
+                <g fill="none" stroke="#3c626e" stroke-width="12" stroke-linecap="round"><path d="m24 303 430-143 M56 77l369 244 M211 52l-95 336 M424 45 240 355"/></g>
+                <path class="aodase-city-route" d="m116 276 95-35 81-94 86 30" fill="none" stroke="url(#aodase-route)" stroke-width="3" stroke-dasharray="8 8"/>
+                <g class="aodase-map-node aodase-map-node--one"><circle cx="116" cy="276" r="29" fill="#143d47" stroke="#84e9bd"/><text x="116" y="283" text-anchor="middle" fill="#a5f1ca" font-size="24">❧</text><text x="116" y="324" text-anchor="middle" fill="#91babd" font-size="10" letter-spacing="2">PARQUES</text></g>
+                <g class="aodase-map-node aodase-map-node--two"><circle cx="292" cy="147" r="25" fill="#283745" stroke="#a8a2ef"/><text x="292" y="154" text-anchor="middle" fill="#c6c0ff" font-size="23">◈</text><text x="292" y="105" text-anchor="middle" fill="#bcbadf" font-size="10" letter-spacing="2">COMERCIOS</text></g>
+                <g class="aodase-map-node aodase-map-node--three"><circle cx="378" cy="177" r="21" fill="#3a3b39" stroke="#d9b57d"/><text x="378" y="184" text-anchor="middle" fill="#f5d199" font-size="22">✦</text><text x="402" y="219" text-anchor="middle" fill="#c7b693" font-size="10" letter-spacing="2">EXPERIENCIAS</text></g>
+                <g class="aodase-hologram-egg" transform="translate(210 215)"><ellipse cy="42" rx="40" ry="9" fill="#7ee1c5" opacity=".15"/><path d="M0-46c-17 0-30 28-30 48 0 19 13 33 30 33S30 21 30 2C30-18 17-46 0-46Z" fill="#163f4b" stroke="#affae0" stroke-width="2"/><path d="m-12-5 11-8 12 13-9 13" fill="none" stroke="#d0ffee" stroke-width="2"/><circle cx="-12" cy="12" r="3" fill="#8df4d3"/><circle cx="13" cy="-19" r="4" fill="#86d5ed"/></g>
+                <circle cx="210" cy="254" r="66" fill="none" stroke="#7dedc7" stroke-dasharray="4 12" opacity=".4"/>
+              </svg>
+              <div class="aodase-city-caption"><span class="aodase-live-dot" aria-hidden="true"></span> CADA LUGAR PUEDE SER UNA HISTORIA <small>Vista conceptual del mundo urbano</small></div>
+            </div>
+          </section>
+          <div class="aodase-section-intro"><p class="foodie-kicker">NO HAY DOS HISTORIAS IGUALES</p><h2>Algo extraordinario<br />puede empezar en un huevo.</h2></div>
           <div class="landing-showcase">
             <div class="landing-char-card" id="landing-char-a">
               <div class="landing-char-3d" id="landing-3d-a"></div>
@@ -174,31 +196,30 @@
               </div>
             </div>
           </div>
-          <button class="landing-join-btn" id="landing-join">
-            <span>Unirse al mundo ↗</span>
-          </button>
-          <div class="foodie-collection-note"><span>Dos de los compañeros que puedes descubrir.</span><button id="landing-next" class="foodie-text-button">Ver otros Pets ↻</button></div>
+          <div class="foodie-collection-note"><span>Posibilidades del universo. Tu huevo guarda su propio secreto.</span><button id="landing-next" class="foodie-text-button">Ver otros Pets ↻</button></div>
+          <button id="landing-workshop" class="foodie-text-button">Probar el taller 3D ↗</button>
           <section class="foodie-how" aria-labelledby="foodie-how-title">
-            <p class="foodie-kicker">CADA COMPRA CUENTA</p>
-            <h2 id="foodie-how-title">Come rico.<br /><span>Hazlos crecer.</span></h2>
-            <p>Apoya a tus restaurantes favoritos y mejora tus Foodie Pets. Compra, escanea el código QR de tu factura y desbloquea niveles, regalos y habilidades para tus personajes únicos.</p>
-            <div class="foodie-steps"><span><b>01</b> Descubre tu Pet</span><span><b>02</b> Compra y escanea</span><span><b>03</b> Mejora tu colección</span></div>
-            <div class="foodie-animation-slot"><img src="/foodie-scan.svg" alt="Una persona escanea el QR de su factura junto a sus Foodie Pets felices, con señales de nuevos niveles y regalos." width="880" height="400" loading="lazy" /><span class="foodie-animation-caption">Un pequeño antojo. Una gran aventura.</span></div>
+            <p class="foodie-kicker">TU PET ES EL COMIENZO. LA CIUDAD ES EL HORIZONTE.</p>
+            <h2 id="foodie-how-title">Cuida. Descubre.<br /><span>Evoluciona.</span></h2>
+            <p>El universo AODASE conecta a tu Pet con comercios, servicios, parques y experiencias locales. Empieza por cuidar tu huevo y tu compañero. Las compras verificadas con QR aportan recompensas; disfrutar del juego no requiere comprar.</p>
+            <div class="foodie-steps"><span><b>01</b> Recibe y cuida tu huevo</span><span><b>02</b> Conoce a tu Pet</span><span><b>03</b> Descubre negocios locales</span></div>
+            <div class="foodie-animation-slot"><img src="/foodie-scan.svg" alt="Una persona escanea el QR de su factura junto a sus AODASE PETS felices, con señales de nuevos niveles y regalos." width="880" height="400" loading="lazy" /><span class="foodie-animation-caption">Un descubrimiento. Una nueva historia.</span></div>
           </section>
-          <section class="foodie-business" aria-labelledby="foodie-business-title"><div><p class="foodie-kicker">PARA NEGOCIOS DE COMIDA</p><h2 id="foodie-business-title">Tu restaurante puede ser<br />parte de su próxima aventura.</h2><p>Únete a Foodie Pets y convierte las compras de tus clientes en una experiencia que los invita a volver. Contáctanos para implementar el software en tu negocio.</p></div><div><a id="foodie-whatsapp" class="foodie-primary" target="_blank" rel="noopener noreferrer" aria-disabled="true">Contáctanos por WhatsApp ↗</a><small id="whatsapp-pending">Contacto por WhatsApp disponible próximamente.</small></div></section>
-          <footer class="foodie-footer"><strong>foodie pets ✦</strong><span>Tu comida favorita. Tus compañeros únicos.</span></footer>
+          <section class="aodase-business-types" aria-label="Negocios que pueden formar parte del universo"><span>Gastronomía</span><span>Comercios</span><span>Gimnasios</span><span>Entretenimiento</span><span>Servicios</span><span>Tecnología</span></section>
+          <section class="foodie-business" aria-labelledby="foodie-business-title"><div><p class="foodie-kicker">PARA LOS NEGOCIOS DE TU CIUDAD</p><h2 id="foodie-business-title">Tu negocio puede ser<br />un lugar de este universo.</h2><p>Restaurantes, tiendas, gimnasios, espacios de entretenimiento y servicios locales: construyamos nuevas experiencias en Villavicencio. Contáctanos para conocer cómo participar en AODASE PETS.</p></div><div><a id="foodie-whatsapp" class="foodie-primary" target="_blank" rel="noopener noreferrer" aria-disabled="true">Contáctanos por WhatsApp ↗</a><small id="whatsapp-pending">Contacto por WhatsApp disponible próximamente.</small></div></section>
+          <footer class="foodie-footer"><strong>AODASE PETS ◈</strong><span>Villavicencio → Colombia → Mundo.</span></footer>
         </div>
       </section>
       <section class="onboarding-screen hidden" id="onboarding-screen">
-        <div class="foodie-onboarding-panel"><button id="onboarding-back" class="foodie-text-button">← Volver a Foodie Pets</button><p class="foodie-kicker" id="onboarding-status"></p><div id="onboarding-content"></div><p id="onboarding-error" role="alert"></p></div>
+        <div class="foodie-onboarding-panel"><button id="onboarding-back" class="foodie-text-button">← Volver a AODASE PETS</button><p class="foodie-kicker" id="onboarding-status"></p><div id="onboarding-content"></div><p id="onboarding-error" role="alert"></p></div>
       </section>
       <section class="login-screen hidden" id="login-screen">
         <div class="login-panel">
-          <button id="login-back" class="foodie-text-button">← Volver a Foodie Pets</button>
+          <button id="login-back" class="foodie-text-button">← Volver a AODASE PETS</button>
           <p class="eyebrow">INICIAR SESION</p>
-          <h1>Foodie Pets</h1>
+          <h1>AODASE PETS</h1>
           <p class="login-subtitle">
-            Guarda a tu compañero único y empieza tu colección Foodie Pets.
+            Crea tu cuenta, recibe un huevo y comienza la historia de tu Pet.
           </p>
           <div class="login-form">
             <label
@@ -230,16 +251,16 @@
             >Tu personaje se guarda en el servidor. Accede desde cualquier dispositivo.</small
           >
           <button class="clear-cache-button" id="clear-cache-button">Limpiar cache</button>
-          <small>Tu colección te espera. Guarda tu Pet para continuar desde cualquier dispositivo.</small>
+          <small>Tu huevo y tus Pets se guardan en tu cuenta para continuar desde cualquier dispositivo.</small>
         </div>
       </section>
       <section class="hub-screen hidden" id="hub-screen">
         <div class="hub-panel">
-          <button id="hub-home" class="foodie-text-button">← Volver a Foodie Pets</button>
+          <button id="hub-home" class="foodie-text-button">← Volver a AODASE PETS</button>
           <button id="hub-logout" class="foodie-text-button">Cerrar sesión</button>
           <div class="hub-welcome">
             <p class="eyebrow">BIENVENIDO</p>
-            <h1>Foodie Pets</h1>
+            <h1>AODASE PETS</h1>
           </div>
           <div class="hub-character-card">
             <div id="hub-pet-visual" class="onboarding-pet-preview"></div>
@@ -256,19 +277,21 @@
             <div class="hub-char-stats" id="hub-char-stats"></div>
           </div>
           <div class="hub-actions">
-            <button class="hub-btn" id="hub-characters">Mis Foodie Pets</button>
-            <button class="hub-btn" id="hub-stores">Restaurantes</button>
+            <button class="hub-btn" id="hub-guardian">Mi hábitat</button>
+            <button class="hub-btn" id="hub-characters">Mis Pets</button>
+            <button class="hub-btn" id="hub-stores">Negocios de mi ciudad</button>
             <button class="hub-btn" id="hub-redeem">Escanear factura</button>
             <button class="hub-btn primary" id="hub-start">Explorar el mundo 3D</button>
           </div>
           <div class="hub-news" id="hub-news"></div>
         </div>
       </section>
+      <section class="guardian-screen hidden" id="guardian-screen" aria-label="Hábitat de tus AODASE PETS"></section>
       <section class="characters-screen hidden" id="characters-screen">
         <div class="characters-panel">
           <button class="close-panel" id="characters-back" aria-label="Volver">x</button>
           <p class="eyebrow">COLECCION</p>
-          <h2>Mis Foodie Pets</h2>
+          <h2>Mis Pets</h2>
           <div class="characters-list" id="characters-list"></div>
         </div>
       </section>
@@ -284,7 +307,7 @@
         <div class="stores-panel">
           <button class="close-panel" id="stores-back" aria-label="Volver">x</button>
           <p class="eyebrow">TIENDAS</p>
-          <h2>Restaurantes</h2>
+          <h2>Negocios de tu ciudad</h2>
           <div class="stores-list" id="stores-list"></div>
         </div>
       </section>
@@ -337,7 +360,7 @@
       <section class="intro hidden" id="intro">
         <div class="intro-panel">
           <p class="eyebrow">MVP WEB - PWA</p>
-          <h1>Foodie Pets</h1>
+          <h1>AODASE PETS</h1>
           <p>Entrena tu guerrero unico. Combate, recolecta y sube de nivel en un mundo 3D.</p>
         </div>
       </section>
@@ -356,7 +379,7 @@
           <div id="nft-preview" class="nft-preview"></div>
           <div class="nft-stats-grid" id="nft-stats"></div>
           <button id="nft-enter" class="nft-btn primary" hidden>Entrar al reino</button>
-          <p class="nft-hint">Tu slime es unico y permanente. Consigue personajes con formas unicas al comprar en restaurantes asociados.</p>
+          <p class="nft-hint">Cada Pet tiene su propia historia. Cuida a tus compañeros y descubre las recompensas publicadas por los negocios de tu ciudad.</p>
         </div>
       </section>
     </main>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin - Reinos Ancestrales</title>
+<title>Administración — AODASE PETS</title>
 <style>
 :root {
   --bg: #0f1a14;
@@ -314,7 +314,7 @@ function renderLogin() {
     <div class="login-screen">
       <div class="login-card">
         <h1>Panel Admin</h1>
-        <p>Reinos Ancestrales</p>
+        <p>AODASE PETS</p>
         <form id="login-form">
           <div class="form-group">
             <label>Usuario</label>
@@ -365,7 +365,7 @@ function render() {
   const app = document.getElementById('app');
   app.innerHTML = html`
     <nav class="sidebar">
-      <div class="sidebar-brand">ADMIN<small>Reinos Ancestrales</small></div>
+      <div class="sidebar-brand">ADMIN<small>AODASE PETS</small></div>
       <div class="nav-item ${currentView === 'dashboard' ? 'active' : ''}" data-view="dashboard">Dashboard</div>
       <div class="nav-item ${currentView === 'users' ? 'active' : ''}" data-view="users">Usuarios</div>
       <div class="nav-item ${currentView === 'invoices' ? 'active' : ''}" data-view="invoices">Facturas</div>
@@ -630,9 +630,20 @@ window.showAddStoreForm = function() {
             <option value="cafeteria">Cafetería</option>
             <option value="postres">Postres</option>
             <option value="panaderia">Panadería</option>
+            <option value="tienda">Tienda</option>
+            <option value="moda">Moda</option>
+            <option value="gimnasio">Gimnasio</option>
+            <option value="entretenimiento">Entretenimiento</option>
+            <option value="servicios">Servicios</option>
+            <option value="tecnologia">Tecnología</option>
+            <option value="centro_comercial">Centro comercial</option>
+            <option value="otros">Otros negocios</option>
           </select>
         </div>
-        <div class="form-group"><label>Ciudad</label><input type="text" id="f-city" placeholder="Ciudad"></div>
+        <div class="form-group"><label>Ciudad</label><input type="text" id="f-city" value="Villavicencio" placeholder="Ciudad"></div>
+        <div class="form-group"><label>Nombre dentro del universo (opcional)</label><input type="text" id="f-game-name" maxlength="80" placeholder="ej: El Jardín Esmeralda"></div>
+        <div class="form-group"><label>Latitud (opcional)</label><input type="number" id="f-lat" min="-90" max="90" step="any" placeholder="Coordenada del negocio"></div>
+        <div class="form-group"><label>Longitud (opcional)</label><input type="number" id="f-lng" min="-180" max="180" step="any" placeholder="Coordenada del negocio"></div>
         <div class="form-group"><label>Descripción</label><textarea id="f-desc" rows="2" placeholder="Descripción de la tienda"></textarea></div>
         <div class="form-group"><label>Descripción Corta</label><input type="text" id="f-short" placeholder="Breve descripción"></div>
         <div class="form-group"><label>Horario</label><input type="text" id="f-hours" placeholder="ej: 09:00-21:00"></div>
@@ -656,6 +667,9 @@ window.showAddStoreForm = function() {
           name: document.getElementById('f-name').value.trim(),
           category: document.getElementById('f-category').value,
           city: document.getElementById('f-city').value.trim(),
+          game_name: document.getElementById('f-game-name').value.trim() || null,
+          lat: document.getElementById('f-lat').value === '' ? null : Number(document.getElementById('f-lat').value),
+          lng: document.getElementById('f-lng').value === '' ? null : Number(document.getElementById('f-lng').value),
           description: document.getElementById('f-desc').value.trim(),
           short_description: document.getElementById('f-short').value.trim(),
           hours: document.getElementById('f-hours').value.trim(),

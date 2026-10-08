@@ -1,5 +1,4 @@
 import {
-  InstancedMesh,
   Scene,
   PerspectiveCamera,
   WebGLRenderer,
@@ -22,6 +21,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Character } from './characters';
 import { buildNftModel } from './nft';
 import type { EyeOffset } from '../../shared/pet-appearance.js';
+import { disposePetModel } from './pet-model';
 
 export type StudioMode = 'orbit' | 'eyes' | 'raise' | 'lower';
 export interface StudioCallbacks {
@@ -33,15 +33,7 @@ export interface StudioCallbacks {
 }
 
 function disposeModel(model: Group) {
-  model.traverse((object) => {
-    const mesh = object as Mesh;
-    if (mesh instanceof InstancedMesh) mesh.dispose();
-    mesh.geometry?.dispose();
-    if (mesh.material)
-      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) =>
-        material.dispose()
-      );
-  });
+  disposePetModel(model);
 }
 
 export function mountStudioView(
@@ -65,13 +57,13 @@ export function mountStudioView(
   scene.add(fill);
   const platform = new Mesh(
     new CylinderGeometry(1.4, 1.45, 0.08, 64),
-    new MeshStandardMaterial({ color: 0xdddcc8, roughness: 1 })
+    new MeshStandardMaterial({ color: 0x15333f, roughness: 0.75 })
   );
   platform.position.y = -0.045;
   scene.add(platform);
   const contact = new Mesh(
     new CircleGeometry(0.65, 48),
-    new MeshBasicMaterial({ color: 0x606348, transparent: true, opacity: 0.14, depthWrite: false })
+    new MeshBasicMaterial({ color: 0x020a12, transparent: true, opacity: 0.14, depthWrite: false })
   );
   contact.rotation.x = -Math.PI / 2;
   contact.position.y = 0.005;

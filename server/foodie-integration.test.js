@@ -23,7 +23,7 @@ async function request(path, body, method = body ? 'POST' : 'GET', authToken = t
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'foodie-integration-'));
   processHandle = spawn(process.execPath, [resolve('server/index.js')], {
-    env: { ...process.env, NODE_ENV: 'test', PORT: '3107', JWT_SECRET: testSecret, FOODIE_TEST_DATA_DIR: directory },
+    env: { ...process.env, NODE_ENV: 'test', SEED_DEMO_DATA: 'true', PORT: '3107', JWT_SECRET: testSecret, FOODIE_TEST_DATA_DIR: directory },
     stdio: 'ignore', windowsHide: true,
   });
   for (let i = 0; i < 100; i++) {
@@ -224,8 +224,14 @@ test('world rewards are server-owned, persisted, and cannot be replayed or forge
   assert.equal(buy.data.profile.world.potions,4);
   assert.equal((await request('/world/action',{session,action:'equip',item:'blade'})).status,400);
   assert.equal((await request('/world/action',{session,action:'attack',slot:99,kind:'wolf',enemy:'aldea:0'})).status,400);
-  const hit = await request('/world/action',{session,action:'attack',slot:3,kind:'wolf',enemy:'aldea:0'});
+  let hit = await request('/world/action',{session,action:'attack',slot:3,kind:'wolf',enemy:'aldea:0'});
   assert.equal(hit.status,200);
+  // Welcome dice vary; the ultimate is not guaranteed to kill in one hit.
+  for (let attack = 0; hit.data.enemyHealth > 0 && attack < 3; attack++) {
+    if (attack) await new Promise(resolve => setTimeout(resolve, 475));
+    hit = await request('/world/action',{session,action:'attack',slot:-1,kind:'wolf',enemy:'aldea:0'});
+    assert.equal(hit.status,200);
+  }
   assert.equal(hit.data.enemyHealth,0);
   assert.equal(hit.data.reward.coins,12);
   assert.equal(hit.data.reward.xp,15);

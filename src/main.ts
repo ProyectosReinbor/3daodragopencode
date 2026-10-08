@@ -1,10 +1,13 @@
 import './styles.css';
 import './foodie.css';
+import './aodase.css';
+import { mountGuardian } from './game/guardian-ui';
+let stopGuardian: (() => void) | undefined;
 import { mountWorldPlay } from './game/world-play';
 let stopWorld: (() => void) | undefined;
 import { migrateProfile, type PlayerProfile } from './game/profile';
 import { initFoodieLanding } from './game/landing-ui';
-import { mountOnboarding, claimFoodiePet, hasPendingPet } from './game/onboarding-ui';
+import { mountOnboarding, hasPendingPet } from './game/onboarding-ui';
 import { CharacterManager } from './game/characters';
 import { apiRegister, apiLogin, apiGetProfile, isLoggedIn, getPhone, clearAuth } from './game/api';
 import { navigation } from './game/navigation';
@@ -22,6 +25,7 @@ import type { RedeemCallbacks } from './game/redeem-ui';
 import { mountRewardResult } from './game/reward-result-ui';
 import type { RewardResultCallbacks } from './game/reward-result-ui';
 import type { RedeemResult } from './game/reward-manager';
+import './game-theme.css';
 const loginPhone = document.querySelector<HTMLInputElement>('#login-phone')!;
 const loginPw = document.querySelector<HTMLInputElement>('#login-password')!;
 const loginSubmit = document.querySelector<HTMLButtonElement>('#login-submit')!;
@@ -100,7 +104,8 @@ async function handleAuthAction(action: 'login' | 'register') {
 }
 
 loginSubmit.addEventListener('click', () => handleAuthAction('login'));
-document.getElementById('login-back')!.onclick = () => navigation.navigate(hasPendingPet() ? 'onboarding' : 'landing');
+document.getElementById('login-back')!.onclick = () =>
+  navigation.navigate(hasPendingPet() ? 'onboarding' : 'landing');
 loginRegister.addEventListener('click', () => handleAuthAction('register'));
 loginPw.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') handleAuthAction('login');
@@ -118,22 +123,24 @@ async function onAuthSuccess() {
       return;
     }
   }
-  if (hasPendingPet()) {
-    const claimed = await claimFoodiePet();
-    if (claimed) {
-      migrateProfile(claimed);
-      goToHub(claimed);
-      return;
-    }
-  }
-  navigation.navigate('onboarding');
+  // New Guardians start with an egg; a workshop preview is never their starter pet.
+  if (!serverProfile) throw new Error('No se pudo cargar tu perfil. Vuelve a iniciar sesión.');
+  currentProfile = serverProfile;
+  currentManager = null;
+  navigation.navigate('guardian');
 }
 
 function goToHub(profile: PlayerProfile) {
   currentProfile = profile;
+  if (!profile.characters?.characters.length) {
+    currentManager = null;
+    if (navigation.getCurrent() !== 'guardian') navigation.navigate('guardian');
+    return;
+  }
   currentManager = new CharacterManager(profile.characters!);
 
   const hubCbs: HubCallbacks = {
+    onGuardian: () => navigation.navigate('guardian'),
     onCharacters: () => navigation.navigate('characters'),
     onInventory: () => navigation.navigate('inventory'),
     onStores: () => navigation.navigate('stores'),
@@ -159,14 +166,54 @@ function startGameWithProfile(profile: PlayerProfile) {
       profile.characters.characters[0];
     if (active) {
       stopWorld?.();
-      stopWorld = mountWorldPlay({pet: active, profile, onExit: updated => { stopWorld = undefined; goToHub(updated || profile); }});
+      stopWorld = mountWorldPlay({
+        pet: active,
+        profile,
+        onExit: (updated) => {
+          stopWorld = undefined;
+          goToHub(updated || profile);
+        },
+      });
     }
   }
 }
 
 navigation.onNavigate((screen: AppScreen) => {
-  if (screen !== 'game') { stopWorld?.(); stopWorld = undefined; }
-  if (screen === 'login') document.getElementById('login-back')!.textContent = hasPendingPet() ? '← Volver a mi personaje' : '← Volver a Foodie Pets';
+  if (screen !== 'guardian') {
+    stopGuardian?.();
+    stopGuardian = undefined;
+  }
+  if (screen === 'guardian' && currentProfile) {
+    stopGuardian?.();
+    stopGuardian = mountGuardian(document.getElementById('guardian-screen')!, currentProfile, {
+      onBack: (updated) => {
+        currentProfile = updated;
+        if (updated.characters?.characters.length) goToHub(updated);
+        else navigation.navigate('landing');
+      },
+      onExplore: (updated) => {
+        currentProfile = updated;
+        currentManager = updated.characters?.characters.length
+          ? new CharacterManager(updated.characters)
+          : null;
+        startGameWithProfile(updated);
+      },
+      onProfile: (updated) => {
+        currentProfile = updated;
+        currentManager = updated.characters?.characters.length
+          ? new CharacterManager(updated.characters)
+          : null;
+      },
+    });
+  }
+  if (screen !== 'game') {
+    stopWorld?.();
+    stopWorld = undefined;
+  }
+  if (screen === 'login')
+    document.getElementById('login-back')!.textContent = hasPendingPet()
+      ? '← Volver a mi personaje'
+      : '← Volver a AODASE PETS';
   if (screen === 'onboarding') mountOnboarding(goToHub);
   if (screen === 'characters' && currentProfile && currentManager) {
     const charCbs: CharactersCallbacks = {
@@ -232,7 +279,7 @@ if ('serviceWorker' in navigator)
 
 initFoodieLanding(() => {
   if (isLoggedIn() && currentProfile) goToHub(currentProfile);
-  else navigation.navigate('onboarding');
+  else navigation.navigate('login');
 });
 
 if (isLoggedIn()) {

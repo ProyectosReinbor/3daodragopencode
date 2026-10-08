@@ -1,11 +1,11 @@
 {
-  "name": "Foodie Pets",
-  "short_name": "Foodie Pets",
-  "description": "Colecciona compañeros únicos y mejóralos con tus compras en restaurantes.",
+  "name": "AODASE PETS",
+  "short_name": "AODASE PETS",
+  "description": "Tu ciudad. Tu Pet. Tu evolución. Cría criaturas y descubre negocios locales; Villavicencio es el comienzo.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fff7eb",
-  "theme_color": "#fff7eb",
+  "background_color": "#07151d",
+  "theme_color": "#07151d",
   "orientation": "any",
   "icons": [
     { "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },

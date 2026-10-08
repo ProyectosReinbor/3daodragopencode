@@ -7,9 +7,11 @@ import { existsSync, mkdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { mountFoodieWorld } from './foodie-world.js';
+import { mountFoodieGuardian } from './foodie-guardian.js';
 import { mountFoodieOnboarding } from './foodie-onboarding.js';
 import { applyPurchaseExperience } from './foodie-growth.js';
 import { randomUUID } from 'node:crypto';
+import { mountUrbanBusinesses, presentUrbanStore } from './urban-businesses.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -188,7 +190,7 @@ function seedStores() {
   }
 }
 
-seedStores();
+if (process.env.SEED_DEMO_DATA === 'true') seedStores();
 
 function generateInvoiceCodes() {
   const existing = db.prepare('SELECT COUNT(*) AS cnt FROM invoice_codes').get();
@@ -224,7 +226,7 @@ function generateInvoiceCodes() {
   insertMany();
 }
 
-generateInvoiceCodes();
+if (process.env.SEED_DEMO_DATA === 'true') generateInvoiceCodes();
 
 // --- Code Generator Service ---
 
@@ -568,13 +570,15 @@ app.get('/api/profile', auth, (req, res) => {
   res.json(profile);
 });
 
+mountUrbanBusinesses(app, { db, adminAuth });
 mountFoodieOnboarding(app, { db, auth, getProfile, saveProfile });
 mountFoodieWorld(app, { auth, getProfile, saveProfile });
+mountFoodieGuardian(app, { db, auth, getProfile, saveProfile });
 
 app.put('/api/profile', auth, (req, res) => {
   const existing = getProfile(req.phone);
   if (!existing?.nft && !existing?.characters?.characters?.length) {
-    return res.status(400).json({ error: 'Completa primero la creación de tu Foodie Pet.' });
+    return res.status(400).json({ error: 'Ayuda a nacer a tu primer AODASE Pet antes de guardar tu colección.' });
   }
   if (existing && (req.body.revision || 0) !== (existing.revision || 0)) {
     return res.status(409).json({ error: 'Tu perfil cambió. Vuelve a abrir tu colección antes de guardar.' });
@@ -801,7 +805,7 @@ app.get('/api/stores', (_req, res) => {
       (SELECT COUNT(*) FROM promotions p WHERE p.store_id = s.id AND p.active = 1) AS promotion_count
     FROM stores s WHERE s.active = 1 ORDER BY s.name
   `).all();
-  res.json({ stores: rows });
+  res.json({ stores: rows.map(presentUrbanStore) });
 });
 
 app.get('/api/stores/:id', (req, res) => {
@@ -829,7 +833,7 @@ app.get('/api/stores/:id', (req, res) => {
     promo.product_ids = productIds;
   }
 
-  res.json({ store: { ...store, promotions, products } });
+  res.json({ store: { ...presentUrbanStore(store), promotions, products } });
 });
 
 app.get('/api/promotions', (_req, res) => {
@@ -968,7 +972,7 @@ app.get('/api/admin/stores', adminAuth, (req, res) => {
     FROM stores s
     ORDER BY s.name
   `).all();
-  res.json({ stores });
+  res.json({ stores: stores.map(presentUrbanStore) });
 });
 
 app.get('/api/admin/stores/:id', adminAuth, (req, res) => {
@@ -986,7 +990,7 @@ app.get('/api/admin/stores/:id', adminAuth, (req, res) => {
     ORDER BY ic.redeemed_at DESC
     LIMIT 200
   `).all(req.params.id);
-  res.json({ store, promotions, products, invoices });
+  res.json({ store: presentUrbanStore(store), promotions, products, invoices });
 });
 
 // --- Admin: Delete user ---
@@ -1012,17 +1016,7 @@ app.delete('/api/admin/stores/:id', adminAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// --- Admin: Create store ---
-app.post('/api/admin/stores', adminAuth, (req, res) => {
-  const { id, name, category, city, description, short_description, hours } = req.body;
-  if (!id || !name) return res.status(400).json({ error: 'id y name requeridos' });
-  const existing = db.prepare('SELECT id FROM stores WHERE id = ?').get(id);
-  if (existing) return res.status(409).json({ error: 'Ya existe una tienda con ese ID' });
-  db.prepare(`INSERT INTO stores (id, name, logo_url, category, city, description, short_description, banner_url, lat, lng, hours, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-    id, name, '', category || '', city || '', description || '', short_description || '', '', 0, 0, hours || '', 1
-  );
-  res.json({ ok: true });
-});
+// Store creation/editing is owned by the validated urban catalog module.
 
 // --- Admin: Create invoice (store creates it, auto-delivers to user) ---
 app.post('/api/admin/stores/:id/invoice-codes', adminAuth, (req, res) => {
@@ -1117,6 +1111,6 @@ if (existsSync(FRONTEND_DIR)) {
 }
 
 app.listen(PORT, process.env.NODE_ENV === 'test' ? '127.0.0.1' : '0.0.0.0', () => {
-  console.log(`[Foodie Pets] http://localhost:${PORT}`);
+  console.log(`[AODASE PETS] http://localhost:${PORT}`);
   console.log(`[Frontend] ${existsSync(FRONTEND_DIR) ? 'serving from ' + FRONTEND_DIR : 'NOT BUILT'}`);
 });

@@ -1,7 +1,7 @@
 import type { Character } from './characters';
 import { getAllAbilities } from './abilities';
-import { Color } from 'three';
-import { PET_PRESETS, DEFAULT_APPEARANCE, APPEARANCE_ENUMS } from '../../shared/pet-appearance.js';
+import { petSpeciesName } from '../../shared/pet-species.js';
+import { generatePetTraits } from '../../shared/pet-genetics.js';
 
 function secureRandom(): number {
   return crypto.getRandomValues(new Uint32Array(1))[0] / 0x100000000;
@@ -15,58 +15,13 @@ export function randomizePet(initial: Character, random: () => number = secureRa
     Number(
       (min + Math.floor(random() * (Math.floor((max - min) / step + 1e-8) + 1)) * step).toFixed(4)
     );
-  pet.traits.element = pick(['fuego', 'agua', 'tierra', 'aire', 'sombra', 'luz'] as const);
-  const family = pick(PET_PRESETS);
-  const species = family.id;
-  const appearance = { ...structuredClone(DEFAULT_APPEARANCE), ...family.appearance };
-  pet.traits.bodyType = pick(['bestia', 'humanoid', 'golem', 'espectral'] as const);
-  pet.traits.headShape = pick(
-    species === 'monster'
-      ? (['round', 'cube', 'diamond'] as const)
-      : (['round', 'round', 'diamond'] as const)
-  );
-  pet.traits.limbCount = pick([0, 2, 4, 6, 8]);
-  pet.traits.limbLength = number(0.5, 1.8, 0.1);
-  // Independent saturated hues allow neon, contrasting and unusual palettes.
-  const hue = random();
-  pet.traits.primaryColor = new Color()
-    .setHSL(hue, number(0.65, 1, 0.05), number(0.3, 0.65, 0.05))
-    .getHex();
-  pet.traits.secondaryColor = new Color()
-    .setHSL(random(), number(0.55, 1, 0.05), number(0.35, 0.8, 0.05))
-    .getHex();
-  pet.traits.accentColor = new Color()
-    .setHSL(random(), number(0.7, 1, 0.05), number(0.45, 0.75, 0.05))
-    .getHex();
-  appearance.mood = pick(['cute', 'cute', 'fierce', 'grumpy', 'odd'] as const);
-  appearance.headSize = number(1.05, 1.35, 0.05);
-  appearance.bodyWidth = number(0.6, 1.65, 0.05);
-  appearance.bodyHeight = number(0.65, 1.6, 0.05);
+  const geneticDesign = generatePetTraits('mystery', random);
+  const rarity = pet.traits.rarity;
+  pet.traits = { ...pet.traits, ...geneticDesign, rarity };
+  const appearance = geneticDesign.appearance;
+  // Species anatomy is inherited from the shared genotype. Manual editing remains unrestricted.
   appearance.headX = number(-0.05, 0.05, 0.05);
-  appearance.headY = number(-0.15, -0.05, 0.05);
-  appearance.eyeSize = number(0.85, 1.15, 0.05);
-  appearance.eyeSpacing = number(1, 1.15, 0.05);
-  appearance.eyeHeight = number(-0.03, 0.03, 0.01);
   appearance.eyeTilt = number(-0.1, 0.1, 0.05);
-  appearance.eyes =
-    species === 'insect'
-      ? pick(['bug', 'round'] as const)
-      : species === 'alien'
-        ? pick(['slit', 'round'] as const)
-        : pick(['round', 'round', 'sleepy'] as const);
-  appearance.earSize = number(0.5, 1.6, 0.05);
-  appearance.wingSize = number(0.5, 1.7, 0.05);
-  appearance.antennaLength =
-    species === 'insect' || species === 'alien' ? number(0.4, 1.1, 0.05) : 0;
-  appearance.furLength = number(0.04, 0.1, 0.01);
-  appearance.roughness = number(0.1, 0.6, 0.05);
-  appearance.spikes = species === 'dragon' || species === 'monster' ? number(1, 5, 1) : 0;
-  // Mix species details independently, while retaining the protected face anatomy.
-  for (const key of ['coat', 'ears', 'wings', 'limbKind', 'tail'] as const) {
-    (appearance as unknown as Record<string, unknown>)[key] = pick(APPEARANCE_ENUMS[key]);
-  }
-  appearance.antennaLength = number(0, 1.5, 0.05);
-  appearance.spikes = number(0, 8, 1);
   const eyeShift = number(-0.02, 0.02, 0.01),
     eyeLift = number(-0.01, 0.01, 0.01);
   for (const [eye, side] of [
@@ -114,6 +69,6 @@ export function randomizePet(initial: Character, random: () => number = secureRa
   const abilities = getAllAbilities().map((ability) => ability.id);
   const first = pick(abilities);
   pet.powers = [first, pick(abilities.filter((id) => id !== first))];
-  if (!pet.name.trim()) pet.name = `Pet-${Math.floor(random() * 0x100000000).toString(36)}`;
+  if (!pet.name.trim()) pet.name = petSpeciesName(appearance.species);
   return pet;
 }

@@ -23,6 +23,26 @@ const optionLabels: Record<string, string> = {
   spotted: 'Manchas',
   dirty: 'Sucio / rugoso',
   scales: 'Escamas',
+  marbled: 'Marmoleado pastel',
+  calico: 'Tres colores',
+  tuxedo: 'Esmoquin',
+  dog: 'Orejas caídas',
+  rabbit: 'Orejas de conejo',
+  fins: 'Aletas suaves',
+  fin: 'Cola de aleta',
+  short: 'Cortita',
+  sparkling: 'Brillantes',
+  mask: 'Antifaz',
+  socks: 'Calcetines',
+  blaze: 'Franja en la cara',
+  freckles: 'Pecas',
+  bands: 'Bandas',
+  mint: 'Menta',
+  sky: 'Cielo',
+  amber: 'Ámbar',
+  violet: 'Violeta',
+  rose: 'Rosa',
+  lime: 'Lima',
   cat: 'Gatito',
   long: 'Largas',
   none: 'Sin este rasgo',
@@ -74,7 +94,7 @@ export function mountPetEditor(
     brushStrength = 0.12,
     rotating = false;
   container.innerHTML = `<div class="pet-studio">
-    <div class="studio-title"><span class="studio-eyebrow">EL TALLER FOODIE</span><h2>Pequeña criatura.<br/>Gran personalidad.</h2><p>Mezcla especies, moldea sus formas y crea una mascota que solo podría ser tuya.</p></div>
+    <div class="studio-title"><span class="studio-eyebrow">EL TALLER AODASE</span><h2>Pequeña criatura.<br/>Gran personalidad.</h2><p>Mezcla especies, moldea sus formas y crea una mascota que solo podría ser tuya.</p></div>
     <div class="studio-layout">
       <aside class="studio-stage"><div class="studio-stage-heading"><span id="studio-pet-badge">TU COMPAÑERO</span><span>VISTA 3D EN VIVO</span></div>
         <button id="studio-random" class="studio-random" type="button" aria-label="Random: generar un Pet aleatorio">🎲 Random</button>
@@ -105,16 +125,17 @@ export function mountPetEditor(
           <section id="section-face" role="tabpanel" aria-labelledby="tab-face" hidden><h3>Una carita única</h3><p>Mueve cada ojo en la vista 3D o ajusta su posición con precisión aquí.</p>
             ${select('Forma de la cabeza', 'traits.headShape', ['round', 'cube', 'diamond'])}
             ${range('Tamaño de la cabeza', 'traits.appearance.headSize', 0.65, 1.6)}
-            ${select('Tipo de ojos', 'traits.appearance.eyes', ['round', 'slit', 'bug', 'sleepy'])}
+            ${select('Tipo de ojos', 'traits.appearance.eyes', ['round', 'slit', 'bug', 'sleepy', 'sparkling'])}
+            ${select('Color del iris', 'traits.appearance.eyeColor', ['mint', 'sky', 'amber', 'violet', 'rose', 'lime'])}
             ${range('Tamaño de los ojos', 'traits.appearance.eyeSize', 0.6, 1.7)}${range('Separación de los ojos', 'traits.appearance.eyeSpacing', 0.65, 1.6)}${range('Altura de los ojos', 'traits.appearance.eyeHeight', -0.16, 0.18, 0.01)}${range('Inclinación de los ojos', 'traits.appearance.eyeTilt', -0.45, 0.45)}
             <details class="studio-precision"><summary>Posición de cada ojo</summary>${(['eyeLeft', 'eyeRight'] as const).map((eye, i) => `<h4>Ojo ${i === 0 ? 'izquierdo' : 'derecho'}</h4>${range('Horizontal', `traits.appearance.${eye}.x`, -0.5, 0.5, 0.01)}${range('Vertical', `traits.appearance.${eye}.y`, -0.5, 0.5, 0.01)}${range('Profundidad', `traits.appearance.${eye}.z`, -0.5, 0.5, 0.01)}`).join('')}</details>
-            ${select('Orejas', 'traits.appearance.ears', ['cat', 'long', 'round', 'none'])}${range('Tamaño de las orejas', 'traits.appearance.earSize', 0.5, 1.6)}
+            ${select('Orejas', 'traits.appearance.ears', ['cat', 'long', 'round', 'none', 'dog', 'rabbit', 'fins'])}${range('Tamaño de las orejas', 'traits.appearance.earSize', 0.5, 1.6)}
           </section>
           <section id="section-body" role="tabpanel" aria-labelledby="tab-body" hidden><h3>Su propia silueta</h3><p>Patitas, manos con dedos, garras o tentáculos. Tú decides.</p>
             ${select('Tipo de cuerpo', 'traits.bodyType', ['bestia', 'humanoid', 'golem', 'espectral'])}
             ${range('Ancho del cuerpo', 'traits.appearance.bodyWidth', 0.6, 1.65)}${range('Alto del cuerpo', 'traits.appearance.bodyHeight', 0.65, 1.6)}${range('Cabeza: mover a los lados', 'traits.appearance.headX', -0.35, 0.35)}${range('Cabeza: subir o bajar', 'traits.appearance.headY', -0.2, 0.35)}
             <label class="studio-select" for="studio-limbs">Cantidad de extremidades<select id="studio-limbs" data-path="traits.limbCount" data-number="true">${[0, 2, 4, 6, 8].map((n) => `<option value="${n}">${n} extremidades</option>`).join('')}</select></label>
-            ${select('Tipo de extremidades', 'traits.appearance.limbKind', ['paws', 'hands', 'tentacles', 'claws'])}${range('Largo de las extremidades', 'traits.limbLength', 0.5, 1.8, 0.1)}${select('Cola', 'traits.appearance.tail', ['none', 'curled', 'long', 'spiked'])}
+            ${select('Tipo de extremidades', 'traits.appearance.limbKind', ['paws', 'hands', 'tentacles', 'claws'])}${range('Largo de las extremidades', 'traits.limbLength', 0.5, 1.8, 0.1)}${select('Cola', 'traits.appearance.tail', ['none', 'curled', 'long', 'spiked', 'fluffy', 'fin', 'short'])}
           </section>
           <section id="section-details" role="tabpanel" aria-labelledby="tab-details" hidden><h3>Texturas y pequeños detalles</h3><p>Suave y peludita, cubierta de escamas o un poco sucia.</p>
             <div class="studio-palette">${[
@@ -127,7 +148,8 @@ export function mountPetEditor(
                   `<label>${label}<input type="color" data-path="traits.${key}" data-color="true" aria-label="Color ${label.toLowerCase()}" /></label>`
               )
               .join('')}</div>
-            ${select('Piel o pelaje', 'traits.appearance.coat', ['smooth', 'fluffy', 'striped', 'spotted', 'dirty', 'scales'])}${range('Largo del pelaje', 'traits.appearance.furLength', 0.03, 0.16, 0.01)}${range('Rugosidad / suciedad', 'traits.appearance.roughness', 0, 1)}
+            ${select('Piel o pelaje', 'traits.appearance.coat', ['smooth', 'fluffy', 'striped', 'spotted', 'dirty', 'scales', 'marbled', 'calico', 'tuxedo'])}
+            ${select('Marcas de color', 'traits.appearance.markings', ['none', 'mask', 'socks', 'blaze', 'freckles', 'bands'])}${range('Largo del pelaje', 'traits.appearance.furLength', 0.03, 0.16, 0.01)}${range('Rugosidad / suciedad', 'traits.appearance.roughness', 0, 1)}
             ${select('Alas', 'traits.appearance.wings', ['none', 'insect', 'feather', 'bat'])}${range('Tamaño de las alas', 'traits.appearance.wingSize', 0.5, 1.7)}${range('Largo de las antenas', 'traits.appearance.antennaLength', 0, 1.5)}${range('Cuernos y picos', 'traits.appearance.spikes', 0, 8, 1)}
           </section>
           <section id="section-sculpt" role="tabpanel" aria-labelledby="tab-sculpt" hidden><h3>Dale forma con tus manos</h3><p>Selecciona «Levantar» y pinta sobre la cabeza o el cuerpo para hacer montañitas. «Hundir» crea pequeñas hendiduras. Gira la vista para trabajar por detrás.</p>

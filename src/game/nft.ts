@@ -1,15 +1,7 @@
 import type { PetAppearance } from '../../shared/pet-appearance.js';
 import { buildDesignedPet } from './pet-model';
-import {
-  BoxGeometry,
-  ConeGeometry,
-  Group,
-  Mesh,
-  MeshLambertMaterial,
-  SphereGeometry,
-  TorusGeometry,
-  CapsuleGeometry,
-} from 'three';
+import type { Group } from 'three';
+import { DEFAULT_APPEARANCE, normalizeAppearance } from '../../shared/pet-appearance.js';
 
 export type Element = 'fuego' | 'agua' | 'tierra' | 'aire' | 'sombra' | 'luz';
 export type Rarity = 'comun' | 'raro' | 'epico' | 'legendario' | 'especial';
@@ -146,14 +138,14 @@ const RARITY_LABELS: Record<Rarity, string> = {
   raro: 'Raro',
   epico: 'Epico',
   legendario: 'Legendario',
-    especial: 'Especial',
+  especial: 'Especial',
 };
 const RARITY_CSS: Record<Rarity, string> = {
   comun: '#aaaaaa',
   raro: '#4499dd',
   epico: '#aa55ee',
   legendario: '#eeaa00',
-    especial: '#df6499',
+  especial: '#df6499',
 };
 const ELEMENT_CSS: Record<Element, string> = {
   fuego: '#dd4422',
@@ -245,7 +237,13 @@ function makeNft(rng: Rng): NftCharacter {
   const element = pick<Element>(['fuego', 'agua', 'tierra', 'aire', 'sombra', 'luz'], rng);
   const bodyType = pick<BodyType>(['humanoid', 'bestia', 'espectral', 'golem'], rng);
   const colors = ELEMENT_COLORS[element];
-  const pools: Record<Rarity, number> = { comun: 28, raro: 38, epico: 52, legendario: 72, especial: 84 };
+  const pools: Record<Rarity, number> = {
+    comun: 28,
+    raro: 38,
+    epico: 52,
+    legendario: 72,
+    especial: 84,
+  };
   return {
     id,
     phoneId: '',
@@ -332,162 +330,37 @@ export function statIcon(s: StatName): string {
   return STAT_ICONS[s];
 }
 
+/** Render stored designs and older collections through the same collectible 3D style. */
 export function buildNftModel(nft: NftCharacter): Group {
-  const g = new Group();
-  const mat = (c: number) => new MeshLambertMaterial({ color: c, flatShading: true });
   const t = nft.traits;
-  const pm = mat(t.primaryColor);
-  const sm = mat(t.secondaryColor);
-  const am = mat(t.accentColor);
-
   if (t.appearance) return buildDesignedPet(t);
-  if (t.headShape) {
-    const length = t.limbLength ?? 1;
-    const count = t.limbCount ?? 4;
-    const legHeight = count ? 0.55 * length : 0.15;
-    const bodyY = legHeight + 0.5;
-    const bodyGeometry = t.bodyType === 'golem' ? new BoxGeometry(0.85, 0.9, 0.65)
-      : t.bodyType === 'bestia' ? new CapsuleGeometry(0.4, 0.55, 6, 10)
-      : t.bodyType === 'espectral' ? new SphereGeometry(0.5, 12, 10)
-      : new CapsuleGeometry(0.32, 0.45, 6, 10);
-    const body = new Mesh(bodyGeometry, pm); body.position.y = bodyY;
-    if (t.bodyType === 'bestia') body.rotation.z = Math.PI / 2;
-    g.add(body);
-    const headGeometry = t.headShape === 'cube' ? new BoxGeometry(0.58, 0.55, 0.55)
-      : t.headShape === 'diamond' ? new SphereGeometry(0.4, 4, 2)
-      : new SphereGeometry(0.34, 14, 10);
-    const headY = bodyY + 0.72;
-    const head = new Mesh(headGeometry, pm); head.position.set(0, headY, 0.04); g.add(head);
-    for (const x of [-0.12, 0.12]) {
-      const eye = new Mesh(new SphereGeometry(0.07, 8, 6), mat(0xffffff)); eye.position.set(x, headY + 0.04, 0.34); g.add(eye);
-      const pupil = new Mesh(new SphereGeometry(0.035, 8, 6), mat(0x273224)); pupil.position.set(x, headY + 0.04, 0.395); g.add(pupil);
-    }
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2;
-      const limb = new Mesh(new CapsuleGeometry(0.08, 0.4 * length, 4, 6), pm);
-      limb.name = 'custom-limb';
-      limb.position.set(Math.cos(angle) * 0.48, legHeight / 2 + 0.02, Math.sin(angle) * 0.38);
-      limb.rotation.z = -Math.cos(angle) * 0.3; g.add(limb);
-    }
-    if (['epico', 'legendario', 'especial'].includes(t.rarity)) {
-      const halo = new Mesh(new TorusGeometry(0.46, 0.035, 8, 24), am);
-      halo.position.y = headY + 0.55; halo.rotation.x = Math.PI / 2; g.add(halo);
-    }
-    return g;
-  }
-  if (t.bodyType === 'humanoid') {
-    const head = new Mesh(new SphereGeometry(0.32, 7, 5), mat(0xe0ad7d));
-    head.position.y = 1.42;
-    g.add(head);
-    const body = new Mesh(new CapsuleGeometry(0.38, 0.6, 4, 7), pm);
-    body.position.y = 0.82;
-    g.add(body);
-  } else if (t.bodyType === 'bestia') {
-    const torso = new Mesh(new BoxGeometry(1.4, 0.7, 0.8), pm);
-    torso.position.y = 1.1;
-    g.add(torso);
-    const head = new Mesh(new BoxGeometry(0.5, 0.45, 0.5), sm);
-    head.position.set(0.8, 1.3, 0);
-    g.add(head);
-    for (const z of [-0.25, 0.25]) {
-      const leg = new Mesh(new BoxGeometry(0.18, 0.7, 0.18), sm);
-      leg.position.set(0.4, 0.35, z);
-      g.add(leg);
-      const leg2 = new Mesh(new BoxGeometry(0.18, 0.7, 0.18), sm);
-      leg2.position.set(-0.4, 0.35, z);
-      g.add(leg2);
-    }
-    const tail = new Mesh(new BoxGeometry(0.12, 0.6, 0.12), am);
-    tail.position.set(-0.9, 1.3, 0);
-    tail.rotation.z = 0.7;
-    g.add(tail);
-  } else if (t.bodyType === 'espectral') {
-    const core = new Mesh(new SphereGeometry(0.5, 8, 6), pm);
-    core.position.y = 1.5;
-    g.add(core);
-    const glow = new Mesh(new SphereGeometry(0.8, 7, 5), sm);
-    glow.position.y = 1.5;
-    g.add(glow);
-    for (let i = 0; i < 4; i++) {
-      const wisp = new Mesh(new BoxGeometry(0.12, 0.5, 0.12), am);
-      const a = (i / 4) * Math.PI * 2;
-      wisp.position.set(Math.cos(a) * 0.5, 0.8, Math.sin(a) * 0.5);
-      g.add(wisp);
-    }
-  } else {
-    const torso = new Mesh(new BoxGeometry(0.9, 1.0, 0.8), pm);
-    torso.position.y = 1.3;
-    g.add(torso);
-    const head = new Mesh(new BoxGeometry(0.6, 0.5, 0.55), sm);
-    head.position.y = 2.1;
-    g.add(head);
-    for (const z of [-0.25, 0.25]) {
-      const arm = new Mesh(new BoxGeometry(0.25, 0.8, 0.22), pm);
-      arm.position.set(0.6, 1.1, z);
-      g.add(arm);
-      const arm2 = new Mesh(new BoxGeometry(0.25, 0.8, 0.22), pm);
-      arm2.position.set(-0.6, 1.1, z);
-      g.add(arm2);
-    }
-  }
-
-  const eyeMat = mat(
-    t.rarity === 'legendario' ? 0xffcc00 : t.rarity === 'epico' ? 0xaa55ee : 0xffffff
-  );
-  const eyeY =
-    t.bodyType === 'humanoid'
-      ? 1.48
-      : t.bodyType === 'bestia'
-        ? 1.38
-        : t.bodyType === 'espectral'
-          ? 1.6
-          : 2.18;
-  const eyeZ = t.bodyType === 'bestia' ? 0.28 : t.bodyType === 'golem' ? 0.3 : 0.25;
-  for (const x of [-0.1, 0.1]) {
-    const eye = new Mesh(new SphereGeometry(0.06, 5, 4), eyeMat);
-    eye.position.set(x, eyeY, eyeZ);
-    g.add(eye);
-  }
-
-  if (t.hornStyle > 0) {
-    const hornMat = mat(t.accentColor);
-    for (const x of [-0.18, 0.18]) {
-      const horn = new Mesh(new ConeGeometry(0.06, 0.35, 4), hornMat);
-      horn.position.set(x, eyeY + 0.35, 0);
-      g.add(horn);
-    }
-    if (t.hornStyle >= 2) {
-      for (const x of [-0.28, 0.28]) {
-        const horn2 = new Mesh(new ConeGeometry(0.04, 0.25, 4), hornMat);
-        horn2.position.set(x, eyeY + 0.25, -0.05);
-        g.add(horn2);
-      }
-    }
-  }
-
-  if (t.wingStyle > 0) {
-    const wingMat = mat(t.secondaryColor);
-    for (const side of [-1, 1]) {
-      const wing = new Mesh(
-        new BoxGeometry(0.08, 0.5 + t.wingStyle * 0.15, 0.4 + t.wingStyle * 0.1),
-        wingMat
-      );
-      wing.position.set(side * 0.55, 1.5, -0.15);
-      wing.rotation.z = side * 0.3;
-      g.add(wing);
-    }
-  }
-
-  if (t.rarity === 'legendario' || t.rarity === 'epico') {
-    const ring = new Mesh(new TorusGeometry(0.6, 0.03, 6, 16), mat(t.accentColor));
-    ring.position.y = t.bodyType === 'espectral' ? 1.5 : 2.5;
-    ring.rotation.x = Math.PI / 2;
-    g.add(ring);
-  }
-
-  const pet = new Mesh(new SphereGeometry(0.14, 5, 4), am);
-  pet.position.set(-0.55, 0.27, 0.2);
-  g.add(pet);
-
-  return g;
+  const species =
+    t.bodyType === 'espectral'
+      ? 'spirit'
+      : t.bodyType === 'humanoid'
+        ? 'alien'
+        : t.bodyType === 'golem'
+          ? 'monster'
+          : 'cat';
+  const appearance = normalizeAppearance({
+    ...DEFAULT_APPEARANCE,
+    species,
+    coat: t.bodyType === 'espectral' || t.bodyType === 'humanoid' ? 'smooth' : 'fluffy',
+    limbKind:
+      t.bodyType === 'espectral'
+        ? 'tentacles'
+        : t.bodyType === 'humanoid' || t.bodyType === 'golem'
+          ? 'hands'
+          : 'paws',
+    headY: -0.1,
+    wings: t.wingStyle > 1 ? 'bat' : t.wingStyle > 0 ? 'feather' : 'none',
+    spikes: Math.min(8, Math.max(0, Math.round(t.hornStyle || 0) * 2)),
+  })!;
+  return buildDesignedPet({
+    ...t,
+    appearance,
+    headShape: t.headShape ?? 'round',
+    limbCount: t.limbCount ?? (t.bodyType === 'espectral' ? 2 : 4),
+    limbLength: t.limbLength ?? 0.9,
+  });
 }

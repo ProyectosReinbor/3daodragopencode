@@ -26,7 +26,19 @@ export interface Promotion {
   product_ids: string[];
 }
 
-export interface Store {
+import type { BusinessMetadata } from '../../shared/urban-catalog';
+export {
+  BUSINESS_CATEGORIES,
+  DEFAULT_CITY_ID,
+  URBAN_CITIES,
+  filterBusinessStores,
+  getCategoryLabel,
+  getStoreCityKey,
+  getStoreLocationLabel,
+  normalizeStoreMetadata,
+} from '../../shared/urban-catalog';
+
+export interface Store extends BusinessMetadata {
   id: string;
   name: string;
   logo_url: string;
@@ -35,11 +47,14 @@ export interface Store {
   description: string;
   short_description: string;
   banner_url: string;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   hours: string;
   active: boolean;
   promotion_count: number;
+  /** Loaded coordinates are optional and never imply GPS verification. */
+  location_known?: boolean;
+  is_demo?: boolean;
 }
 
 export interface StoreDetail extends Store {

@@ -17,6 +17,8 @@ import { getAllAbilities, getElementAbilities, calculateAbilityEffect } from './
 import { getToken } from './api';
 import { WORLD_ITEMS, MONSTER_REWARDS, initialWorldProgress } from '../../shared/world-items';
 import './world-play.css';
+import { createWorldPresentation, type WorldPresentation } from './world-presentation';
+import { disposePetModel } from './pet-model';
 
 const safe = (value: string) =>
   value.replace(
@@ -48,8 +50,8 @@ export function mountWorldPlay(options: {
     events = new AbortController();
   const root = document.createElement('section');
   root.className = 'foodie-world';
-  root.setAttribute('aria-label', training ? 'Campo de prueba' : 'Mundo Foodie Pets');
-  root.innerHTML = `<canvas aria-label="Mundo 3D"></canvas><header><div class="world-vitals"><strong>${safe(pet.name)}</strong><small class="world-level"></small><div class="world-health"><i></i><span></span></div><div class="world-mana"><i></i><span></span></div></div><div class="world-title"><b>${training ? 'CAMPO DE PRUEBA' : 'FOODIE PETS'}</b><small class="world-zone">Aldea</small><small class="world-coins"></small></div><nav><button data-menu="equipment">🛡️ Equipo</button><button data-menu="fullscreen" aria-label="Pantalla completa">⛶</button><button data-menu="exit">Salir</button></nav></header><div class="world-target"></div><p class="world-notice" role="status"></p><div class="world-joystick" aria-label="Joystick de movimiento"><span>↑<br>← →<br>↓</span><i></i></div><div class="world-quick"><button data-use="potions">❤️<span>Poción · 1</span><small></small></button><button data-use="mana">🧪<span>Maná · 2</span><small></small></button></div><div class="world-actions"><button class="world-interact" data-interact>${training ? 'Reiniciar rival' : 'Hablar / portal'} <kbd>F</kbd></button><div class="world-spells"></div><button class="world-attack" data-attack>⚔️<span>Atacar</span><kbd>Espacio</kbd></button></div><p class="world-help">Flechas: mover · Q W E R: poderes · Espacio: atacar · 1 / 2: poción y maná · F: interactuar</p><div class="world-modal" hidden></div><div class="world-rotate"><b>↻</b><strong>Gira tu celular</strong><p>Juega en horizontal para tener todos los controles a mano.</p><button data-menu="exit">Volver</button></div>`;
+  root.setAttribute('aria-label', training ? 'Campo de prueba' : 'Mundo AODASE PETS');
+  root.innerHTML = `<canvas aria-label="Mundo 3D"></canvas><header><div class="world-vitals"><strong>${safe(pet.name)}</strong><small class="world-level"></small><div class="world-health"><i></i><span></span></div><div class="world-mana"><i></i><span></span></div></div><div class="world-title"><b>${training ? 'CAMPO DE PRUEBA' : 'AODASE PETS'}</b><small class="world-zone">Aldea</small><small class="world-coins"></small></div><nav><button data-menu="equipment">🛡️ Equipo</button><button data-menu="fullscreen" aria-label="Pantalla completa">⛶</button><button data-menu="exit">Salir</button></nav></header><div class="world-target"></div><p class="world-notice" role="status"></p><div class="world-joystick" aria-label="Joystick de movimiento"><span>↑<br>← →<br>↓</span><i></i></div><div class="world-quick"><button data-use="potions">❤️<span>Poción · 1</span><small></small></button><button data-use="mana">🧪<span>Maná · 2</span><small></small></button></div><div class="world-actions"><button class="world-interact" data-interact>${training ? 'Reiniciar rival' : 'Hablar / portal'} <kbd>F</kbd></button><div class="world-spells"></div><button class="world-attack" data-attack>⚔️<span>Atacar</span><kbd>Espacio</kbd></button></div><p class="world-help">Flechas: mover · Q W E R: poderes · Espacio: atacar · 1 / 2: poción y maná · F: interactuar</p><div class="world-modal" hidden></div><div class="world-rotate"><b>↻</b><strong>Gira tu celular</strong><p>Juega en horizontal para tener todos los controles a mano.</p><button data-menu="exit">Volver</button></div>`;
   document.body.append(root);
   document.body.classList.add('world-playing');
   const background = document.getElementById('app'),
@@ -70,6 +72,7 @@ export function mountWorldPlay(options: {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   const model = buildNftModel({ ...pet, phoneId: '' });
   let world = createWorld(scene, zone);
+  let presentation: WorldPresentation | undefined;
   const respawns = new Map<Enemy, number>(),
     strikes = new Map<Enemy, number>();
   const effects: { mesh: Mesh; end: number }[] = [];
@@ -110,6 +113,8 @@ export function mountWorldPlay(options: {
     if (!disposed) root.querySelector('.world-notice')!.textContent = message;
   }
   function release() {
+    presentation?.dispose();
+    presentation = undefined;
     scene.traverse((obj) => {
       if (obj instanceof Mesh) {
         obj.geometry.dispose();
@@ -147,6 +152,7 @@ export function mountWorldPlay(options: {
     root.querySelector('.world-zone')!.textContent = training
       ? 'Un rival sencillo · Sin riesgo'
       : zone[0].toUpperCase() + zone.slice(1);
+    presentation = createWorldPresentation(scene, renderer, zone, training);
   }
   prepare();
   const resize = () => {
@@ -559,6 +565,7 @@ export function mountWorldPlay(options: {
     }
     camera.position.set(model.position.x, 8.5, model.position.z + 10);
     camera.lookAt(model.position.x, 0.7, model.position.z - 1.5);
+    presentation?.update(dt, now / 1000, model.position);
     renderer.render(scene, camera);
     for (const [selector, value, max, label] of [
       ['.world-health', health, maxHealth(), 'Vida'],
@@ -597,6 +604,8 @@ export function mountWorldPlay(options: {
     cancelAnimationFrame(frame);
     observer.disconnect();
     if (document.fullscreenElement === root) void document.exitFullscreen().catch(() => {});
+    scene.remove(model);
+    disposePetModel(model);
     release();
     renderer.dispose();
     root.remove();

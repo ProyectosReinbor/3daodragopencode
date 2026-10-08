@@ -3,6 +3,7 @@ export type AppScreen =
   | 'onboarding'
   | 'login'
   | 'nft'
+  | 'guardian'
   | 'hub'
   | 'characters'
   | 'inventory'
@@ -20,6 +21,7 @@ const SCREENS: AppScreen[] = [
   'login',
   'nft',
   'hub',
+  'guardian',
   'characters',
   'inventory',
   'stores',

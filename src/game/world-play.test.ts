@@ -28,7 +28,8 @@ describe('full screen world controls', () => {
   beforeEach(() => {
     document.body.innerHTML = '<main id="app"></main>';
     rendered.disposed = false;
-    now = performance.now();
+    now = 1000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -43,11 +44,14 @@ describe('full screen world controls', () => {
     });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
     const pet = createStarterCharacter();
+    // The control test needs a known damage budget, independent of random starter stats.
+    pet.baseStats = { atk: 6, def: 5, spd: 6, hp: 6, ability: 5 };
     pet.powers = ['fireball', 'heal_wave'];
     stop = mountWorldPlay({ pet, onExit: vi.fn() });
   });
   afterEach(() => {
     stop();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
   function tick() {

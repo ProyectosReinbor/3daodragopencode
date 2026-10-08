@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'shared/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       include: ['src/game/*.ts'],

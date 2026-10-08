@@ -45,7 +45,7 @@ export class QrScanner {
       await this.video.play();
       if (session !== this.session) return;
       this.active = true;
-      this.status.textContent = 'Apunta al código QR Foodie Pets de tu factura.';
+      this.status.textContent = 'Apunta al código QR AODASE PETS de tu factura.';
       this.readFrame();
     } catch {
       if (session !== this.session) return;

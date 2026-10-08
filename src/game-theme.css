@@ -1,0 +1,442 @@
+/* Shared visual identity, loaded after screen styles so layouts stay independent. */
+:root {
+  color-scheme: dark;
+  --aodase-bg: #07151d;
+  --aodase-panel: #102831;
+  --aodase-raised: #17343e;
+  --aodase-line: #294550;
+  --aodase-text: #eef8f2;
+  --aodase-muted: #aac5cd;
+  --aodase-accent: #83ddc4;
+  --aodase-font: Inter, ui-sans-serif, system-ui, sans-serif;
+  background: var(--aodase-bg);
+  color: var(--aodase-text);
+}
+.login-panel .login-subtitle,
+.hub-char-info strong,
+.char-card-name,
+.inventory-screen-panel h2,
+.dialog-panel h2,
+.trade-panel h2 {
+  font-family: var(--aodase-font);
+  color: var(--aodase-text);
+}
+.nft-btn,
+.trade-offers button {
+  background: var(--aodase-raised);
+  color: var(--aodase-text);
+  border-color: var(--aodase-line);
+}
+.login-panel label,
+.guardian-care-action > span {
+  color: var(--aodase-accent);
+}
+.char-card.active {
+  background: #214840;
+  border-color: var(--aodase-accent);
+}
+.onboarding-screen,
+.login-screen,
+.hub-screen,
+.characters-screen,
+.inventory-screen,
+.stores-screen,
+.store-detail-screen,
+.redeem-screen,
+.reward-result-screen,
+.guardian-screen {
+  background: var(--aodase-bg);
+  background-image:
+    radial-gradient(ellipse at 85% 8%, #194e513d, transparent 40%),
+    radial-gradient(ellipse at 10% 45%, #252c6038, transparent 40%);
+  color: var(--aodase-text);
+  font-family: var(--aodase-font);
+}
+.guardian-screen {
+  --guardian-ink: var(--aodase-text);
+  --guardian-muted: var(--aodase-muted);
+  --guardian-green: var(--aodase-accent);
+  --guardian-line: var(--aodase-line);
+}
+.guardian-screen h1,
+.guardian-screen h2,
+.guardian-screen h3,
+.foodie-onboarding-panel .studio-title h2,
+.studio-sections h3,
+.hub-welcome h1,
+.characters-panel h2,
+.stores-panel h2,
+.login-panel h1 {
+  font-family: var(--aodase-font);
+  color: var(--aodase-text);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+.hub-panel,
+.characters-panel,
+.inventory-screen-panel,
+.stores-panel,
+.store-detail-panel,
+.redeem-panel,
+.reward-result-panel,
+.login-panel,
+.foodie-onboarding-panel form.studio-inspector,
+.studio-start-choice,
+.guardian-care-panel,
+.guardian-name-panel,
+.guardian-mission,
+.guardian-incubation-card,
+.guardian-lineage,
+.guardian-discoveries {
+  background: var(--aodase-panel);
+  color: var(--aodase-text);
+  border-color: var(--aodase-line);
+  box-shadow: 0 18px 60px #00000025;
+}
+.hub-character-card,
+.char-card,
+.news-card,
+.store-card,
+.promo-card,
+.product-card,
+.redeem-history-item,
+.summary-stats span,
+.dice-stat,
+.power-choices label,
+.studio-families button,
+.studio-choice-actions button,
+.foodie-onboarding-panel .studio-power-grid label,
+.guardian-care-action,
+.guardian-egg-option,
+.guardian-species,
+.guardian-habitat-footer,
+.guardian-bond,
+.guardian-mission--claimed {
+  background: var(--aodase-raised);
+  color: var(--aodase-text);
+  border-color: var(--aodase-line);
+}
+.foodie-onboarding-panel p,
+.foodie-onboarding-panel label,
+.foodie-onboarding-panel .studio-sections p,
+.foodie-onboarding-panel .studio-range,
+.foodie-onboarding-panel .studio-select,
+.foodie-onboarding-panel .studio-palette label,
+.foodie-onboarding-panel #studio-tip,
+.studio-stage-heading,
+.studio-families small,
+.studio-power-grid small,
+.studio-footer small,
+.studio-start-choice p,
+.studio-choice-actions small,
+.studio-range output,
+.studio-moods button,
+.studio-tabs button,
+.studio-history button,
+.news-card small,
+.login-panel .login-subtitle,
+.login-panel small,
+#hub-char-xp,
+.history-code,
+.history-date,
+.reward-result-product,
+.guardian-eyebrow,
+.guardian-place,
+.guardian-pet-caption > div > p:last-child,
+.guardian-care-action small,
+.guardian-care-footnote,
+.guardian-need b small,
+.guardian-mission-progress span,
+.guardian-facts dt,
+.guardian-identity,
+.guardian-species small,
+.guardian-footer,
+.guardian-egg-steps small,
+.guardian-name-form .guardian-name-hint,
+.urban-catalog-count,
+.urban-pilot-note {
+  color: var(--aodase-muted);
+}
+.hub-char-info,
+.hub-char-stats,
+.hub-char-tags,
+.hub-char-info strong,
+.hub-char-stats b,
+.studio-sections h4,
+.studio-power-grid strong,
+.store-card-name,
+.store-detail-brand h2,
+.reward-result-name {
+  color: var(--aodase-text);
+}
+.foodie-onboarding-panel input,
+.foodie-onboarding-panel select,
+.foodie-onboarding-panel .studio-select select,
+.foodie-onboarding-panel .studio-select input,
+.login-panel input,
+.redeem-screen input,
+.urban-catalog-filters input,
+.urban-catalog-filters select,
+.guardian-name-input-row input,
+.guardian-pet-picker select {
+  background: #0a2029;
+  color: var(--aodase-text);
+  border-color: var(--aodase-line);
+  color-scheme: dark;
+}
+input::placeholder {
+  color: #809fa9;
+  opacity: 1;
+}
+.foodie-primary,
+.login-panel .nft-btn.primary,
+#hub-redeem,
+.redeem-btn.primary,
+.guardian-button {
+  background: var(--aodase-accent);
+  color: #092029;
+  border-color: var(--aodase-accent);
+  box-shadow: 0 0 24px #83ddc41a;
+}
+.foodie-primary:hover,
+.guardian-button:hover:not(:disabled),
+.login-panel .nft-btn.primary:hover,
+.redeem-btn.primary:hover {
+  background: #a5f9da;
+  color: #092029;
+}
+.hub-btn,
+.hub-btn.primary,
+.redeem-btn,
+.char-select-btn,
+.close-panel,
+.trial-controls button,
+.studio-tools button,
+.studio-sculpt-tools button,
+.foodie-onboarding-panel .studio-random {
+  background: var(--aodase-raised);
+  color: var(--aodase-text);
+  border: 1px solid var(--aodase-line);
+}
+.foodie-text-button,
+.guardian-wordmark span,
+.guardian-text-button,
+.guardian-footer .guardian-text-button,
+.studio-eyebrow,
+.foodie-kicker,
+.hub-char-info > span,
+.hub-welcome .eyebrow {
+  color: var(--aodase-accent);
+}
+.guardian-button--outline {
+  background: transparent;
+  color: var(--aodase-accent);
+}
+.guardian-button--outline:hover:not(:disabled),
+.guardian-care-action:hover:not(:disabled),
+.studio-families button:hover,
+.studio-choice-actions button:hover,
+.foodie-onboarding-panel .studio-random:hover,
+.hub-btn:hover {
+  background: #21434c;
+  color: var(--aodase-text);
+  border-color: var(--aodase-accent);
+}
+.studio-families button[aria-pressed='true'],
+.studio-moods button[aria-pressed='true'],
+.studio-tools button[aria-pressed='true'],
+.studio-sculpt-tools button[aria-pressed='true'],
+.studio-tabs button[aria-selected='true'],
+.guardian-egg-option--selected {
+  background: #214840;
+  color: #b9ffe6;
+  border-color: var(--aodase-accent);
+  box-shadow: inset 0 0 0 1px #83ddc449;
+}
+.studio-tabs,
+.studio-footer,
+.studio-precision,
+.studio-sculpt-note,
+.guardian-pet-caption,
+.guardian-gene,
+.guardian-hatched-note,
+.guardian-egg-steps > span,
+.hub-char-stats span {
+  background: #0d222c;
+  color: var(--aodase-muted);
+  border-color: var(--aodase-line);
+}
+.studio-stage,
+.onboarding-pet-preview,
+.dart-flight-scene,
+.guardian-home,
+.guardian-incubation-scene {
+  background: radial-gradient(ellipse at 45% 30%, #214c55, #0c222e 80%);
+  border-color: var(--aodase-line);
+}
+#studio-pet-badge,
+.guardian-pill,
+.guardian-incubation-badge {
+  background: #0b2734e8;
+  color: #b9ffe6;
+  border: 1px solid #83ddc440;
+}
+.guardian-sun {
+  background: #95ead0;
+  box-shadow: 0 0 40px #83ddc455;
+}
+.guardian-cloud,
+.guardian-cloud::before {
+  background: #80c5d21c;
+}
+.guardian-hill {
+  background: #163f45;
+}
+.guardian-hill--back {
+  background: #15333f;
+}
+.guardian-tree,
+.guardian-tree--right {
+  color: #347a76;
+}
+.guardian-flower,
+.guardian-flower--two {
+  color: #83ddc4;
+}
+.guardian-pet-shadow {
+  background: #00000045;
+}
+.guardian-reaction {
+  color: #b9ffe6;
+}
+.guardian-hatch-reveal {
+  background: #0c222ef0;
+}
+.guardian-screen progress,
+.guardian-screen progress::-webkit-progress-bar,
+.landing-stat-bar {
+  background: #071c26;
+}
+.guardian-screen progress::-webkit-progress-value {
+  background: var(--aodase-accent);
+}
+.guardian-screen progress::-moz-progress-bar {
+  background: var(--aodase-accent);
+}
+.guardian-need--gold progress::-webkit-progress-value,
+.guardian-need--gold progress::-moz-progress-bar {
+  background: #f0c487;
+}
+.guardian-need--rose progress::-webkit-progress-value,
+.guardian-need--rose progress::-moz-progress-bar {
+  background: #e99fb8;
+}
+.guardian-need--blue progress::-webkit-progress-value,
+.guardian-need--blue progress::-moz-progress-bar {
+  background: #88c9ef;
+}
+.guardian-notice,
+#redeem-message.success,
+.foodie-growth-result {
+  background: #163d36;
+  color: #b9ffe6;
+  border-color: #34796a;
+}
+.guardian-error,
+#redeem-message.error {
+  background: #442532;
+  color: #ffc0bd;
+  border-color: #875364;
+}
+#onboarding-error,
+#studio-error,
+#reward-result-message,
+.guardian-name-form .guardian-name-error {
+  color: #ffb4ab;
+}
+.guardian-gene--hidden,
+.guardian-species--unknown {
+  background: #10222c;
+  color: #91acb7;
+}
+.guardian-species > span,
+.guardian-panel-icon,
+.guardian-pill i,
+.guardian-egg-option--selected .guardian-egg-option-check,
+.guardian-egg-steps > span.guardian-egg-step--done {
+  color: var(--aodase-accent);
+}
+.guardian-egg-option--selected .guardian-egg-option-check,
+.guardian-egg-steps > span.guardian-egg-step--done {
+  background: #214840;
+  border-color: #83ddc4;
+}
+.studio-start-choice::backdrop {
+  background: #020a12c9;
+}
+.dice-face {
+  background: #17343e;
+  color: #b9ffe6;
+  border-color: #83ddc4;
+}
+.wheel-pointer,
+#dart-cursor,
+.dart-arrow,
+.flying-dart,
+.dart-impact,
+.prize-center {
+  color: #b9ffe6;
+}
+.foodie-onboarding-panel .studio-range input[type='range'],
+.foodie-onboarding-panel .studio-power-grid input,
+.power-choices input {
+  accent-color: var(--aodase-accent);
+}
+.foodie-world {
+  background: var(--aodase-bg);
+  color: var(--aodase-text);
+}
+.foodie-world button,
+.world-vitals,
+.world-target,
+.world-notice,
+.world-modal article,
+.world-slots div,
+.world-help,
+.reward-panel,
+.settings-panel,
+.dialog-panel,
+.trade-panel,
+.daily-panel,
+.leaderboard-panel,
+.battlepass-panel {
+  background: #102831ed;
+  color: var(--aodase-text);
+  border-color: var(--aodase-line);
+}
+.foodie-world button:hover {
+  background: #21434c;
+  border-color: var(--aodase-accent);
+}
+.world-modal {
+  background: #020a12c9;
+}
+.world-joystick {
+  background-color: #102831b8;
+  border-color: #83ddc460;
+}
+.world-joystick i {
+  background: #83ddc4;
+  box-shadow: 0 0 24px #83ddc440;
+}
+.world-spells .ultimate {
+  border-color: #ac9eff;
+}
+.onboarding-screen :focus-visible,
+.login-screen :focus-visible,
+.guardian-screen :focus-visible,
+.hub-screen :focus-visible,
+.foodie-world :focus-visible {
+  outline: 3px solid #ffc88b;
+  outline-offset: 4px;
+}

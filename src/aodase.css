@@ -1,0 +1,524 @@
+/* AODASE public identity. Existing workshop and habitat layouts retain their own styles. */
+.urban-catalog-filters {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.5fr) 1fr 1fr;
+  gap: 12px;
+  margin: 20px 0 16px;
+}
+.urban-catalog-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 11px;
+}
+.urban-catalog-filters input,
+.urban-catalog-filters select {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  background: #f5f1e6;
+  color: #374231;
+  border: 1px solid #cbcdbc;
+  border-radius: 7px;
+  font: inherit;
+}
+.urban-catalog-results {
+  display: grid;
+  gap: 13px;
+}
+.urban-catalog-results .store-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.urban-pilot-note,
+.urban-catalog-count {
+  color: #899381;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.urban-catalog-count {
+  margin-bottom: 18px;
+}
+.urban-demo-badge {
+  display: inline-block;
+  border: 1px solid #c6ac7f;
+  border-radius: 5px;
+  padding: 3px 7px;
+  font-size: 9px;
+  color: #c6ac7f;
+  margin-top: 6px;
+}
+.urban-demo-note {
+  background: #8c6c1722;
+  border: 1px solid #c6ac7f55;
+  border-radius: 7px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.urban-game-name {
+  font-size: 13px;
+  color: #9ac7ac;
+  margin: 6px 0;
+}
+@media (max-width: 620px) {
+  .urban-catalog-filters {
+    grid-template-columns: 1fr;
+  }
+}
+.landing-screen {
+  background: #07151d;
+  color: #eff8f4;
+  background-image:
+    radial-gradient(ellipse at 85% 8%, #194e513d, transparent 40%),
+    radial-gradient(ellipse at 10% 45%, #252c6038, transparent 40%);
+}
+.landing-screen .landing-content {
+  width: min(1160px, 100%);
+  gap: 24px;
+}
+.landing-screen .foodie-nav {
+  padding: 25px 0;
+  border-color: #29404a;
+}
+.landing-screen .foodie-wordmark {
+  color: #eef8f2;
+  font-size: 20px;
+  letter-spacing: -0.6px;
+}
+.landing-screen .foodie-wordmark > span:last-child {
+  color: #83ddc4;
+  font-weight: 500;
+}
+.landing-screen .aodase-emblem {
+  font-size: 27px;
+  color: #95ead0;
+  margin-right: 5px;
+}
+.landing-screen .foodie-text-button {
+  color: #aac5cd;
+  text-decoration: none;
+  font-size: 12px;
+}
+.landing-screen .foodie-text-button:hover {
+  color: #a5f9da;
+}
+.landing-screen button:focus-visible,
+.landing-screen a:focus-visible {
+  outline: 3px solid #ffc88b;
+  outline-offset: 5px;
+}
+.aodase-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  align-items: center;
+  gap: 42px;
+  padding: 45px 0 38px;
+}
+.aodase-hero .landing-hero {
+  text-align: left;
+  margin-top: 0;
+}
+.landing-screen .foodie-kicker {
+  color: #89acb6;
+  font-size: 10px;
+  line-height: 1.6;
+  letter-spacing: 0.18em;
+}
+.aodase-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #82e9bd;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #82e9bd65;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+.aodase-hero .landing-title {
+  font-family: system-ui, sans-serif;
+  color: #f4faf5;
+  font-weight: 850;
+  letter-spacing: -0.06em;
+  font-size: clamp(56px, 7vw, 92px);
+  line-height: 0.9;
+  margin: 24px 0 26px;
+}
+.aodase-hero .landing-title span {
+  color: #85dfc5;
+  font-weight: 350;
+  letter-spacing: 0.02em;
+}
+.aodase-promise {
+  color: #f3f6ed;
+  font:
+    500 clamp(21px, 2.4vw, 29px)/1.25 system-ui,
+    sans-serif;
+  letter-spacing: -0.03em;
+  margin: 0 0 18px;
+}
+.aodase-promise span {
+  color: #adbccb;
+}
+.aodase-hero .landing-desc {
+  color: #a0b5c0;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.landing-screen .landing-join-btn,
+.landing-screen .foodie-primary {
+  color: #10282a;
+  background: #9ce7cb;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 16px 23px;
+}
+.aodase-hero .landing-join-btn {
+  width: auto;
+  min-width: 220px;
+  margin-top: 25px;
+}
+.landing-screen .landing-join-btn:hover,
+.landing-screen .foodie-primary:hover {
+  background: #bef5df;
+  box-shadow: 0 0 28px #68cbaa18;
+}
+.aodase-entry-note {
+  font-size: 10px;
+  color: #7f9ba8;
+  margin-top: 12px;
+}
+.aodase-city-scene {
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid #2c535a;
+  border-radius: 22px;
+  background: linear-gradient(140deg, #0c2831, #0b1b26);
+  box-shadow:
+    0 30px 90px #0004,
+    inset 0 0 60px #6be5c906;
+}
+.aodase-city-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 25px 24px 0;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: #86aebc;
+}
+.aodase-city-topline strong {
+  font-weight: 500;
+  color: #b4d8dc;
+}
+.aodase-city-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 5px 14px 0;
+}
+.aodase-city-route {
+  animation: aodase-route-travel 12s linear infinite;
+}
+.aodase-hologram-egg {
+  animation: aodase-egg-glow 4s ease-in-out infinite;
+}
+.aodase-map-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: aodase-node-glow 5s ease-in-out infinite;
+}
+.aodase-map-node--two {
+  animation-delay: -1.7s;
+}
+.aodase-map-node--three {
+  animation-delay: -3.4s;
+}
+.aodase-city-caption {
+  padding: 0 24px 24px;
+  font-size: 8px;
+  color: #c7e8df;
+  letter-spacing: 0.12em;
+}
+.aodase-city-caption small {
+  display: block;
+  margin: 9px 0 0 15px;
+  color: #7195a3;
+  font-size: 9px;
+  letter-spacing: 0;
+}
+.aodase-section-intro {
+  padding: 30px 0 14px;
+  text-align: center;
+}
+.aodase-section-intro h2 {
+  font:
+    500 clamp(27px, 4vw, 42px)/1.15 system-ui,
+    sans-serif;
+  color: #e4eee9;
+  letter-spacing: -0.04em;
+  margin: 12px 0 0;
+}
+.landing-screen .landing-showcase {
+  width: min(730px, 100%);
+  gap: 18px;
+}
+.landing-screen .landing-char-card {
+  border-radius: 16px;
+  background: #102530;
+  border-color: #29454f;
+  box-shadow: none;
+}
+.landing-screen .landing-char-card:hover {
+  border-color: #73bda8;
+}
+.landing-screen .landing-char-3d {
+  background: radial-gradient(ellipse at 50% 35%, #ffffffd9, var(--pet-paper, #e5eddb) 85%);
+  height: 250px;
+}
+.landing-screen .landing-char-name {
+  color: #eef7ed;
+  font:
+    600 23px system-ui,
+    sans-serif;
+}
+.landing-screen .landing-tag {
+  color: #b2d6cd;
+  background: #1f3c43;
+  border-radius: 5px;
+}
+.landing-screen .landing-char-info {
+  padding: 19px;
+}
+.landing-screen .landing-stat {
+  color: #809faa;
+}
+.landing-screen .landing-stat b {
+  color: #daede1;
+}
+.landing-screen .landing-stat-bar {
+  background: #223e48;
+}
+.landing-screen .landing-stat-fill {
+  background: #7cd7b7;
+}
+.landing-screen .landing-vs {
+  color: #7cc5b5;
+}
+.landing-screen .foodie-collection-note {
+  color: #82a3ae;
+  margin-top: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 11px;
+}
+.landing-screen #landing-workshop {
+  padding: 0 0 22px;
+}
+.landing-screen .foodie-how {
+  border-color: #27404a;
+  margin-top: 20px;
+  padding-top: 65px;
+}
+.landing-screen .foodie-how h2,
+.landing-screen .foodie-business h2 {
+  font-family: system-ui, sans-serif;
+  color: #e8f3ee;
+  font-size: clamp(35px, 5.5vw, 58px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+.landing-screen .foodie-how h2 span {
+  color: #82d7bb;
+}
+.landing-screen .foodie-how > p:not(.foodie-kicker) {
+  color: #9db5c0;
+  font-size: 14px;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.8;
+}
+.landing-screen .foodie-steps {
+  color: #b8ccc9;
+}
+.landing-screen .foodie-steps b {
+  color: #83ddbf;
+}
+.landing-screen .foodie-animation-slot {
+  border: 1px solid #29434c;
+  border-radius: 16px;
+  background: #17333c;
+  overflow: hidden;
+  max-width: 780px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.landing-screen .foodie-animation-caption {
+  color: #91bfb7;
+}
+.aodase-business-types {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 28px 0 0;
+}
+.aodase-business-types span {
+  color: #96b6bc;
+  font-size: 10px;
+  border: 1px solid #29444e;
+  padding: 9px 16px;
+  border-radius: 40px;
+}
+.landing-screen .foodie-business {
+  background: #102831;
+  border: 1px solid #294550;
+  border-radius: 16px;
+  padding: 34px;
+}
+.landing-screen .foodie-business p:not(.foodie-kicker) {
+  color: #9bb7c0;
+  line-height: 1.8;
+}
+.landing-screen .foodie-business small {
+  color: #819da8;
+}
+.landing-screen .foodie-footer {
+  border-color: #27434b;
+  color: #6e94a1;
+  font-size: 11px;
+  padding-bottom: 28px;
+}
+.landing-screen .foodie-footer strong {
+  color: #a3c7bd;
+  font:
+    650 15px system-ui,
+    sans-serif;
+}
+@keyframes aodase-route-travel {
+  to {
+    stroke-dashoffset: -160;
+  }
+}
+@keyframes aodase-egg-glow {
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes aodase-node-glow {
+  50% {
+    opacity: 0.6;
+  }
+}
+@media (max-width: 850px) {
+  .aodase-hero {
+    gap: 22px;
+    padding-top: 32px;
+  }
+  .aodase-hero .landing-title {
+    font-size: clamp(54px, 8vw, 76px);
+  }
+  .aodase-city-topline {
+    margin: 18px 16px 0;
+    font-size: 7px;
+    flex-direction: column;
+  }
+  .aodase-city-caption {
+    padding: 0 16px 20px;
+    font-size: 7px;
+  }
+}
+@media (max-width: 620px) {
+  .landing-screen {
+    padding: 0 18px;
+  }
+  .landing-screen .landing-content {
+    gap: 20px;
+  }
+  .landing-screen .foodie-nav {
+    padding: 20px 0;
+  }
+  .landing-screen .foodie-wordmark {
+    font-size: 16px;
+  }
+  .landing-screen .foodie-nav .foodie-text-button {
+    font-size: 10px;
+    max-width: 135px;
+    text-align: right;
+  }
+  .aodase-hero {
+    grid-template-columns: 1fr;
+    padding: 15px 0 10px;
+    gap: 30px;
+  }
+  .aodase-hero .landing-title {
+    font-size: 76px;
+  }
+  .aodase-hero .landing-desc {
+    font-size: 13px;
+  }
+  .aodase-city-scene {
+    width: 100%;
+    max-width: 450px;
+    justify-self: center;
+  }
+  .aodase-city-map {
+    max-height: 305px;
+  }
+  .aodase-city-topline {
+    flex-direction: row;
+  }
+  .aodase-section-intro {
+    padding-top: 12px;
+  }
+  .landing-screen .landing-showcase {
+    flex-direction: row;
+    gap: 9px;
+  }
+  .landing-screen .landing-char-card {
+    width: calc(50% - 5px);
+    min-width: 0;
+    flex: 1;
+  }
+  .landing-screen .landing-vs {
+    display: none;
+  }
+  .landing-screen .landing-char-3d {
+    height: 175px;
+  }
+  .landing-screen .landing-char-info {
+    padding: 12px;
+  }
+  .landing-screen .landing-char-name {
+    font-size: 17px;
+  }
+  .landing-screen .landing-char-tags {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .landing-screen .landing-tag {
+    font-size: 8px;
+    padding: 4px 6px;
+  }
+  .landing-screen .landing-stat {
+    font-size: 9px;
+  }
+  .landing-screen .foodie-business {
+    padding: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-screen *,
+  .landing-screen *::before,
+  .landing-screen *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

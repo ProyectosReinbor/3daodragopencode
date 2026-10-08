@@ -4,7 +4,7 @@ import { getAllAbilities } from './abilities';
 import type { Character } from './characters';
 import type { PlayerProfile } from './profile';
 import { elementLabel, rarityLabel, statLabel } from './nft';
-import { getToken, isLoggedIn } from './api';
+import { getToken, isLoggedIn, apiGetProfile } from './api';
 import { navigation } from './navigation';
 import { mountPetPreview } from './pet-preview';
 
@@ -126,7 +126,7 @@ export function mountOnboarding(onClaim: (profile: PlayerProfile) => void) {
           ? '03 / Minijuego de dardos'
           : session.stage === 'dice' || session.stage === 'name'
             ? '02 / Tus estadísticas'
-            : '01 / Diseña tu Foodie Pet';
+            : '01 / Diseña tu AODASE Pet';
     if (session.stage === 'customize' || session.stage === 'wheel') {
       const draft =
         pet ??
@@ -325,15 +325,15 @@ export function mountOnboarding(onClaim: (profile: PlayerProfile) => void) {
         .map((a) => `${a.icon} ${a.name}`)
         .join(
           ' · '
-        )}</p><p>Tu dardo obtuvo <strong>+${session.dart?.bonus ?? 0}</strong> puntos. Tu rareza y bonus quedan guardados.</p>
+        )}</p><p>Tu dardo obtuvo <strong>+${session.dart?.bonus ?? 0}</strong> puntos en esta prueba del taller.</p>
         <div class="summary-stats">${(['atk', 'def', 'spd', 'hp', 'ability'] as const).map((key) => `<span>${statLabel(key)}<b>${pet.baseStats[key]}${session!.dart?.stat === key && session!.dart.bonus ? ` + ${session!.dart.bonus}` : ''}</b></span>`).join('')}</div>
-        <p>Apoya a tus restaurantes favoritos y sigue mejorando tu colección.</p><button class="foodie-primary" id="trial-pet">Probar mi Pet en el campo del mundo</button><button class="foodie-primary" id="claim-pet">${isLoggedIn() ? 'Guardar mi Foodie Pet' : 'Crear cuenta o iniciar sesión para guardarlo'}</button>`;
+        <p>Este diseño es una vista experimental. Tu aventura comienza con un huevo y su apariencia se descubre al nacer.</p><button class="foodie-primary" id="trial-pet">Probar mi Pet en el campo del mundo</button><button class="foodie-primary" id="claim-pet">${isLoggedIn() ? 'Volver a mi aventura' : 'Crear cuenta y recibir mi huevo'}</button>`;
       panel.querySelector('#summary-pet-name')!.textContent = pet.name;
       panel.querySelector<HTMLButtonElement>('#trial-pet')!.onclick = () => {
         stopPreview?.();
         stopPreview = undefined;
         panel.innerHTML =
-          '<h2>El campo de tu Foodie Pet</h2><p>Muévete con las flechas o el joystick. Usa Q, W, E y R para probar tus poderes contra un rival sencillo.</p><div id="pet-trial"></div><button class="foodie-primary" id="leave-trial">Volver a mi Pet</button>';
+          '<h2>El campo de tu AODASE Pet</h2><p>Muévete con las flechas o el joystick. Usa Q, W, E y R para probar tus poderes contra un rival sencillo.</p><div id="pet-trial"></div><button class="foodie-primary" id="leave-trial">Volver a mi Pet</button>';
         stopPreview = mountPetTrial(panel.querySelector('#pet-trial')!, pet, draw);
         panel.querySelector<HTMLButtonElement>('#leave-trial')!.onclick = draw;
       };
@@ -344,7 +344,7 @@ export function mountOnboarding(onClaim: (profile: PlayerProfile) => void) {
             navigation.navigate('login');
             return;
           }
-          const profile = await claimFoodiePet();
+          const profile = await apiGetProfile();
           if (profile) onClaim(profile);
         });
     }

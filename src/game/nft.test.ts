@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Box3 } from 'three';
+import { disposePetModel } from './pet-model';
 import {
   buildNftModel,
   mulberry32,
@@ -181,18 +182,51 @@ describe('label and color helpers', () => {
   });
 });
 
-
 describe('custom Pet anatomy', () => {
   it('renders the chosen limb count on every body and reflects limb length', () => {
     const pet = generateNftFromPhone('55512345');
     for (const bodyType of ['bestia', 'golem', 'humanoid', 'espectral'] as const) {
       for (const limbCount of [0, 2, 4, 6, 8]) {
-        const model = buildNftModel({ ...pet, traits: { ...pet.traits, rarity: 'comun', bodyType, headShape: 'diamond', limbCount, limbLength: 0.5 } });
-        expect(model.children.filter(child => child.name === 'custom-limb')).toHaveLength(limbCount);
+        const model = buildNftModel({
+          ...pet,
+          traits: {
+            ...pet.traits,
+            rarity: 'comun',
+            bodyType,
+            headShape: 'diamond',
+            limbCount,
+            limbLength: 0.5,
+          },
+        });
+        expect(model.children.filter((child) => child.name === 'custom-limb')).toHaveLength(
+          limbCount
+        );
+        disposePetModel(model);
       }
     }
-    const short = buildNftModel({ ...pet, traits: { ...pet.traits, rarity: 'comun', headShape: 'round', limbCount: 4, limbLength: 0.5 } });
-    const long = buildNftModel({ ...pet, traits: { ...pet.traits, rarity: 'comun', headShape: 'round', limbCount: 4, limbLength: 1.8 } });
-    expect(new Box3().setFromObject(long).max.y).toBeGreaterThan(new Box3().setFromObject(short).max.y);
+    const short = buildNftModel({
+      ...pet,
+      traits: { ...pet.traits, rarity: 'comun', headShape: 'round', limbCount: 4, limbLength: 0.5 },
+    });
+    const long = buildNftModel({
+      ...pet,
+      traits: { ...pet.traits, rarity: 'comun', headShape: 'round', limbCount: 4, limbLength: 1.8 },
+    });
+    expect(new Box3().setFromObject(long).max.y).toBeGreaterThan(
+      new Box3().setFromObject(short).max.y
+    );
+    disposePetModel(short);
+    disposePetModel(long);
+  });
+  it('renders legacy pets with the shared rig without rewriting their traits or identity', () => {
+    const pet = generateNftFromPhone('legacy-rendering');
+    const before = structuredClone(pet);
+    const model = buildNftModel(pet);
+    expect(model.userData.designVersion).toBe(3);
+    expect(model.getObjectByName('sculpt-head')).toBeDefined();
+    expect(model.getObjectByName('eyeLeft')).toBeDefined();
+    expect(pet).toEqual(before);
+    expect(pet.traits.appearance).toBeUndefined();
+    disposePetModel(model);
   });
 });

@@ -25,6 +25,7 @@ function showHubPet() {
 navigation.onNavigate(showHubPet);
 
 export interface HubCallbacks {
+  onGuardian?: () => void;
   onCharacters: () => void;
   onInventory: () => void;
   onStores: () => void;
@@ -43,6 +44,8 @@ export function mountHub(
   updateHubCharacter(active);
   updateHubNews();
 
+  const guardianBtn = document.getElementById('hub-guardian');
+  if (guardianBtn) guardianBtn.onclick = callbacks.onGuardian || null;
   const charBtn = document.getElementById('hub-characters');
   const invBtn = document.getElementById('hub-inventory');
   const storeBtn = document.getElementById('hub-stores');
@@ -113,9 +116,9 @@ function updateHubNews(): void {
       desc: 'Cada compañero tiene su propio elemento y personalidad.',
     },
     {
-      icon: '🍴',
-      title: 'Restaurantes asociados',
-      desc: 'Descubre los negocios y sus promociones disponibles.',
+      icon: '◈',
+      title: 'Negocios de tu ciudad',
+      desc: 'Descubre comercios, servicios y experiencias disponibles.',
     },
     {
       icon: '🎁',

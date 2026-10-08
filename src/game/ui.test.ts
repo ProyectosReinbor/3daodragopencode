@@ -100,7 +100,7 @@ describe('Hub UI', () => {
     });
     const news = document.getElementById('hub-news');
     expect(news?.children.length).toBe(3);
-    expect(news?.textContent).toContain('Restaurantes asociados');
+    expect(news?.textContent).toContain('Negocios de tu ciudad');
   });
 });
 

@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createStarterCharacter } from './characters';
 import { mulberry32 } from './nft';
 import { randomizePet } from './pet-random';
-import { buildDesignedPet } from './pet-model';
-import { Box3, Mesh } from 'three';
+import { buildDesignedPet, disposePetModel } from './pet-model';
+import { petSpeciesName } from '../../shared/pet-species.js';
+import { Box3, Raycaster, Vector3 } from 'three';
 import {
   normalizeAppearance,
   APPEARANCE_ENUMS,
@@ -11,7 +12,7 @@ import {
 } from '../../shared/pet-appearance.js';
 
 describe('random Foodie designs', () => {
-  it('varies every editable category while keeping all designs valid', () => {
+  it('varies coherent species designs while keeping all designs valid', () => {
     const original = createStarterCharacter();
     const random = mulberry32(17345);
     const designs = Array.from({ length: 250 }, () => randomizePet(original, random));
@@ -22,6 +23,18 @@ describe('random Foodie designs', () => {
       expect(pet.traits.limbLength).toBeGreaterThanOrEqual(0.5);
       expect(pet.traits.limbLength).toBeLessThanOrEqual(1.8);
       expect([0, 2, 4, 6, 8]).toContain(pet.traits.limbCount);
+      const species = pet.traits.appearance!.species;
+      expect(pet.traits.limbCount).toBe(
+        species === 'fish'
+          ? 0
+          : species === 'bird' || species === 'spirit'
+            ? 2
+            : species === 'insect'
+              ? 6
+              : 4
+      );
+      expect(pet.traits.appearance!.mood).not.toBe('odd');
+      if (species === 'fish') expect(pet.traits.appearance!.tail).toBe('fin');
       for (const color of [
         pet.traits.primaryColor,
         pet.traits.secondaryColor,
@@ -36,7 +49,8 @@ describe('random Foodie designs', () => {
       const seen = new Set(
         designs.map((p) => (p.traits.appearance as unknown as Record<string, unknown>)[key])
       );
-      expect(seen.size).toBe(values.length);
+      expect(seen.size).toBeGreaterThan(0);
+      for (const value of seen) expect(values).toContain(value);
     }
     for (const key of Object.keys(APPEARANCE_NUMBERS)) {
       const seen = new Set(
@@ -74,6 +88,15 @@ describe('random Foodie designs', () => {
       for (const eye of ['eyeLeft', 'eyeRight']) {
         const bounds = new Box3().setFromObject(model.getObjectByName(eye)!);
         expect(head.intersectsBox(bounds)).toBe(true);
+        const white = model.getObjectByName(eye)!.getObjectByName('eye-white')!;
+        const center = white.getWorldPosition(new Vector3());
+        const ray = new Raycaster(
+          new Vector3(center.x, center.y, head.max.z + 1),
+          new Vector3(0, 0, -1)
+        );
+        const face = ray.intersectObject(model.getObjectByName('sculpt-head')!, false);
+        expect(face.length).toBeGreaterThan(0);
+        expect(new Box3().setFromObject(white).max.z).toBeGreaterThan(face[0].point.z);
       }
       expect(Math.abs(pet.traits.appearance!.headX)).toBeLessThanOrEqual(0.05);
       expect(
@@ -81,20 +104,13 @@ describe('random Foodie designs', () => {
           (s) => Math.abs(s.strength) <= (s.part === 'head' ? 0.08 : 0.16)
         )
       ).toBe(true);
-      model.traverse((object) => {
-        if (object instanceof Mesh) {
-          object.geometry.dispose();
-          for (const material of Array.isArray(object.material)
-            ? object.material
-            : [object.material])
-            material.dispose();
-        }
-      });
+      disposePetModel(model);
     }
   });
   it('gives an unnamed pet an editable default name', () => {
     const original = createStarterCharacter();
     original.name = '';
-    expect(randomizePet(original, mulberry32(6)).name).toMatch(/^Pet-[a-z0-9]+$/);
+    const pet = randomizePet(original, mulberry32(6));
+    expect(pet.name).toBe(petSpeciesName(pet.traits.appearance!.species));
   });
 });
