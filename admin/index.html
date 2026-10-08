@@ -259,6 +259,7 @@ select.filter-select {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
+<link rel="stylesheet" href="/theme.css">
 </head>
 <body>
 <div id="app"></div>
@@ -272,8 +273,12 @@ function api(path, opts = {}) {
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return fetch(`${API}${path}`, { ...opts, headers }).then(r => {
     if (r.status === 401) { localStorage.removeItem('admin-token'); token = null; render(); throw new Error('No autorizado'); }
-    return r.json();
+    return r.json().then(data => { if (!r.ok) throw new Error(data.error || 'No se pudo completar la operación'); return data; });
   });
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 }
 
 function html(strings, ...vals) {
@@ -317,15 +322,15 @@ function renderLogin() {
         <p>AODASE PETS</p>
         <form id="login-form">
           <div class="form-group">
-            <label>Usuario</label>
-            <input type="text" id="login-user" placeholder="Usuario admin" required autocomplete="off">
+            <label for="login-user">Usuario</label>
+            <input type="text" id="login-user" placeholder="Correo del administrador" required autocomplete="username">
           </div>
           <div class="form-group">
-            <label>Contraseña</label>
-            <input type="password" id="login-pass" placeholder="Contraseña" required>
+            <label for="login-pass">Contraseña</label>
+            <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password" required>
           </div>
           <button type="submit" class="btn btn-primary btn-block" id="login-btn">Iniciar Sesión</button>
-          <div id="login-error" class="login-error" style="display:none"></div>
+          <div id="login-error" class="login-error" role="alert" style="display:none"></div>
         </form>
       </div>
     </div>
@@ -343,7 +348,7 @@ function renderLogin() {
         body: JSON.stringify({ username: document.getElementById('login-user').value, password: document.getElementById('login-pass').value })
       });
       const data = await res.json();
-      if (data.token) {
+      if (res.ok && data.token) {
         token = data.token;
         localStorage.setItem('admin-token', token);
         render();
@@ -352,10 +357,9 @@ function renderLogin() {
       }
     } catch {
       errEl.style.display = 'block';
-      errEl.textContent = 'Eliminaremos tu ip del servidor y borraremos tu cuenta si vuelves a intentar iniciar sesion como admin';
+      errEl.textContent = 'Credenciales incorrectas.';
       btn.disabled = false;
       btn.textContent = 'Iniciar Sesión';
-      setTimeout(() => { window.location.href = 'https://youtube.com'; }, 3000);
     }
   };
 }
@@ -370,6 +374,7 @@ function render() {
       <div class="nav-item ${currentView === 'users' ? 'active' : ''}" data-view="users">Usuarios</div>
       <div class="nav-item ${currentView === 'invoices' ? 'active' : ''}" data-view="invoices">Facturas</div>
       <div class="nav-item ${currentView === 'stores' ? 'active' : ''}" data-view="stores">Tiendas</div>
+      <div class="nav-item ${currentView === 'manage' ? 'active' : ''}" data-view="manage">Gestionar cuentas, negocios e ítems</div>
       <div class="nav-item logout" id="logout-btn">Cerrar Sesión</div>
     </nav>
     <div class="main" id="main-content">
@@ -393,6 +398,7 @@ function loadView(view) {
   else if (view === 'users') loadUsers(main);
   else if (view === 'invoices') loadInvoices(main);
   else if (view === 'stores') loadStores(main);
+  else if (view === 'manage') loadManagement(main);
 }
 
 /* ----- Dashboard ----- */
@@ -443,9 +449,9 @@ window.filterUsers = function() {
       <td>${u.phone}</td>
       <td>${new Date(u.created_at).toLocaleDateString()}</td>
       <td>${u.characterCount}</td>
-      <td>${u.topCharacter ? `${u.topCharacter.name} (Lv.${u.topCharacter.level}) <span class="badge badge-rarity-${u.topCharacter.rarity}">${u.topCharacter.rarity}</span>` : '-'}</td>
+      <td>${u.topCharacter ? `${escapeHtml(u.topCharacter.name)} (Lv.${u.topCharacter.level}) <span class="badge badge-rarity-${u.topCharacter.rarity}">${u.topCharacter.rarity}</span>` : '-'}</td>
       <td>${u.total_redemptions}</td>
-      <td><button class="btn btn-primary btn-sm" onclick="showUser('${u.phone}')">Ver</button></td>
+      <td><button class="btn btn-primary btn-sm" onclick="showUser('${u.phone}')">Ver</button> <button class="btn btn-primary btn-sm" onclick="editRecord('users','${u.phone}')">Editar</button> <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.phone}')">Eliminar</button></td>
     </tr>
   `).join('');
 };
@@ -496,8 +502,8 @@ window.showUser = async function(phone) {
           ${chars.length === 0 ? '<div class="empty-state">Sin personajes</div>' :
             chars.map(c => html`
               <div class="char-card">
-                <div class="char-name">${c.name} <span class="badge badge-rarity-${c.traits?.rarity}">${c.traits?.rarity}</span></div>
-                <div style="font-size:12px;color:var(--text2);margin-top:4px">Elemento: ${c.traits?.element} | Nivel: ${c.level} | XP: ${c.xp}</div>
+                <div class="char-name">${escapeHtml(c.name)} <span class="badge badge-rarity-${escapeHtml(c.traits?.rarity)}">${escapeHtml(c.traits?.rarity)}</span></div>
+                <div style="font-size:12px;color:var(--text2);margin-top:4px">Elemento: ${escapeHtml(c.traits?.element)} | Nivel: ${c.level} | XP: ${c.xp}</div>
                 <div class="char-stats">
                   <span>ATK <b>${c.baseStats?.atk ?? 0}</b></span>
                   <span>DEF <b>${c.baseStats?.def ?? 0}</b></span>
@@ -576,7 +582,7 @@ async function loadInvoices(main) {
       <span style="font-size:13px;color:var(--text2);margin-left:auto" id="inv-count"></span>
     </div>
     <div class="table-wrapper"><table><thead>
-      <tr><th>Código</th><th>Producto</th><th>Tienda</th><th>Estado</th><th>Canjeado por</th><th>Recompensa</th><th>Creado</th><th>Canjeado</th></tr>
+      <tr><th>Código</th><th>Producto</th><th>Tienda</th><th>Estado</th><th>Canjeado por</th><th>Recompensa</th><th>Creado</th><th>Canjeado</th><th>Acciones</th></tr>
     </thead><tbody id="inv-tbody"><tr><td colspan="8" class="loading">Cargando...</td></tr></tbody></table></div>
   `;
   await loadInvoicesData();
@@ -608,6 +614,7 @@ window.filterInvoices = function() {
       <td>${i.hist_reward_name || i.reward_name || '-'} ${i.hist_quantity ? 'x' + i.hist_quantity : ''}</td>
       <td>${new Date(i.created_at).toLocaleDateString()}</td>
       <td>${i.redeemed_at ? new Date(i.redeemed_at).toLocaleString() : '-'}</td>
+      <td><button class="btn btn-primary btn-sm" onclick="editRecord('invoices','${i.id}')">Editar</button> <button class="btn btn-danger btn-sm" onclick="deleteInvoice('${i.id}')">Eliminar</button></td>
     </tr>
   `).join('');
 };
@@ -713,13 +720,13 @@ window.filterStores = function() {
   if (stores.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Sin resultados</td></tr>'; return; }
   tbody.innerHTML = stores.map(s => html`
     <tr>
-      <td><strong>${s.name}</strong></td>
-      <td>${s.category}</td>
-      <td>${s.city}</td>
+      <td><strong>${escapeHtml(s.name)}</strong></td>
+      <td>${escapeHtml(s.category)}</td>
+      <td>${escapeHtml(s.city)}</td>
       <td>${s.promotion_count}</td>
       <td>${s.product_count}</td>
       <td>${s.redeemed_count}</td>
-      <td><button class="btn btn-primary btn-sm" onclick="showStore('${s.id}')">Ver</button></td>
+      <td><button class="btn btn-primary btn-sm" onclick="showStore('${s.id}')">Ver</button> <button class="btn btn-primary btn-sm" onclick="editRecord('stores','${s.id}')">Editar</button> <button class="btn btn-danger btn-sm" onclick="deleteStore('${s.id}')">Eliminar</button></td>
     </tr>
   `).join('');
 };
@@ -735,10 +742,10 @@ window.showStore = async function(id) {
     main.innerHTML = html`
       <span class="back-link" onclick="currentView='stores';render()">← Volver a Tiendas</span>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <h2 class="page-title" style="margin-bottom:0">${s.name}</h2>
+        <h2 class="page-title" style="margin-bottom:0">${escapeHtml(s.name)}</h2>
         <button class="btn btn-danger btn-sm" onclick="deleteStore('${s.id}')">Eliminar Tienda</button>
       </div>
-      <p class="page-subtitle">${s.category} · ${s.city} · ${s.description}</p>
+      <p class="page-subtitle">${escapeHtml(s.category)} · ${escapeHtml(s.city)} · ${escapeHtml(s.description)}</p>
 
       <div class="detail-card" style="margin-bottom:20px">
         <h3>Crear Factura (Entrega Automática)</h3>
@@ -747,7 +754,7 @@ window.showStore = async function(id) {
             <label>Producto</label>
             <select class="filter-select" id="inv-product" style="width:100%" required>
               <option value="">Seleccionar...</option>
-              ${data.products.map(p => `<option value="${p.id}">${p.name} - ${p.reward_name} (${p.price}${p.currency})</option>`).join('')}
+              ${data.products.map(p => `<option value="${p.id}">${escapeHtml(p.name)} - ${escapeHtml(p.reward_name)} (${p.price}${p.currency})</option>`).join('')}
             </select>
           </div>
           <div class="form-group" style="margin-bottom:0;flex:1;min-width:150px">
@@ -763,8 +770,8 @@ window.showStore = async function(id) {
         <div class="detail-card">
           <h3>Información</h3>
           <div class="field"><span class="key">ID</span><span>${s.id}</span></div>
-          <div class="field"><span class="key">Categoría</span><span>${s.category}</span></div>
-          <div class="field"><span class="key">Ciudad</span><span>${s.city}</span></div>
+          <div class="field"><span class="key">Categoría</span><span>${escapeHtml(s.category)}</span></div>
+          <div class="field"><span class="key">Ciudad</span><span>${escapeHtml(s.city)}</span></div>
           <div class="field"><span class="key">Horario</span><span>${s.hours || '-'}</span></div>
           <div class="field"><span class="key">Activo</span><span>${s.active ? 'Si' : 'No'}</span></div>
         </div>
@@ -773,8 +780,8 @@ window.showStore = async function(id) {
           ${data.promotions.length === 0 ? '<div class="empty-state">Sin promociones</div>' :
             data.promotions.map(p => html`
               <div style="padding:8px 0;border-bottom:1px solid var(--border)">
-                <div style="font-weight:600;font-size:13px">${p.name}</div>
-                <div style="font-size:11px;color:var(--text2)">${p.description} · ${new Date(p.start_date).toLocaleDateString()} - ${new Date(p.end_date).toLocaleDateString()}</div>
+                <div style="font-weight:600;font-size:13px">${escapeHtml(p.name)}</div>
+                <div style="font-size:11px;color:var(--text2)">${escapeHtml(p.description)} · ${new Date(p.start_date).toLocaleDateString()} - ${new Date(p.end_date).toLocaleDateString()}</div>
               </div>
             `).join('')}
         </div>
@@ -784,7 +791,7 @@ window.showStore = async function(id) {
             <div class="table-wrapper"><table>
               <thead><tr><th>Producto</th><th>Precio</th><th>Recompensa</th><th>Rareza</th></tr></thead>
               <tbody>${data.products.map(p => html`
-                <tr><td>${p.name}</td><td>${p.price} ${p.currency}</td><td>${p.reward_name}</td><td><span class="badge badge-rarity-${p.reward_rarity}">${p.reward_rarity}</span></td></tr>
+                <tr><td>${escapeHtml(p.name)}</td><td>${p.price} ${p.currency}</td><td>${escapeHtml(p.reward_name)}</td><td><span class="badge badge-rarity-${escapeHtml(p.reward_rarity)}">${escapeHtml(p.reward_rarity)}</span></td></tr>
               `).join('')}</tbody>
             </table></div>
           `}
@@ -833,8 +840,8 @@ window.showStore = async function(id) {
         resultDiv.innerHTML = html`
           <strong>Recompensa entregada!</strong><br>
           Jugador: ${data.user}<br>
-          Producto: ${data.product.name}<br>
-          Recompensa: ${data.reward.label}<br>
+          Producto: ${escapeHtml(data.product.name)}<br>
+          Recompensa: ${escapeHtml(data.reward.label)}<br>
           Código: ${data.code}
         `;
         toast('Recompensa entregada a ' + phone);
@@ -865,5 +872,7 @@ window.deleteStore = async function(id) {
 
 render();
 </script>
+<script src="/admin-management-ui.js"></script>
+<script src="/crud-ui.js"></script>
 </body>
 </html>

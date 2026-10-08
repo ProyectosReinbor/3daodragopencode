@@ -15,6 +15,7 @@ import { zoneConfig } from './zones';
 import type { PlayerProfile, ZoneId } from './profile';
 import { getAllAbilities, getElementAbilities, calculateAbilityEffect } from './abilities';
 import { getToken } from './api';
+import { createCityWorld, CITY_WORLD, biomeAt } from './city-world';
 import { WORLD_ITEMS, MONSTER_REWARDS, initialWorldProgress } from '../../shared/world-items';
 import './world-play.css';
 import { createWorldPresentation, type WorldPresentation } from './world-presentation';
@@ -51,7 +52,7 @@ export function mountWorldPlay(options: {
   const root = document.createElement('section');
   root.className = 'foodie-world';
   root.setAttribute('aria-label', training ? 'Campo de prueba' : 'Mundo AODASE PETS');
-  root.innerHTML = `<canvas aria-label="Mundo 3D"></canvas><header><div class="world-vitals"><strong>${safe(pet.name)}</strong><small class="world-level"></small><div class="world-health"><i></i><span></span></div><div class="world-mana"><i></i><span></span></div></div><div class="world-title"><b>${training ? 'CAMPO DE PRUEBA' : 'AODASE PETS'}</b><small class="world-zone">Aldea</small><small class="world-coins"></small></div><nav><button data-menu="equipment">🛡️ Equipo</button><button data-menu="fullscreen" aria-label="Pantalla completa">⛶</button><button data-menu="exit">Salir</button></nav></header><div class="world-target"></div><p class="world-notice" role="status"></p><div class="world-joystick" aria-label="Joystick de movimiento"><span>↑<br>← →<br>↓</span><i></i></div><div class="world-quick"><button data-use="potions">❤️<span>Poción · 1</span><small></small></button><button data-use="mana">🧪<span>Maná · 2</span><small></small></button></div><div class="world-actions"><button class="world-interact" data-interact>${training ? 'Reiniciar rival' : 'Hablar / portal'} <kbd>F</kbd></button><div class="world-spells"></div><button class="world-attack" data-attack>⚔️<span>Atacar</span><kbd>Espacio</kbd></button></div><p class="world-help">Flechas: mover · Q W E R: poderes · Espacio: atacar · 1 / 2: poción y maná · F: interactuar</p><div class="world-modal" hidden></div><div class="world-rotate"><b>↻</b><strong>Gira tu celular</strong><p>Juega en horizontal para tener todos los controles a mano.</p><button data-menu="exit">Volver</button></div>`;
+  root.innerHTML = `<canvas aria-label="Mundo 3D"></canvas><header><div class="world-vitals"><strong>${safe(pet.name)}</strong><small class="world-level"></small><div class="world-health"><i></i><span></span></div><div class="world-mana"><i></i><span></span></div></div><div class="world-title"><b>${training ? 'CAMPO DE PRUEBA' : 'AODASE PETS'}</b><small class="world-zone">Aldea</small><small class="world-coins"></small></div><nav>${training ? '' : '<button data-menu="map">Mapa</button>'}<button data-menu="equipment">🛡️ Equipo</button><button data-menu="fullscreen" aria-label="Pantalla completa">⛶</button><button data-menu="exit">Salir</button></nav></header><div class="world-target"></div><p class="world-notice" role="status"></p><div class="world-joystick" aria-label="Joystick de movimiento"><span>↑<br>← →<br>↓</span><i></i></div><div class="world-quick"><button data-use="potions">❤️<span>Poción · 1</span><small></small></button><button data-use="mana">🧪<span>Maná · 2</span><small></small></button></div><div class="world-actions"><button class="world-interact" data-interact>${training ? 'Reiniciar rival' : 'Explorar'} <kbd>F</kbd></button><div class="world-spells"></div><button class="world-attack" data-attack>⚔️<span>Atacar</span><kbd>Espacio</kbd></button></div><p class="world-help">Flechas: mover · Q W E R: poderes · Espacio: atacar · 1 / 2: poción y maná · F: interactuar</p><div class="world-modal" hidden></div><div class="world-rotate"><b>↻</b><strong>Gira tu celular</strong><p>Juega en horizontal para tener todos los controles a mano.</p><button data-menu="exit">Volver</button></div>`;
   document.body.append(root);
   document.body.classList.add('world-playing');
   const background = document.getElementById('app'),
@@ -71,7 +72,7 @@ export function mountWorldPlay(options: {
   }
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   const model = buildNftModel({ ...pet, phoneId: '' });
-  let world = createWorld(scene, zone);
+  let world = training ? createWorld(scene, zone) : createCityWorld(scene);
   let presentation: WorldPresentation | undefined;
   const respawns = new Map<Enemy, number>(),
     strikes = new Map<Enemy, number>();
@@ -194,7 +195,9 @@ export function mountWorldPlay(options: {
         session = data.session;
         profile = data.profile;
         progress = profile!.world!;
-        notify('Busca al boticario cerca de las casas. Los monstruos dejan botín.');
+        notify(
+          'Explora los biomas de Villavicencio. Abre el mapa para localizar centros comerciales, universidades y el parque.'
+        );
       })
       .catch((e) => notify(e.message));
   else notify('Derrota al rival de prueba. Aquí no se gastan tus recursos reales.');
@@ -277,7 +280,7 @@ export function mountWorldPlay(options: {
           action: 'attack',
           slot,
           kind: enemy.kind,
-          enemy: `${zone}:${world.enemies.indexOf(enemy)}`,
+          enemy: `${training ? zone : 'city'}:${world.enemies.indexOf(enemy)}`,
         });
         enemy.health = data.enemyHealth;
         reward = data.reward;
@@ -318,6 +321,10 @@ export function mountWorldPlay(options: {
     modal.hidden = false;
     modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Tienda del boticario"><button data-close aria-label="Cerrar tienda">✕</button><h2>El boticario</h2><p>Tienes ${progress.coins} monedas.</p><button data-buy="potions">❤️ Poción de vida · 15 monedas<small>Restaura 60% de tu vida máxima</small></button><button data-buy="mana">🧪 Elixir de maná · 12 monedas<small>Restaura 60 de maná</small></button></article>`;
   }
+  function cityMap() {
+    modal.hidden = false;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Mundo abierto</h2><p>Reinterpretación fantástica. Posiciones de diseño, no rutas de navegación real.</p><svg style="width:100%;max-height:300px;background:#07151d" viewBox="-90 -90 180 180" role="img" aria-label="Biomas y lugares de referencia">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}${CITY_WORLD.roads.map((r) => `<polyline points="${r.points.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#aac5cd" stroke-width="2"/>`).join('')}${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="2" fill="#83ddc4"><title>${safe(l.name)}</title></circle>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="3" fill="white"/></svg>${CITY_WORLD.landmarks.map((l) => `<p>${safe(l.name)} · X ${l.x}, Z ${l.z}</p>`).join('')}<p>${CITY_WORLD.roads.map((r) => safe(r.name)).join(' · ')}</p></article>`;
+  }
   function interact() {
     if (training) {
       const e = world.enemies[0];
@@ -329,6 +336,13 @@ export function mountWorldPlay(options: {
       mana = 100;
       cooldown.fill(0);
       notify('Rival reiniciado. ¡Prueba tus poderes!');
+      return;
+    }
+    const landmark = CITY_WORLD.landmarks.find(
+      (l) => Math.hypot(model.position.x - l.x, model.position.z - l.z) < 5
+    );
+    if (landmark) {
+      notify(landmark.name + ' · Lugar de referencia del mundo.');
       return;
     }
     if (world.npcs.some((n) => n.mesh.position.distanceTo(model.position) < 4)) {
@@ -348,7 +362,7 @@ export function mountWorldPlay(options: {
       world = createWorld(scene, zone);
       prepare();
       notify(`Entraste en ${zone}.`);
-    } else notify('Acércate a un comerciante o a un portal.');
+    } else notify('Acércate a un lugar del mapa o al boticario.');
   }
   async function consume(item: 'potions' | 'mana') {
     if (busy || !progress[item] || performance.now() < consumeAt || (!training && !session)) return;
@@ -381,6 +395,7 @@ export function mountWorldPlay(options: {
       if (!button) return;
       if (button.dataset.menu === 'exit') exit();
       else if (button.dataset.menu === 'equipment') equipment();
+      else if (button.dataset.menu === 'map') cityMap();
       else if (button.dataset.menu === 'fullscreen') {
         try {
           if (document.fullscreenElement) await document.exitFullscreen();
@@ -575,6 +590,11 @@ export function mountWorldPlay(options: {
       box.querySelector<HTMLElement>('i')!.style.width = `${Math.max(0, (value / max) * 100)}%`;
       box.querySelector('span')!.textContent = `${label} ${Math.ceil(value)} / ${max}`;
     }
+    if (!training)
+      root.querySelector('.world-zone')!.textContent =
+        Math.hypot(model.position.x, model.position.z) < 12
+          ? 'Parque Central'
+          : biomeAt(model.position.x, model.position.z).name;
     root.querySelector('.world-level')!.textContent = `Nivel ${pet.level} · ${pet.xp} XP`;
     root.querySelector('.world-coins')!.textContent = training
       ? 'Modo práctica'

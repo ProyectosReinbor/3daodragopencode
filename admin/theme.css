@@ -1,0 +1,74 @@
+:root {
+  color-scheme: dark;
+  --bg: #07151d;
+  --bg2: #102831;
+  --bg3: #17343e;
+  --border: #294550;
+  --text: #eef8f2;
+  --text2: #aac5cd;
+  --accent: #83ddc4;
+  --accent2: #a5f2dc;
+  --danger: #ff8b9c;
+}
+body {
+  background: radial-gradient(ellipse at 85% 8%, #194e513d, transparent 40%),
+    radial-gradient(ellipse at 10% 45%, #252c6038, transparent 40%), var(--bg);
+}
+.login-screen {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px;
+  background: transparent;
+}
+.login-card {
+  width: 420px;
+  max-width: 100%;
+  padding: 40px 32px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #14343ee8, #0c202aee);
+  border: 1px solid #42666d;
+  box-shadow: 0 24px 80px #0007, 0 0 45px #83ddc40b;
+}
+.login-brand {
+  display: block;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 20px;
+  border: 1px solid #83ddc466;
+  border-radius: 16px;
+  color: var(--accent);
+  text-align: center;
+  line-height: 54px;
+  font-size: 28px;
+  background: #83ddc410;
+  box-shadow: 0 0 25px #83ddc415;
+}
+.login-card h1 { font-size: 28px; letter-spacing: .04em; }
+.login-card p { margin-bottom: 28px; }
+.login-card label { color: var(--accent); }
+.form-group input, .form-group textarea, .filter-select, .search-input {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: inherit;
+}
+.login-card input { min-height: 48px; }
+.btn { border-radius: 10px; }
+.login-card .btn { min-height: 48px; margin-top: 6px; }
+.btn-primary { color: #09231e; box-shadow: 0 4px 20px #83ddc418; }
+.sidebar { background: #0b202be8; }
+.sidebar-brand { color: var(--accent); }
+.nav-item.active { background: #83ddc410; }
+.stat-card, .detail-card, .modal { border-radius: 16px; }
+.page-title { color: var(--text); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.login-error { background: #ff8b9c0d; border-color: #ff8b9c55; }
+@media (max-width: 480px) {
+  .login-screen { padding: 16px; }
+  .login-card { padding: 32px 22px; }
+}

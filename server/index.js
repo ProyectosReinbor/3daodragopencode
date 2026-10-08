@@ -1,3 +1,6 @@
+import { mountAdminCrud } from './admin-crud.js';
+import { adminHostRouting } from './admin-host.js';
+import { mountAdminManagement } from './admin-management.js';
 import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
@@ -22,10 +25,10 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
   }
   return 'reinos-ancestrales-dev-secret';
 })();
-const DATA_DIR = process.env.NODE_ENV === 'test' && process.env.FOODIE_TEST_DATA_DIR
+const DATA_DIR = process.env.AODASE_DATA_DIR ? resolve(process.env.AODASE_DATA_DIR) : process.env.NODE_ENV === 'test' && process.env.FOODIE_TEST_DATA_DIR
   ? resolve(process.env.FOODIE_TEST_DATA_DIR) : join(__dirname, 'data');
 const DB_FILE = join(DATA_DIR, 'game.db');
-const FRONTEND_DIR = join(__dirname, '..', 'dist');
+const ADMIN_DIR = join(__dirname, '..', 'admin');
 
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 
@@ -366,8 +369,6 @@ function recordRedemption(phone, code, rewardType, rewardId, rewardName, quantit
 }
 
 // --- Admin Configuration ---
-const ADMIN_USERNAME = 'ProyectosReinbor';
-const ADMIN_PASSWORD_HASH = '$2b$12$PjnSmnRKbXGoSZ4xvn64dOwEDAbgJmcVX7jP0glRuId4CIdR4HEku';
 
 function adminAuth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -500,6 +501,7 @@ function auth(req, res, next) {
 
 const app = express();
 app.set('trust proxy', 1);
+app.use(adminHostRouting({ adminHost: process.env.ADMIN_HOST || 'aodaseadmin.reinbor.cloud', publicHost: process.env.PUBLIC_HOST || 'aodase.reinbor.cloud', production: process.env.NODE_ENV === 'production' }));
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use('/api', (req, res, next) => {
@@ -868,21 +870,8 @@ app.get('/api/products', (req, res) => {
 
 // --- Admin Routes ---
 
-app.post('/api/admin/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Usuario y contrasena requeridos' });
-  }
-  if (username !== ADMIN_USERNAME) {
-    return res.status(401).json({ error: 'ACCESO_DENEGADO' });
-  }
-  const valid = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
-  if (!valid) {
-    return res.status(401).json({ error: 'ACCESO_DENEGADO' });
-  }
-  const token = jwt.sign({ role: 'admin', username: ADMIN_USERNAME }, JWT_SECRET, { expiresIn: '24h' });
-  res.json({ token, username: ADMIN_USERNAME });
-});
+mountAdminManagement(app, { db, adminAuth, getProfile, saveProfile, secret: JWT_SECRET });
+mountAdminCrud(app, { db, adminAuth, getProfile, saveProfile });
 
 app.get('/api/admin/stats', adminAuth, (req, res) => {
   const totalUsers = db.prepare('SELECT COUNT(*) AS cnt FROM users').get().cnt;
@@ -919,7 +908,7 @@ app.get('/api/admin/users', adminAuth, (req, res) => {
 });
 
 app.get('/api/admin/users/:phone', adminAuth, (req, res) => {
-  const user = db.prepare('SELECT * FROM users WHERE phone = ?').get(req.params.phone);
+  const user = db.prepare('SELECT phone, created_at FROM users WHERE phone = ?').get(req.params.phone);
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
   const profile = getProfile(req.params.phone);
   const redemptions = db.prepare(`
@@ -936,7 +925,7 @@ app.get('/api/admin/users/:phone', adminAuth, (req, res) => {
     FROM invoice_codes ic
     LEFT JOIN products p ON p.id = ic.product_id
     LEFT JOIN stores s ON s.id = p.store_id
-    WHERE ic.redeemed_by = ?
+    WHERE ic.admin_deleted_at IS NULL AND ic.redeemed_by = ?
     ORDER BY ic.created_at DESC
   `).all(req.params.phone);
   res.json({ user, profile, redemptions, invoices });
@@ -955,9 +944,10 @@ app.get('/api/admin/invoices', adminAuth, (req, res) => {
   `;
   const params = [];
   if (status) {
-    sql += ' WHERE ic.status = ?';
+    sql += ' WHERE ic.admin_deleted_at IS NULL AND ic.status = ?';
     params.push(status);
   }
+  if (!status) sql += ' WHERE ic.admin_deleted_at IS NULL';
   sql += ' ORDER BY ic.created_at DESC LIMIT 200';
   const rows = db.prepare(sql).all(...params);
   res.json({ invoices: rows });
@@ -986,34 +976,11 @@ app.get('/api/admin/stores/:id', adminAuth, (req, res) => {
     FROM invoice_codes ic
     JOIN products p ON p.id = ic.product_id
     LEFT JOIN reward_history rh ON rh.invoice_code = ic.code
-    WHERE p.store_id = ? AND ic.status = 'REDEEMED'
+    WHERE p.store_id = ? AND ic.admin_deleted_at IS NULL AND ic.status = 'REDEEMED'
     ORDER BY ic.redeemed_at DESC
     LIMIT 200
   `).all(req.params.id);
   res.json({ store: presentUrbanStore(store), promotions, products, invoices });
-});
-
-// --- Admin: Delete user ---
-app.delete('/api/admin/users/:phone', adminAuth, (req, res) => {
-  const phone = req.params.phone;
-  const user = db.prepare('SELECT * FROM users WHERE phone = ?').get(phone);
-  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-  const del = db.transaction(() => {
-    db.prepare('DELETE FROM reward_history WHERE user_phone = ?').run(phone);
-    db.prepare('DELETE FROM profiles WHERE phone = ?').run(phone);
-    db.prepare('UPDATE invoice_codes SET redeemed_by = NULL, status = ? WHERE redeemed_by = ?').run('AVAILABLE', phone);
-    db.prepare('DELETE FROM users WHERE phone = ?').run(phone);
-  });
-  del();
-  res.json({ ok: true });
-});
-
-// --- Admin: Delete store ---
-app.delete('/api/admin/stores/:id', adminAuth, (req, res) => {
-  const store = db.prepare('SELECT * FROM stores WHERE id = ?').get(req.params.id);
-  if (!store) return res.status(404).json({ error: 'Tienda no encontrada' });
-  db.prepare('DELETE FROM stores WHERE id = ?').run(req.params.id);
-  res.json({ ok: true });
 });
 
 // Store creation/editing is owned by the validated urban catalog module.
@@ -1090,27 +1057,13 @@ app.post('/api/admin/stores/:id/invoices', adminAuth, (req, res) => {
   res.json(result);
 });
 
-if (existsSync(FRONTEND_DIR)) {
-  app.use(express.static(FRONTEND_DIR, {
-    setHeaders(res) {
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.set('Pragma', 'no-cache');
-      res.set('Expires', '0');
-    },
-  }));
-  const adminHtmlPath = join(__dirname, 'admin.html');
-  app.get('/admin', (_req, res) => {
-    res.sendFile(adminHtmlPath);
-  });
-  app.get('*', (req, res) => {
-    if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
-    res.sendFile(join(FRONTEND_DIR, 'index.html'));
-  });
-} else {
-  app.get('*', (_req, res) => res.status(500).json({ error: 'Frontend not built. Run: npm run build' }));
-}
+app.get('/admin', (_req, res) => res.redirect(302, '/'));
+app.use(express.static(ADMIN_DIR, {
+  setHeaders(res) { res.set('Cache-Control', 'no-store'); }
+}));
+app.get('*', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
-app.listen(PORT, process.env.NODE_ENV === 'test' ? '127.0.0.1' : '0.0.0.0', () => {
-  console.log(`[AODASE PETS] http://localhost:${PORT}`);
-  console.log(`[Frontend] ${existsSync(FRONTEND_DIR) ? 'serving from ' + FRONTEND_DIR : 'NOT BUILT'}`);
+app.listen(PORT, process.env.HOST || (process.env.NODE_ENV === 'test' ? '127.0.0.1' : '0.0.0.0'), () => {
+  console.log(`[AODASE ADMIN + API] http://localhost:${PORT}`);
+  console.log(`[Admin] ${ADMIN_DIR}`);
 });

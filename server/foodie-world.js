@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { WORLD_ITEMS, MONSTER_REWARDS, initialWorldProgress } from '../shared/world-items.js';
+import { CITY_WORLD } from '../shared/city-world.js';
+import { craftWorldItem, MONSTER_MATERIALS, normalizeMaterials } from '../shared/world-crafting.js';
 import { applyPurchaseExperience } from './foodie-growth.js';
 // Sessions own combat cooldowns and encounter health. Rewards never come from profile PUT.
-export function mountFoodieWorld(app, { auth, getProfile, saveProfile }) {
+export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = () => Date.now() }) {
   const sessions = new Map();
   app.post('/api/world/start', auth, (req, res) => {
     const profile = getProfile(req.phone);
@@ -10,14 +12,14 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile }) {
     if (!pet) return res.status(400).json({ error: 'Selecciona un personaje de tu colección.' });
     profile.world ||= initialWorldProgress();
     saveProfile(req.phone, profile);
-    for (const [id, old] of sessions) if (old.phone === req.phone || old.expires < Date.now()) sessions.delete(id);
+    for (const [id, old] of sessions) if (old.phone === req.phone || old.expires < clock()) sessions.delete(id);
     const id = randomUUID();
-    sessions.set(id, { phone: req.phone, petId: pet.id, encounters: new Map(), cooldowns: {}, expires: Date.now() + 3600000 });
+    sessions.set(id, { publicId: randomUUID(), phone: req.phone, petId: pet.id, encounters: new Map(), cooldowns: {}, expires: clock() + 3600000 });
     res.json({ session: id, profile });
   });
   app.post('/api/world/action', auth, (req, res) => {
     const session = sessions.get(req.body.session);
-    if (!session || session.phone !== req.phone || session.expires < Date.now()) return res.status(409).json({ error: 'Vuelve a entrar al mundo para continuar.' });
+    if (!session || session.phone !== req.phone || session.expires < clock()) return res.status(409).json({ error: 'Vuelve a entrar al mundo para continuar.' });
     const profile = getProfile(req.phone);
     const pet = profile.characters.characters.find(p => p.id === session.petId);
     const world = profile.world ||= initialWorldProgress();
@@ -29,15 +31,33 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile }) {
       world.coins -= price; world[item]++;
     } else if (action === 'consume') {
       if (!['potions', 'mana'].includes(item) || world[item] < 1) return res.status(400).json({ error: 'No te quedan consumibles.' });
-      if ((session.cooldowns[item] || 0) > Date.now()) return res.status(400).json({ error: 'Espera un momento para usar otra poción.' });
-      session.cooldowns[item] = Date.now() + 1500; world[item]--;
+      if ((session.cooldowns[item] || 0) > clock()) return res.status(400).json({ error: 'Espera un momento para usar otra poción.' });
+      session.cooldowns[item] = clock() + 1500; world[item]--;
     } else if (action === 'equip') {
       if (!WORLD_ITEMS[item] || !world.items.includes(item)) return res.status(400).json({ error: 'Todavía no has encontrado ese objeto.' });
       world.equipped[pet.id] ||= {}; world.equipped[pet.id][WORLD_ITEMS[item].slot] = item;
+    } else if (action === 'craft') {
+      try { reward = craftWorldItem(world, req.body.recipe); }
+      catch (error) { return res.status(400).json({error:error.message}); }
+    } else if (action === 'begin_gather' || action === 'gather') {
+      const node = CITY_WORLD.nodes.find(n => n.id === req.body.node);
+      if (!node) return res.status(400).json({error:'Yacimiento desconocido.'});
+      normalizeMaterials(world);
+      if ((world.resourceCooldowns[node.id] || 0) > clock()) return res.status(429).json({error:'Este yacimiento todavía se está recuperando.'});
+      if (action === 'begin_gather') {
+        session.gathering = {node:node.id,token:randomUUID(),readyAt:clock()+3000};
+        return res.json({profile,challenge:{token:session.gathering.token,readyAt:session.gathering.readyAt}});
+      }
+      if (!session.gathering || session.gathering.node !== node.id || session.gathering.token !== req.body.token || (clock() < session.gathering.readyAt || clock() > session.gathering.readyAt + 30000))
+        return res.status(400).json({error:'Completa la extracción antes de recoger el material.'});
+      session.gathering = null;
+      world.materials[node.material] = (world.materials[node.material] || 0) + node.amount;
+      world.resourceCooldowns[node.id] = clock()+30000;
+      reward = {material:node.material,amount:node.amount};
     } else if (action === 'attack') {
       const spec = MONSTER_REWARDS[kind];
       if (!spec || typeof enemy !== 'string' || enemy.length > 80 || !Number.isInteger(slot) || slot < -1 || slot > 3) return res.status(400).json({ error: 'Ataque inválido.' });
-      const now = Date.now();
+      const now = clock();
       const cooldown = [450, 5000, 8000, 7000, 22000][slot + 1];
       if ((session.cooldowns[slot] || 0) > now) return res.status(429).json({ error: 'La habilidad todavía se está recuperando.' });
       session.cooldowns[slot] = now + cooldown;
@@ -57,10 +77,30 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile }) {
         reward = { coins: spec.coins, xp: spec.xp, potions: Math.random() < 0.5 ? 1 : 0, mana: Math.random() < 0.4 ? 1 : 0, item: Math.random() < 0.4 ? spec.items[Math.floor(Math.random() * spec.items.length)] : null };
         world.coins += reward.coins; world.potions += reward.potions; world.mana += reward.mana; world.kills++;
         if (reward.item && !world.items.includes(reward.item)) world.items.push(reward.item);
+        const drop = MONSTER_MATERIALS[kind];
+        const materials = normalizeMaterials(world);
+        materials[drop.material] = (materials[drop.material] || 0) + drop.amount;
+        reward.material = drop.material; reward.amount = drop.amount;
         applyPurchaseExperience(profile, reward.xp, pet.id);
       }
     } else return res.status(400).json({ error: 'Acción desconocida.' });
     saveProfile(req.phone, profile);
     res.json({ profile, reward, damage, enemyHealth: enemy ? session.encounters.get(enemy)?.health : undefined });
   });
+  app.post('/api/world/presence', auth, (req,res) => {
+    const session = sessions.get(req.body.session), now = clock();
+    if (!session || session.phone !== req.phone || session.expires < now) return res.status(409).json({error:'Vuelve a entrar al mundo.'});
+    const {x,z} = req.body;
+    if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x)>90 || Math.abs(z)>90) return res.status(400).json({error:'Posición inválida.'});
+    session.position = {x,z}; session.seenAt = now;
+    const players=[];
+    for(const [id,other] of sessions) {
+      if (id===req.body.session || other.expires<now || !other.position || now-other.seenAt>10000 || Math.hypot(x-other.position.x,z-other.position.z)>45) continue;
+      const profile=getProfile(other.phone),pet=profile?.characters?.characters.find(p=>p.id===other.petId);
+      if(pet)players.push({id:other.publicId,position:other.position,name:pet.name,level:pet.level,traits:pet.traits});
+      if(players.length>=4)break;
+    }
+    res.json({players});
+  });
+
 }

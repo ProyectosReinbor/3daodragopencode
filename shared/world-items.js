@@ -1,4 +1,7 @@
 export const WORLD_ITEMS = {
+  explorer_blade: {name:'Hoja del explorador',slot:'weapon',icon:'⚔️',stat:'atk',bonus:8},
+  obsidian_armor: {name:'Coraza de obsidiana',slot:'armor',icon:'🛡️',stat:'def',bonus:10},
+  aurora_gem: {name:'Gema auroral',slot:'relic',icon:'💎',stat:'ability',bonus:10},
   fang: { name: 'Colmillo del lobo', slot: 'weapon', icon: '🗡️', stat: 'atk', bonus: 4 },
   hide: { name: 'Armadura de pelaje', slot: 'armor', icon: '🛡️', stat: 'def', bonus: 4 },
   crystal: { name: 'Gema del espíritu', slot: 'relic', icon: '💎', stat: 'ability', bonus: 5 },

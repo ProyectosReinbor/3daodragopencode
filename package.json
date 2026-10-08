@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently --kill-others --names api,web \"npm run server\" \"npm run dev:web\"",
-    "server": "node server/index.js",
+    "server": "npm --prefix admin run start",
     "start": "npm run dev",
     "build": "tsc --noEmit && vite build --configLoader runner",
     "preview": "vite preview --configLoader runner",
@@ -17,7 +17,8 @@
     "test:watch": "vitest --configLoader runner",
     "test:coverage": "vitest run --coverage --configLoader runner",
     "check": "npm run lint && npm run format:check && tsc --noEmit && npm run test",
-    "dev:web": "vite --configLoader runner"
+    "dev:web": "vite --configLoader runner",
+    "admin:dev": "npm --prefix admin run dev"
   },
   "dependencies": {
     "three": "^0.179.1"
