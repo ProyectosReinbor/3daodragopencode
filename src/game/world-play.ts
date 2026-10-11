@@ -803,14 +803,10 @@ export function mountWorldPlay(options: {
   let cameraPointer: number | null = null,
     dragX = 0,
     dragY = 0;
-  const hasMovementInput = () =>
-    Math.hypot(axisX, axisZ) > 0.05 ||
-    ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].some((key) => pressed.has(key));
   canvas.addEventListener(
     'pointerdown',
     (event) => {
-      if (event.button !== 0 || cameraPointer !== null || hasMovementInput() || !modal.hidden)
-        return;
+      if (event.button !== 0 || cameraPointer !== null || !modal.hidden) return;
       event.preventDefault();
       cameraPointer = event.pointerId;
       dragX = event.clientX;
@@ -823,7 +819,7 @@ export function mountWorldPlay(options: {
     'pointermove',
     (event) => {
       if (event.pointerId !== cameraPointer) return;
-      if (!hasMovementInput() && modal.hidden && !document.hidden) {
+      if (modal.hidden && !document.hidden) {
         cameraYaw -= (event.clientX - dragX) * 0.006;
         cameraPitch = Math.max(0.25, Math.min(1.1, cameraPitch + (event.clientY - dragY) * 0.005));
       }
@@ -840,7 +836,7 @@ export function mountWorldPlay(options: {
       },
       { signal: events.signal }
     );
-  root.querySelector('.world-help')!.append(' · Arrastra el mundo: girar cámara en reposo');
+  root.querySelector('.world-help')!.append(' · Arrastra el mundo: girar cámara');
   function reset() {
     pressed.clear();
     pointer = null;
@@ -894,7 +890,6 @@ export function mountWorldPlay(options: {
     if (disposed) return;
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
-    let walking = false;
     if (
       modal.hidden &&
       !document.hidden &&
@@ -908,6 +903,7 @@ export function mountWorldPlay(options: {
         pointer !== null ? axisZ : Number(pressed.has('arrowdown')) - Number(pressed.has('arrowup'))
       );
       if (direction.length() > 1) direction.normalize();
+      direction.applyAxisAngle(new Vector3(0, 1, 0), cameraYaw);
       const previousX = model.position.x,
         previousZ = model.position.z;
       model.position.addScaledVector(direction, dt * (4 + stats().spd * 0.08));
@@ -937,7 +933,6 @@ export function mountWorldPlay(options: {
         );
       }
       if (direction.length() > 0.05) model.rotation.y = Math.atan2(direction.x, direction.z);
-      walking = direction.length() > 0.05;
       model.position.y =
         (activeRoom
           ? activeRoom.height
@@ -1015,13 +1010,6 @@ export function mountWorldPlay(options: {
         'transform',
         `translate(${model.position.x} ${model.position.z}) rotate(${180 - (model.rotation.y * 180) / Math.PI})`
       );
-    }
-    if (walking) {
-      const targetYaw = model.rotation.y + Math.PI;
-      const turn = Math.atan2(Math.sin(targetYaw - cameraYaw), Math.cos(targetYaw - cameraYaw));
-      const follow = 1 - Math.exp(-dt * 6);
-      cameraYaw += turn * follow;
-      cameraPitch += (defaultPitch - cameraPitch) * follow;
     }
     const radius = activeRoom && !activeRoom.terrace ? 4.2 : Math.hypot(10, 8.5),
       horizontal = radius * Math.cos(cameraPitch);

@@ -25,6 +25,8 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+La cámara conserva el ángulo elegido al arrastrar el mundo, tanto en reposo como durante el movimiento. El joystick y las flechas se interpretan respecto a la vista: arriba avanza hacia el fondo de la pantalla y derecha desplaza a la derecha. La mascota gira hacia su desplazamiento; ese giro no modifica la cámara.
+
 Instanciar vegetación y caminos; medir tiempos de renderizado en móvil horizontal antes de aumentar densidad. Probar continuidad del mapa, entradas y salida, persistencia, doble reclamación, caducidad, pérdidas de conexión y limpieza de recursos. No anunciar torneos, recompensas comerciales ni visitas verificadas antes de completar sus servicios.
 
 Referencia municipal de corredores: https://villavicencio.gov.co/inician-obras-para-eliminar-cuello-de-botella-en-la-curva-que-conecta-el-anillo-vial-con-la-avenida-40/

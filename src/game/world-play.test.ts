@@ -77,7 +77,7 @@ describe('full screen world controls', () => {
   function key(value: string) {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: value, cancelable: true }));
   }
-  it('orbits while idle and smoothly returns behind the pet when walking', () => {
+  it('keeps the chosen camera angle and moves keys and joystick relative to the view', () => {
     tick();
     const canvas = document.querySelector('canvas')!;
     const point = (type: string, x: number, y: number) => {
@@ -87,8 +87,8 @@ describe('full screen world controls', () => {
     };
     const initial = { x: rendered.x, z: rendered.z };
     point('pointerdown', 100, 100);
-    point('pointermove', 400, 100);
-    point('pointerup', 400, 100);
+    point('pointermove', 100 + Math.PI / 2 / 0.006, 100);
+    point('pointerup', 100 + Math.PI / 2 / 0.006, 100);
     tick();
     expect(Math.abs(rendered.x - initial.x)).toBeGreaterThan(5);
     const idle = { x: rendered.x, z: rendered.z };
@@ -97,15 +97,39 @@ describe('full screen world controls', () => {
     expect(rendered.z).toBe(idle.z);
     key('ArrowRight');
     tick();
-    expect(Math.abs(rendered.z)).toBeGreaterThan(0.1);
+    expect(rendered.x).toBeCloseTo(idle.x, 6);
+    expect(rendered.z).toBeGreaterThan(idle.z);
     for (let i = 0; i < 39; i++) tick();
-    expect(rendered.z).toBeCloseTo(0, 2);
-    expect(rendered.x).toBeLessThan(0);
+    expect(rendered.x).toBeCloseTo(idle.x, 6);
+    expect(rendered.z).toBeGreaterThan(idle.z + 5);
     window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight' }));
     const stopped = { x: rendered.x, z: rendered.z };
     tick();
     expect(rendered.x).toBe(stopped.x);
     expect(rendered.z).toBe(stopped.z);
+    const joystick = document.querySelector<HTMLElement>('.world-joystick')!;
+    vi.spyOn(joystick, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 200,
+    } as DOMRect);
+    joystick.setPointerCapture = vi.fn();
+    const touch = (type: string, x: number, y: number) => {
+      const event = new MouseEvent(type, { clientX: x, clientY: y, bubbles: true });
+      Object.defineProperty(event, 'pointerId', { value: 9 });
+      joystick.dispatchEvent(event);
+    };
+    touch('pointerdown', 164, 100);
+    tick();
+    expect(rendered.x).toBeCloseTo(stopped.x, 6);
+    expect(rendered.z).toBeGreaterThan(stopped.z);
+    const right = { x: rendered.x, z: rendered.z };
+    touch('pointermove', 100, 36);
+    tick();
+    expect(rendered.x).toBeGreaterThan(right.x);
+    expect(rendered.z).toBeCloseTo(right.z, 6);
+    touch('pointerup', 100, 36);
   });
   it('opens the forge nearby and sends crafting and quest actions through the session API', async () => {
     stop();
