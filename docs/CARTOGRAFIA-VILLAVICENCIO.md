@@ -19,12 +19,24 @@ El origen está en el centro geométrico de la Plaza de Los Libertadores. X apun
 
 Viva, Único, Unicentro, Primavera Urbana, Llanocentro, Villacentro, Cooperativa, Unimeta, Santo Tomás y las sedes Barcelona y San Antonio de Unillanos se ubican mediante puntos o centros de geometrías de OSM. Los centros de polígonos son marcadores de referencia, no necesariamente puertas de entrada. Cooperativa Chorillano sigue pendiente de confirmar; no se inventa una ubicación.
 
-Los negocios del catálogo usan la misma proyección y se rechazan coordenadas fuera del extracto. Los modelos de edificios, anchos de vías, biomas, terreno plano, criaturas, recursos, forja y campo de entrenamiento son elementos artísticos del videojuego. No se han reproducido fachadas, alturas, relieve, carriles ni desniveles de puentes. Tampoco se ofrece navegación vial o validación de visitas físicas.
+Los negocios del catálogo usan la misma proyección y se rechazan coordenadas fuera del extracto. Los biomas, terreno plano, criaturas, recursos, forja y campo de entrenamiento son elementos artísticos del videojuego. Tampoco se ofrece navegación vial o validación de visitas físicas.
+
+## Ciudad en 3D
+
+`shared/villavicencio-urban.js` añade 7.096 contornos cerrados de edificios, 77 puntos de semáforos y 318 tramos de cursos de agua del mismo extracto OSM. Las vías conservan la etiqueta de puente: hay 153 tramos señalados, que no equivalen necesariamente a 153 puentes distintos.
+
+Los edificios se extruyen sobre sus polígonos reales, con alturas publicadas cuando existen y una estimación de tres metros por piso en los demás casos; sin pisos publicados se usan dos pisos. Fachadas, ventanas, puertas, cubiertas y colores son una interpretación artística. El importador conserva un indicador para distinguir alturas publicadas de estimadas. Solo se incluyen edificios con contornos cerrados de vías OSM; relaciones multipolígono y partes complejas quedan pendientes.
+
+Las carreteras tienen asfalto, líneas discontinuas, aceras y alumbrado. Los puntos de semáforos generan postes junto a la vía, luces con ciclo rojo/amarillo/verde y cruces peatonales decorativos. Su orientación, posición precisa del poste, ciclos y marcas no reproducen una regulación de tráfico real. No hay simulación de vehículos.
+
+Los tramos de puente generan tableros inclinados, rampas, barandas y pilares, con una altura artística máxima de cuatro metros. La mascota y la cámara siguen la superficie elevada cuando cruzan el tablero. Los cursos de agua se representan bajo las vías. Las dimensiones de puentes y ríos son aproximadas; no proceden de un levantamiento topográfico.
+
+No se afirma una réplica fotográfica de fachadas, niveles de intercambiadores o relieve. Los interiores actuales de negocios conservan su sistema anterior. La ciudad exterior todavía permite atravesar edificios: las colisiones urbanas e interiores transitables son una siguiente etapa.
 
 ## Renderizado y actualización
 
-La red 3D se indexa en celdas de 100 metros y carga segmentos a 220 metros de la mascota, con instancias limitadas. La vegetación consulta el índice local para dejar libres los caminos. El minimapa muestra vías cercanas; el mapa completo permite acercar, alejar, desplazarse y enfocar cada lugar.
+La red 3D se indexa en celdas de 100 metros y carga segmentos a 220 metros de la mascota, con instancias limitadas. Los edificios se agrupan en dos mallas de cuerpos y cubiertas; ventanas, aceras, marcas, lámparas y puentes usan instancias con capacidad fija. La selección urbana se actualiza cada 50 metros, limita a 500 edificios próximos y libera las geometrías sustituidas. La vegetación deja libres caminos y contornos de edificios. El minimapa muestra vías cercanas; el mapa completo permite acercar, alejar, desplazarse y enfocar cada lugar.
 
-Para actualizar, descargar 16 teselas XML mediante la API de lectura de OSM, dividiendo el área indicada en cuatro columnas y cuatro filas: `https://www.openstreetmap.org/api/0.6/map?bbox=west,south,east,north`. Guardarlas como `tile-0.osm` hasta `tile-15.osm` en `.cartography-work/`, respetando los límites y políticas del servicio. Ejecutar `node scripts/import-villavicencio.mjs .cartography-work`. El importador deduplica IDs, conserva las vías dentro del área y valida la presencia del parque y la red vial antes de escribir el extracto. Los XML quedan excluidos de Git.
+Para actualizar, descargar 16 teselas XML mediante la API de lectura de OSM, dividiendo el área indicada en cuatro columnas y cuatro filas: `https://www.openstreetmap.org/api/0.6/map?bbox=west,south,east,north`. Guardarlas como `tile-0.osm` hasta `tile-15.osm` en `.cartography-work/`, respetando los límites y políticas del servicio. Ejecutar `node scripts/import-villavicencio.mjs .cartography-work`. El importador deduplica IDs, conserva las vías dentro del área y valida la presencia del parque y la red vial antes de escribir los dos extractos. Los XML quedan excluidos de Git. Ambos extractos derivados mantienen la licencia ODbL de la fuente.
 
 Después, ejecutar las pruebas del mundo y de aventuras, comprobar TypeScript y generar la compilación. La cartografía se incluye en el proyecto: jugar no consulta los servidores de OSM ni descarga mosaicos.

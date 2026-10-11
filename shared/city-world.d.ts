@@ -34,7 +34,15 @@ export const CITY_WORLD: {
     lat: number;
     lng: number;
   })[];
-  roads: { id: string; name: string; highway: string; width: number; points: number[][] }[];
+  roads: {
+    id: string;
+    name: string;
+    highway: string;
+    width: number;
+    bridge: boolean;
+    layer: number;
+    points: number[][];
+  }[];
   biomes: CityBiome[];
   nodes: CityResource[];
   forge: CityPoint;

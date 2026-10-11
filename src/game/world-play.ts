@@ -679,7 +679,7 @@ export function mountWorldPlay(options: {
     axisX = 0,
     axisZ = 0;
   const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
-  const defaultPitch = Math.atan2(8.5, 10);
+  const defaultPitch = Math.atan2(6, 13);
   let cameraYaw = 0,
     cameraPitch = defaultPitch;
   let cameraPointer: number | null = null,
@@ -796,7 +796,11 @@ export function mountWorldPlay(options: {
       model.position.z = Math.max(-limit, Math.min(limit, model.position.z));
       if (direction.length() > 0.05) model.rotation.y = Math.atan2(direction.x, direction.z);
       walking = direction.length() > 0.05;
-      model.position.y = direction.length() > 0.05 ? Math.abs(Math.sin(now * 0.012)) * 0.08 : 0;
+      model.position.y =
+        (training
+          ? 0
+          : (scene.userData.citySurfaceHeight?.(model.position.x, model.position.z) || 0) + 0.13) +
+        (direction.length() > 0.05 ? Math.abs(Math.sin(now * 0.012)) * 0.08 : 0);
       mana = Math.min(100, mana + dt * 4);
       world.enemies.forEach((enemy) => {
         if (!training && enemy.alive)
@@ -873,13 +877,17 @@ export function mountWorldPlay(options: {
     }
     const radius = Math.hypot(10, 8.5),
       horizontal = radius * Math.cos(cameraPitch);
+    const cameraGround = training
+      ? 0
+      : scene.userData.citySurfaceHeight?.(model.position.x, model.position.z) || 0;
     camera.position.set(
       model.position.x + Math.sin(cameraYaw) * horizontal,
-      0.7 + radius * Math.sin(cameraPitch),
+      cameraGround + 0.7 + radius * Math.sin(cameraPitch),
       model.position.z + Math.cos(cameraYaw) * horizontal
     );
-    camera.lookAt(model.position.x, 0.7, model.position.z);
+    camera.lookAt(model.position.x, cameraGround + 0.7, model.position.z);
     if (!training) scene.userData.updateCityVegetation?.(model.position);
+    if (!training) scene.userData.animateCityUrban?.(now / 1000);
     presentation?.update(dt, now / 1000, model.position);
     renderer.render(scene, camera);
     for (const [selector, value, max, label] of [

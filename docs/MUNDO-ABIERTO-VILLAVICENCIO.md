@@ -17,7 +17,7 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 ## Etapas siguientes y criterios de aceptación
 
 1. Integrar recolección, forja y catálogo real: entrar y salir de locales conservando posición, consultar productos publicados, fabricar y equipar con costes persistentes. Cada comercio requiere alta propia; universidades y centros comerciales son lugares contenedores.
-2. Cartografía: confirmar la sede de Chorillano, ampliar lugares, incorporar relieve y footprints de edificios y validar cobertura en campo. La importación OSM, atribución, proyección métrica y carga local de calles ya están implementadas. Mantener separada la geografía real de la decoración fantástica.
+2. Cartografía: confirmar la sede de Chorillano, ampliar lugares, incorporar relieve y validar cobertura en campo. La importación OSM, atribución, proyección métrica, contornos de edificios, infraestructura urbana 3D y carga local ya están implementadas. Mantener separada la geografía real de la decoración fantástica.
 3. Multijugador: movimiento validado en servidor, salas exteriores e interiores, sincronización, reconexión y privacidad. PvP voluntario, emparejamiento, límites diarios y registro de recompensas antes de habilitar premios por victorias.
 4. Eventos y minijuegos: desafíos emitidos por servidor, duración y resultado verificados, premios idempotentes, calendario y administración por negocio. Ampliar el campo central para torneos cuando exista esta autoridad.
 5. Minas y mazmorras: instancias, dificultad, nodos y enemigos autorizados por servidor, tablas de botín, recetas equilibradas y evolución mediante requisitos verificables. No aceptar resultados o cantidades enviados por el cliente.

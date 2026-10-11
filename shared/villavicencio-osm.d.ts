@@ -6,6 +6,13 @@ export const VILLAVICENCIO_OSM: {
   importedAt: string;
   bounds: { south: number; west: number; north: number; east: number };
   origin: { lat: number; lng: number };
-  roads: { id: string; name: string; highway: string; points: number[][] }[];
+  roads: {
+    id: string;
+    name: string;
+    highway: string;
+    bridge: boolean;
+    layer: number;
+    points: number[][];
+  }[];
   places: { id: string; name: string; type: string; lat: number; lng: number }[];
 };

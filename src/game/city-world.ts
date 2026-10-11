@@ -15,6 +15,7 @@ import {
   PlaneGeometry,
   Scene,
   Vector3,
+  Quaternion,
 } from 'three';
 import {
   CITY_WORLD,
@@ -25,6 +26,7 @@ import {
 import { createWorld } from './world';
 import type { ZoneWorld } from './zones';
 import type { Store, StoreDetail } from './stores';
+import { mountCityUrban, ROAD_SEGMENTS, URBAN_BUILDINGS } from './city-urban';
 export interface CityBuilding {
   store: Store;
   mesh: Group;
@@ -38,6 +40,17 @@ function box(parent: Group, scale: Vector3, position: Vector3, color: number) {
 }
 export function createCityWorld(scene: Scene): ZoneWorld {
   const world = createWorld(scene, 'aldea');
+  const actors = new Set([...world.npcs.map((n) => n.mesh), ...world.enemies.map((e) => e.mesh)]);
+  for (const object of [...scene.children]) {
+    if (!(object instanceof Group) || actors.has(object)) continue;
+    object.traverse((n) => {
+      if (n instanceof Mesh) {
+        n.geometry.dispose();
+        for (const m of Array.isArray(n.material) ? n.material : [n.material]) m.dispose();
+      }
+    });
+    scene.remove(object);
+  }
   const ground = scene.children.find(
     (n) => n instanceof Mesh && n.geometry instanceof PlaneGeometry
   ) as Mesh;
@@ -117,9 +130,8 @@ export function createCityWorld(scene: Scene): ZoneWorld {
     box(mesh, new Vector3(1.8, 1.2, 0.3), new Vector3(0, 2.2, 0), 0xe7cc87);
     scene.add(mesh);
   }
-  const segments = CITY_WORLD.roads.flatMap((r) =>
-    r.points.slice(1).map((p, i) => ({ a: r.points[i], b: p, width: r.width }))
-  );
+  const segments = ROAD_SEGMENTS;
+  const urban = mountCityUrban(scene);
   // Index the real road network once; stream nearby segments instead of drawing the entire city.
   const roadCells = new Map<string, Set<number>>();
   segments.forEach(({ a, b }, i) => {
@@ -157,28 +169,39 @@ export function createCityWorld(scene: Scene): ZoneWorld {
       : 0;
     return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz);
   };
-  const paths = new InstancedMesh(new BoxGeometry(1, 0.06, 1), material(0x618580), 4096);
+  const paths = new InstancedMesh(new BoxGeometry(1, 0.08, 1), material(0x293b43), 4096);
   paths.name = 'city-road-network';
   const matrix = new Matrix4();
+  const roadRotation = new Quaternion();
   let previousRoadCell = '';
   const updateRoads = (position: Vector3) => {
     const key = Math.floor(position.x / 50) + ':' + Math.floor(position.z / 50);
     if (key === previousRoadCell) return;
     previousRoadCell = key;
     let count = 0;
-    for (const { a, b, width } of nearbyRoads(position.x, position.z, 3)) {
+    const localRoads = nearbyRoads(position.x, position.z, 3).filter(
+      (s) => segmentDistance(position.x, position.z, s.a, s.b) <= 220
+    );
+    for (const { a, b, width, yA, yB } of localRoads) {
       if (count >= 4096 || segmentDistance(position.x, position.z, a, b) > 220) continue;
       const dx = b[0] - a[0],
         dz = b[1] - a[1];
       if (!dx && !dz) continue;
-      matrix.makeRotationY(Math.atan2(dx, dz));
-      matrix.scale(new Vector3(width, 1, Math.hypot(dx, dz)));
-      matrix.setPosition((a[0] + b[0]) / 2, 0.07, (a[1] + b[1]) / 2);
+      roadRotation.setFromUnitVectors(
+        new Vector3(0, 0, 1),
+        new Vector3(dx, yB - yA, dz).normalize()
+      );
+      matrix.compose(
+        new Vector3((a[0] + b[0]) / 2, 0.07 + (yA + yB) / 2, (a[1] + b[1]) / 2),
+        roadRotation,
+        new Vector3(width, 1, Math.hypot(dx, yB - yA, dz))
+      );
       paths.setMatrixAt(count++, matrix);
     }
     paths.count = count;
     paths.instanceMatrix.needsUpdate = true;
     paths.computeBoundingSphere();
+    urban.update(position, localRoads);
   };
   updateRoads(new Vector3());
   scene.add(paths);
@@ -224,6 +247,7 @@ export function createCityWorld(scene: Scene): ZoneWorld {
           Math.hypot(x - position.x, z - position.z) > 100 ||
           Math.hypot(x, z) < 45 ||
           distanceToRoad(x, z) < 7 ||
+          urban.buildingAt(x, z) ||
           Math.abs(x) > CITY_WORLD.size / 2 - 20 ||
           Math.abs(z) > CITY_WORLD.size / 2 - 20 ||
           CITY_WORLD.landmarks.some((l) => Math.hypot(x - l.x, z - l.z) < 18) ||
@@ -293,6 +317,12 @@ export function createCityWorld(scene: Scene): ZoneWorld {
     building.name = 'landmark-' + l.id;
     building.userData.label = l.name;
     building.position.set(l.x, 0, l.z);
+    if (URBAN_BUILDINGS.some((b) => b.id === l.osmId)) {
+      // The geographic footprint supplies the actual building; keep the interaction marker.
+      building.userData.geographicBuilding = true;
+      scene.add(building);
+      continue;
+    }
     box(
       building,
       new Vector3(l.type === 'comercial' ? 6 : 4, 3, 4),

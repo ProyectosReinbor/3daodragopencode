@@ -81,6 +81,8 @@ for (const [id, way] of ways) {
         id: 'osm-way-' + id + '-' + part++,
         name: way.tags.name || way.tags.ref || 'Vía sin nombre',
         highway: way.tags.highway,
+        bridge: Boolean(way.tags.bridge && way.tags.bridge !== 'no'),
+        layer: Number(way.tags.layer) || 0,
         points: run,
       });
     run = [];
@@ -141,6 +143,57 @@ const data = {
   roads,
   places,
 };
+const buildings = [];
+const waterways = [];
+for (const [id, way] of ways) {
+  const points = geometry(way);
+  if (points.length < 2 || !points.some(inside)) continue;
+  if (
+    way.tags.building &&
+    way.tags.building !== 'no' &&
+    points.length >= 4 &&
+    way.refs[0] === way.refs.at(-1) &&
+    points.every(inside)
+  ) {
+    const levels = Math.max(1, Math.min(30, Number(way.tags['building:levels']) || 2));
+    const height = parseFloat(way.tags.height || '');
+    buildings.push({
+      id: 'osm-way-' + id,
+      kind: way.tags.building,
+      height: Number.isFinite(height) && height > 0 ? Math.min(100, height) : levels * 3,
+      measuredHeight: Number.isFinite(height) && height > 0,
+      levels,
+      points: points.map((p) => [p.lng, p.lat]),
+    });
+  }
+  if (['river', 'stream', 'canal'].includes(way.tags.waterway)) {
+    let run = [],
+      part = 0;
+    const flush = () => {
+      if (run.length > 1)
+        waterways.push({
+          id: 'osm-way-' + id + '-' + part++,
+          width: way.tags.waterway === 'river' ? 18 : 5,
+          points: run,
+        });
+      run = [];
+    };
+    for (const p of points) {
+      if (inside(p)) run.push([p.lng, p.lat]);
+      else flush();
+    }
+    flush();
+  }
+}
+const signals = [...nodes]
+  .filter(([, n]) => inside(n) && n.tags.highway === 'traffic_signals')
+  .map(([id, n]) => ({ id: 'osm-node-' + id, lat: n.lat, lng: n.lng }));
+writeFileSync(
+  'shared/villavicencio-urban.js',
+  '// OSM derived urban geometry, ODbL-1.0. See docs/CARTOGRAFIA-VILLAVICENCIO.md.\nexport const VILLAVICENCIO_URBAN = ' +
+    JSON.stringify({ buildings, waterways, signals }) +
+    ';\n'
+);
 writeFileSync(
   'shared/villavicencio-osm.js',
   '// Public geographic extract. See docs/CARTOGRAFIA-VILLAVICENCIO.md for attribution and refresh.\nexport const VILLAVICENCIO_OSM = ' +
@@ -152,6 +205,10 @@ console.log(
     {
       roads: roads.length,
       vertices: roads.reduce((n, r) => n + r.points.length, 0),
+      buildings: buildings.length,
+      signals: signals.length,
+      bridges: roads.filter((r) => r.bridge).length,
+      waterways: waterways.length,
       origin: data.origin,
       places,
     },
