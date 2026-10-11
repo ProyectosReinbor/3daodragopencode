@@ -1,4 +1,28 @@
 export const WORLD_QUESTS = {
+  park_patrol: {
+    name: 'Guardianes de los parques',
+    description: 'Derrota 8 monstruos en los parques de combate.',
+    metric: 'parkKills',
+    target: 8,
+    coins: 90,
+    xp: 80,
+  },
+  urban_supplies: {
+    name: 'Provisiones para la ciudad',
+    description: 'Reúne 15 materiales para los habitantes.',
+    metric: 'gathered',
+    target: 15,
+    coins: 65,
+    xp: 55,
+  },
+  collector: {
+    name: 'Colección del explorador',
+    description: 'Reúne 30 materiales durante tus aventuras.',
+    metric: 'gathered',
+    target: 30,
+    coins: 100,
+    xp: 95,
+  },
   supplies: {
     name: 'Provisiones del camino',
     description: 'Recoge 6 materiales del mundo.',

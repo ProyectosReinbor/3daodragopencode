@@ -145,9 +145,21 @@ const data = {
 };
 const buildings = [];
 const waterways = [];
+const parks = [];
 for (const [id, way] of ways) {
   const points = geometry(way);
   if (points.length < 2 || !points.some(inside)) continue;
+  if (
+    way.tags.leisure === 'park' &&
+    points.length >= 4 &&
+    way.refs[0] === way.refs.at(-1) &&
+    points.every(inside)
+  )
+    parks.push({
+      id: 'osm-way-' + id,
+      name: way.tags.name || 'Parque urbano',
+      points: points.map((p) => [p.lng, p.lat]),
+    });
   if (
     way.tags.building &&
     way.tags.building !== 'no' &&
@@ -191,7 +203,7 @@ const signals = [...nodes]
 writeFileSync(
   'shared/villavicencio-urban.js',
   '// OSM derived urban geometry, ODbL-1.0. See docs/CARTOGRAFIA-VILLAVICENCIO.md.\nexport const VILLAVICENCIO_URBAN = ' +
-    JSON.stringify({ buildings, waterways, signals }) +
+    JSON.stringify({ buildings, waterways, signals, parks }) +
     ';\n'
 );
 writeFileSync(

@@ -102,6 +102,7 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
         encounter.nextSpawn = now + 20000;
         reward = { coins: spec.coins, xp: spec.xp, potions: Math.random() < 0.5 ? 1 : 0, mana: Math.random() < 0.4 ? 1 : 0, item: Math.random() < 0.4 ? spec.items[Math.floor(Math.random() * spec.items.length)] : null };
         world.coins += reward.coins; world.potions += reward.potions; world.mana += reward.mana; world.kills++;
+        if(encounterSpec?.park) world.parkKills=(world.parkKills||0)+1;
         if (reward.item && !world.items.includes(reward.item)) world.items.push(reward.item);
         const drop = MONSTER_MATERIALS[kind];
         const materials = normalizeMaterials(world);

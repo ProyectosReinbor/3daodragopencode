@@ -1,4 +1,6 @@
 import { cityRoadMarkup } from './city-map';
+import { openCityRoom, closeCityRoom, nearbyCityEntrance, type CityRoom } from './city-life';
+import { CITY_CITIZENS, CITY_VENUES, CITY_PARKS } from '../../shared/city-life.js';
 import { geographicWorldPosition } from '../../shared/city-world.js';
 import { WORLD_MATERIALS, WORLD_RECIPES } from '../../shared/world-crafting.js';
 import { WORLD_QUESTS, QUEST_POSTS, questProgress } from '../../shared/world-quests.js';
@@ -9,6 +11,7 @@ import {
   Vector3,
   Mesh,
   TorusGeometry,
+  Fog,
   MeshLambertMaterial,
 } from 'three';
 import type { Character } from './characters';
@@ -106,6 +109,59 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  const buildingBar = document.createElement('div');
+  buildingBar.className = 'world-building-bar';
+  buildingBar.hidden = true;
+  root.append(buildingBar);
+  let activeRoom: CityRoom | null = null;
+  let roomReturn: Vector3 | null = null;
+  function enterBuilding(building: CityRoom['building'], floor = 0) {
+    if (!activeRoom) roomReturn = model.position.clone();
+    else closeCityRoom(scene, activeRoom);
+    activeRoom = openCityRoom(scene, building, floor);
+    camera.far = 350;
+    camera.updateProjectionMatrix();
+    if (scene.fog instanceof Fog) {
+      scene.fog.near = activeRoom.terrace ? 80 : 28;
+      scene.fog.far = activeRoom.terrace ? 280 : 160;
+    }
+    model.position.set(
+      activeRoom.x,
+      activeRoom.height,
+      activeRoom.z + Math.min(3, activeRoom.depth / 2 - 1)
+    );
+    modal.hidden = true;
+    buildingBar.hidden = false;
+    root.classList.add('world-room-active');
+    buildingBar.innerHTML = `<strong>${safe(activeRoom.name)} · ${activeRoom.terrace ? 'Terraza' : 'Piso ' + (activeRoom.floor + 1)}</strong><button data-room-action="floors">Ascensor</button>${activeRoom.venue && !activeRoom.terrace ? '<button data-room-action="shop">Negocio</button><button data-room-action="quests">Hablar con NPC</button>' : ''}<button data-room-action="exit">Salir del edificio</button>`;
+    notify(
+      activeRoom.terrace
+        ? 'Explora la terraza y contempla la ciudad.'
+        : 'Camina hasta las ventanas para mirar la ciudad. Usa el ascensor para subir.'
+    );
+  }
+  function leaveBuilding() {
+    if (!activeRoom) return;
+    closeCityRoom(scene, activeRoom);
+    activeRoom = null;
+    camera.far = 140;
+    camera.updateProjectionMatrix();
+    if (scene.fog instanceof Fog) {
+      scene.fog.near = 28;
+      scene.fog.far = 85;
+    }
+    buildingBar.hidden = true;
+    root.classList.remove('world-room-active');
+    if (roomReturn) model.position.copy(roomReturn);
+    roomReturn = null;
+    modal.hidden = true;
+    notify('Has vuelto a la calle.');
+  }
+  function floorsDialog() {
+    if (!activeRoom) return;
+    modal.hidden = false;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Ascensor"><button data-close aria-label="Cerrar ascensor">✕</button><h2>${safe(activeRoom.name)}</h2><p>Selecciona un piso. Las ventanas y la terraza miran hacia la ciudad real.</p>${Array.from({ length: activeRoom.floors }, (_, i) => `<button data-room-level="${i}">Piso ${i + 1}${i === 0 ? ' · Recepción y negocio' : ''}</button>`).join('')}<button data-room-level="${activeRoom.floors}">Terraza panorámica</button></article>`;
+  }
   function stats() {
     const value = { ...totalStats(pet) };
     for (const id of Object.values(progress.equipped[pet.id] || {})) {
@@ -196,6 +252,19 @@ export function mountWorldPlay(options: {
       ).join('') +
       `<rect x="${CITY_WORLD.forge.x - 25}" y="${CITY_WORLD.forge.z - 25}" width="50" height="50" fill="#ff8b9c"/>`;
     minimap.querySelector('[data-minimap-player]')?.insertAdjacentHTML('beforebegin', pins);
+    minimap
+      .querySelector('[data-minimap-player]')
+      ?.insertAdjacentHTML(
+        'beforebegin',
+        CITY_VENUES.map(
+          (v) =>
+            `<circle cx="${v.x}" cy="${v.z}" r="18" fill="#d5b3ff"><title>${safe(v.name)}</title></circle>`
+        ).join('') +
+          CITY_PARKS.map(
+            (p) =>
+              `<circle cx="${p.x}" cy="${p.z}" r="22" fill="#e99f75"><title>${safe(p.name)} · Combate</title></circle>`
+          ).join('')
+      );
   }
   let minimapRoadCell = '';
   const minimapPlayer = minimap?.querySelector('[data-minimap-player]');
@@ -250,7 +319,7 @@ export function mountWorldPlay(options: {
   else notify('Derrota al rival de prueba. Aquí no se gastan tus recursos reales.');
   const target = (range = 9) =>
     world.enemies
-      .filter((e) => e.alive && e.mesh.position.distanceTo(model.position) < range)
+      .filter((e) => !activeRoom && e.alive && e.mesh.position.distanceTo(model.position) < range)
       .sort(
         (a, b) =>
           a.mesh.position.distanceTo(model.position) - b.mesh.position.distanceTo(model.position)
@@ -372,7 +441,7 @@ export function mountWorldPlay(options: {
   }
   function shop() {
     modal.hidden = false;
-    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Tienda del boticario"><button data-close aria-label="Cerrar tienda">✕</button><h2>El boticario</h2><p>Tienes ${progress.coins} monedas.</p><button data-buy="potions">❤️ Poción de vida · 15 monedas<small>Restaura 60% de tu vida máxima</small></button><button data-buy="mana">🧪 Elixir de maná · 12 monedas<small>Restaura 60 de maná</small></button></article>`;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Tienda del boticario"><button data-close aria-label="Cerrar tienda">✕</button><h2>${safe(activeRoom?.name || 'El boticario')}</h2><p>Negocio del mundo · Tienes ${progress.coins} monedas.</p><button data-buy="potions">❤️ Poción de vida · 15 monedas<small>Restaura 60% de tu vida máxima</small></button><button data-buy="mana">🧪 Elixir de maná · 12 monedas<small>Restaura 60 de maná</small></button></article>`;
   }
   let mapX = 0,
     mapZ = 0,
@@ -395,13 +464,33 @@ export function mountWorldPlay(options: {
     mapSpan = 6000;
     modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Calles reales</h2><p>Geografía de OpenStreetMap · 1 unidad = 1 metro. Biomas y edificios de fantasía.</p><div class="world-map-controls"><button data-map-control="in" aria-label="Acercar mapa">＋</button><button data-map-control="out" aria-label="Alejar mapa">−</button><button data-map-control="north" aria-label="Mover mapa al norte">↑</button><button data-map-control="south" aria-label="Mover mapa al sur">↓</button><button data-map-control="west" aria-label="Mover mapa al oeste">←</button><button data-map-control="east" aria-label="Mover mapa al este">→</button><button data-map-control="player">Mi pet</button><button data-map-control="all">Ciudad</button></div><p data-map-scale></p><svg data-city-map style="width:100%;height:360px;background:#07151d" role="img" aria-label="Calles y lugares reales de Villavicencio">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}<g data-map-roads></g>${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="35" fill="#83ddc4"><title>${safe(l.name)}</title></circle><text x="${l.x + 45}" y="${l.z}" font-size="50" fill="#fff" stroke="#07151d" stroke-width="8" paint-order="stroke">${safe(l.name)}</text>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="45" fill="white"/></svg><p><a href="${CITY_WORLD.sourceUrl}" target="_blank" rel="noopener noreferrer">${safe(CITY_WORLD.attribution)}</a> · ODbL · Datos importados: ${CITY_WORLD.importedAt.slice(0, 10)}</p><h3>Lugares</h3>${CITY_WORLD.landmarks.map((l) => `<p><button data-map-place="${l.id}">${safe(l.name)}</button> · ${Math.round(Math.hypot(model.position.x - l.x, model.position.z - l.z))} m en línea recta</p>`).join('')}<p>Cooperativa Chorillano: sede pendiente de confirmar.</p><h3>Materiales y hallazgos</h3>${CITY_WORLD.nodes.map((n) => `<p>${safe(n.name)} · ${WORLD_MATERIALS[n.material]} · ${Math.round(Math.hypot(model.position.x - n.x, model.position.z - n.z))} m</p>`).join('')}</article>`;
     refreshCityMap();
+    modal
+      .querySelector('[data-city-map]')!
+      .insertAdjacentHTML(
+        'beforeend',
+        CITY_VENUES.map(
+          (v) =>
+            `<circle cx="${v.x}" cy="${v.z}" r="30" fill="#d5b3ff"><title>${safe(v.name)} · Entrada</title></circle>`
+        ).join('') +
+          CITY_PARKS.map(
+            (p) =>
+              `<circle cx="${p.x}" cy="${p.z}" r="50" fill="#e99f75"><title>${safe(p.name)} · Combate</title></circle>`
+          ).join('')
+      );
+    modal
+      .querySelector('article')!
+      .insertAdjacentHTML(
+        'beforeend',
+        `<h3>Negocios y miradores del mundo</h3>${CITY_VENUES.map((v) => `<p><button data-map-place="${v.id}">${safe(v.name)}</button> · ${Math.round(Math.hypot(v.x - model.position.x, v.z - model.position.z))} m · ${v.floors} pisos y terraza</p>`).join('')}<h3>Parques de combate</h3>${CITY_PARKS.map((p) => `<p><button data-map-place="${p.id}">${safe(p.name)}</button> · ${Math.round(Math.hypot(p.x - model.position.x, p.z - model.position.z))} m</p>`).join('')}`
+      );
   }
 
-  function quests() {
+  function quests(ids?: string[]) {
     modal.hidden = false;
     modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Misiones del mundo"><button data-close aria-label="Cerrar misiones">✕</button><h2>Misiones del mundo</h2>${Object.entries(
       WORLD_QUESTS
     )
+      .filter(([id]) => !ids || ids.includes(id))
       .map(([id, q]) => {
         const accepted = progress.acceptedQuests?.includes(id),
           claimed = progress.claimedQuests?.includes(id),
@@ -480,6 +569,23 @@ export function mountWorldPlay(options: {
       return;
     }
     if (busy || !modal.hidden) return;
+    if (activeRoom) {
+      floorsDialog();
+      return;
+    }
+    const entrance = nearbyCityEntrance(model.position);
+    if (entrance) {
+      enterBuilding(entrance);
+      return;
+    }
+    const citizen = CITY_CITIZENS.find(
+      (n) => Math.hypot(n.x - model.position.x, n.z - model.position.z) < 4
+    );
+    if (citizen) {
+      quests([citizen.quest]);
+      notify(citizen.name + ' tiene una misión para ti.');
+      return;
+    }
     if (
       Math.hypot(model.position.x - CITY_WORLD.forge.x, model.position.z - CITY_WORLD.forge.z) < 4
     ) {
@@ -553,7 +659,17 @@ export function mountWorldPlay(options: {
       const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
       if (!button) return;
       if (button.dataset.menu === 'exit') exit();
-      else if (button.dataset.mapControl || button.dataset.mapPlace) {
+      else if (button.dataset.roomLevel !== undefined && activeRoom) {
+        const level = Number(button.dataset.roomLevel);
+        if (Number.isInteger(level) && level >= 0 && level <= activeRoom.floors)
+          enterBuilding(activeRoom.building, level);
+      } else if (button.dataset.roomAction) {
+        if (button.dataset.roomAction === 'exit') leaveBuilding();
+        else if (button.dataset.roomAction === 'floors') floorsDialog();
+        else if (button.dataset.roomAction === 'shop') shop();
+        else if (button.dataset.roomAction === 'quests')
+          quests(activeRoom?.venue ? [activeRoom.venue.quest] : undefined);
+      } else if (button.dataset.mapControl || button.dataset.mapPlace) {
         const control = button.dataset.mapControl;
         if (control === 'in') mapSpan = Math.max(300, mapSpan / 2);
         if (control === 'out') mapSpan = Math.min(40000, mapSpan * 2);
@@ -573,7 +689,9 @@ export function mountWorldPlay(options: {
           mapZ = (northWest.z + southEast.z) / 2;
           mapSpan = Math.max(southEast.x - northWest.x, southEast.z - northWest.z) + 400;
         }
-        const place = CITY_WORLD.landmarks.find((l) => l.id === button.dataset.mapPlace);
+        const place = [...CITY_WORLD.landmarks, ...CITY_VENUES, ...CITY_PARKS].find(
+          (l) => l.id === button.dataset.mapPlace
+        );
         if (place) {
           mapX = place.x;
           mapZ = place.z;
@@ -790,19 +908,49 @@ export function mountWorldPlay(options: {
         pointer !== null ? axisZ : Number(pressed.has('arrowdown')) - Number(pressed.has('arrowup'))
       );
       if (direction.length() > 1) direction.normalize();
+      const previousX = model.position.x,
+        previousZ = model.position.z;
       model.position.addScaledVector(direction, dt * (4 + stats().spd * 0.08));
+      if (
+        !training &&
+        !activeRoom &&
+        scene.userData.cityBuildingAt?.(model.position.x, model.position.z) &&
+        !scene.userData.cityBuildingAt?.(previousX, previousZ)
+      ) {
+        if (!scene.userData.cityBuildingAt(model.position.x, previousZ))
+          model.position.z = previousZ;
+        else if (!scene.userData.cityBuildingAt(previousX, model.position.z))
+          model.position.x = previousX;
+        else model.position.set(previousX, model.position.y, previousZ);
+      }
       const limit = world.groundSize / 2 - 3;
       model.position.x = Math.max(-limit, Math.min(limit, model.position.x));
       model.position.z = Math.max(-limit, Math.min(limit, model.position.z));
+      if (activeRoom) {
+        model.position.x = Math.max(
+          activeRoom.x - activeRoom.width / 2 + 0.8,
+          Math.min(activeRoom.x + activeRoom.width / 2 - 0.8, model.position.x)
+        );
+        model.position.z = Math.max(
+          activeRoom.z - activeRoom.depth / 2 + 0.8,
+          Math.min(activeRoom.z + activeRoom.depth / 2 - 0.8, model.position.z)
+        );
+      }
       if (direction.length() > 0.05) model.rotation.y = Math.atan2(direction.x, direction.z);
       walking = direction.length() > 0.05;
       model.position.y =
-        (training
-          ? 0
-          : (scene.userData.citySurfaceHeight?.(model.position.x, model.position.z) || 0) + 0.13) +
-        (direction.length() > 0.05 ? Math.abs(Math.sin(now * 0.012)) * 0.08 : 0);
+        (activeRoom
+          ? activeRoom.height
+          : training
+            ? 0
+            : (scene.userData.citySurfaceHeight?.(model.position.x, model.position.z) || 0) +
+              0.13) + (direction.length() > 0.05 ? Math.abs(Math.sin(now * 0.012)) * 0.08 : 0);
       mana = Math.min(100, mana + dt * 4);
       world.enemies.forEach((enemy) => {
+        if (activeRoom) {
+          enemy.mesh.visible = false;
+          return;
+        }
         if (!training && enemy.alive)
           enemy.mesh.visible = enemy.mesh.position.distanceTo(model.position) < 110;
         if (!enemy.alive) {
@@ -875,11 +1023,13 @@ export function mountWorldPlay(options: {
       cameraYaw += turn * follow;
       cameraPitch += (defaultPitch - cameraPitch) * follow;
     }
-    const radius = Math.hypot(10, 8.5),
+    const radius = activeRoom && !activeRoom.terrace ? 4.2 : Math.hypot(10, 8.5),
       horizontal = radius * Math.cos(cameraPitch);
-    const cameraGround = training
-      ? 0
-      : scene.userData.citySurfaceHeight?.(model.position.x, model.position.z) || 0;
+    const cameraGround = activeRoom
+      ? activeRoom.height
+      : training
+        ? 0
+        : scene.userData.citySurfaceHeight?.(model.position.x, model.position.z) || 0;
     camera.position.set(
       model.position.x + Math.sin(cameraYaw) * horizontal,
       cameraGround + 0.7 + radius * Math.sin(cameraPitch),
@@ -888,6 +1038,7 @@ export function mountWorldPlay(options: {
     camera.lookAt(model.position.x, cameraGround + 0.7, model.position.z);
     if (!training) scene.userData.updateCityVegetation?.(model.position);
     if (!training) scene.userData.animateCityUrban?.(now / 1000);
+    if (!training) scene.userData.animateCityLife?.(now / 1000, model.position);
     presentation?.update(dt, now / 1000, model.position);
     renderer.render(scene, camera);
     for (const [selector, value, max, label] of [
@@ -899,8 +1050,11 @@ export function mountWorldPlay(options: {
       box.querySelector('span')!.textContent = `${label} ${Math.ceil(value)} / ${max}`;
     }
     if (!training)
-      root.querySelector('.world-zone')!.textContent =
-        Math.hypot(model.position.x, model.position.z) < 12
+      root.querySelector('.world-zone')!.textContent = activeRoom
+        ? activeRoom.name +
+          ' · ' +
+          (activeRoom.terrace ? 'Terraza' : 'Piso ' + (activeRoom.floor + 1))
+        : Math.hypot(model.position.x, model.position.z) < 12
           ? 'Parque Central'
           : biomeAt(model.position.x, model.position.z).name;
     root.querySelector('.world-level')!.textContent = `Nivel ${pet.level} · ${pet.xp} XP`;
@@ -933,18 +1087,26 @@ export function mountWorldPlay(options: {
         (n) => Math.hypot(model.position.x - n.x, model.position.z - n.z) < 4
       );
       root.querySelector('.world-interact')!.innerHTML =
-        (node
-          ? 'Recoger'
-          : Math.hypot(
-                model.position.x - CITY_WORLD.forge.x,
-                model.position.z - CITY_WORLD.forge.z
-              ) < 4
-            ? 'Craftear'
-            : QUEST_POSTS.some(
-                  (p) => Math.hypot(model.position.x - p.x, model.position.z - p.z) < 4
+        (activeRoom
+          ? 'Ascensor'
+          : nearbyCityEntrance(model.position)
+            ? 'Entrar edificio'
+            : CITY_CITIZENS.some(
+                  (n) => Math.hypot(n.x - model.position.x, n.z - model.position.z) < 4
                 )
-              ? 'Misiones'
-              : 'Explorar') + ' <kbd>F</kbd>';
+              ? 'Hablar'
+              : node
+                ? 'Recoger'
+                : Math.hypot(
+                      model.position.x - CITY_WORLD.forge.x,
+                      model.position.z - CITY_WORLD.forge.z
+                    ) < 4
+                  ? 'Craftear'
+                  : QUEST_POSTS.some(
+                        (p) => Math.hypot(model.position.x - p.x, model.position.z - p.z) < 4
+                      )
+                    ? 'Misiones'
+                    : 'Explorar') + ' <kbd>F</kbd>';
       for (const n of CITY_WORLD.nodes) {
         const object = scene.getObjectByName('resource-' + n.id);
         if (object)

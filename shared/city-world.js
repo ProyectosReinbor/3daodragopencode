@@ -1,15 +1,7 @@
 import { VILLAVICENCIO_OSM } from './villavicencio-osm.js';
-/** One world unit is one metre; north is -Z. */
-const metresPerDegree = (Math.PI * 6371008.8) / 180;
-export function geographicWorldPosition(lat, lng) {
-  return {
-    x:
-      (lng - VILLAVICENCIO_OSM.origin.lng) *
-      metresPerDegree *
-      Math.cos((VILLAVICENCIO_OSM.origin.lat * Math.PI) / 180),
-    z: (VILLAVICENCIO_OSM.origin.lat - lat) * metresPerDegree,
-  };
-}
+import { geographicWorldPosition } from './city-geography.js';
+import { CITY_PARKS } from './city-life.js';
+export { geographicWorldPosition } from './city-geography.js';
 const realRoads = VILLAVICENCIO_OSM.roads.map((r) => ({
   ...r,
   width: ['footway', 'path', 'cycleway', 'steps'].includes(r.highway)
@@ -222,6 +214,7 @@ export function businessWorldPosition(store) {
 }
 
 export const CITY_ENCOUNTERS = [
+  // Keep the original encounter indices stable; park encounters are appended below.
   ...[70, 120, 185, 250].map((x, i) => ({
     id: 'path-' + i,
     x,
@@ -257,3 +250,14 @@ export const CITY_ENCOUNTERS = [
     })
   ),
 ];
+CITY_ENCOUNTERS.push(
+  ...CITY_PARKS.flatMap((p) =>
+    Array.from({ length: 4 }, (_, i) => ({
+      id: p.id + '-monster-' + i,
+      x: p.x + Math.cos((i * Math.PI) / 2) * 12,
+      z: p.z + Math.sin((i * Math.PI) / 2) * 12,
+      kind: i === 3 ? 'spirit' : 'wolf',
+      park: p.id,
+    }))
+  )
+);

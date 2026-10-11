@@ -1,4 +1,5 @@
 export const VILLAVICENCIO_URBAN: {
+  parks: { id: string; name: string; points: number[][] }[];
   buildings: {
     id: string;
     kind: string;

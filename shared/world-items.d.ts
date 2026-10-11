@@ -1,4 +1,5 @@
 export interface WorldProgress {
+  parkKills?: number;
   gathered?: number;
   crafted?: number;
   acceptedQuests?: string[];

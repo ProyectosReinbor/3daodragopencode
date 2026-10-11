@@ -3,8 +3,20 @@ import { createStarterCharacter } from './characters';
 import { mountWorldPlay } from './world-play';
 import { createProfile } from './profile';
 import { initialWorldProgress } from '../../shared/world-items.js';
+import { CITY_BUILDINGS, CITY_VENUES } from '../../shared/city-life.js';
 
-const rendered = vi.hoisted(() => ({ x: 0, z: 0, disposed: false }));
+const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false }));
+const roomControl = vi.hoisted(() => ({ entrance: false }));
+vi.mock('./city-life', async () => {
+  const actual = await vi.importActual<typeof import('./city-life')>('./city-life');
+  return {
+    ...actual,
+    nearbyCityEntrance: (position: import('three').Vector3) =>
+      roomControl.entrance
+        ? CITY_BUILDINGS.find((b) => b.id === CITY_VENUES[0].buildingId)
+        : actual.nearbyCityEntrance(position),
+  };
+});
 vi.mock('three', async () => {
   const actual = await vi.importActual<typeof import('three')>('three');
   return {
@@ -12,8 +24,9 @@ vi.mock('three', async () => {
     WebGLRenderer: class {
       setPixelRatio() {}
       setSize() {}
-      render(_scene: unknown, camera: { position: { x: number; z: number } }) {
+      render(_scene: unknown, camera: { position: { x: number; y: number; z: number } }) {
         rendered.x = camera.position.x;
+        rendered.y = camera.position.y;
         rendered.z = camera.position.z;
       }
       dispose() {
@@ -30,6 +43,7 @@ describe('full screen world controls', () => {
   beforeEach(() => {
     document.body.innerHTML = '<main id="app"></main>';
     rendered.disposed = false;
+    roomControl.entrance = false;
     now = 1000;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
     vi.stubGlobal(
@@ -139,6 +153,40 @@ describe('full screen world controls', () => {
     document.querySelector<HTMLButtonElement>('[data-quest="supplies"]')!.click();
     await settle();
     expect(JSON.parse(fetchMock.mock.lastCall![1].body).action).toBe('accept_quest');
+  });
+  it('enters a business, changes floors, visits the terrace and returns to the street', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ session: 'room-qa', profile }) })
+    );
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    roomControl.entrance = true;
+    key('f');
+    roomControl.entrance = false;
+    expect(document.querySelector('.world-building-bar')!.textContent).toContain(
+      CITY_VENUES[0].name
+    );
+    document.querySelector<HTMLButtonElement>('[data-room-action="floors"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-room-level="3"]')!.click();
+    tick();
+    expect(rendered.y).toBeGreaterThan(12);
+    expect(document.querySelector('.world-building-bar')!.textContent).toContain('Piso 4');
+    document.querySelector<HTMLButtonElement>('[data-room-action="floors"]')!.click();
+    document
+      .querySelector<HTMLButtonElement>(`[data-room-level="${CITY_VENUES[0].floors}"]`)!
+      .click();
+    tick();
+    expect(document.querySelector('.world-building-bar')!.textContent).toContain('Terraza');
+    expect(rendered.y).toBeGreaterThan(20);
+    document.querySelector<HTMLButtonElement>('[data-room-action="exit"]')!.click();
+    tick();
+    expect((document.querySelector('.world-building-bar') as HTMLElement).hidden).toBe(true);
+    expect(rendered.y).toBeLessThan(10);
   });
   it('W casts a power without walking and arrow keys move the pet', () => {
     tick();

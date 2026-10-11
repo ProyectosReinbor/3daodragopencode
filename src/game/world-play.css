@@ -651,3 +651,23 @@
 @media (max-height: 520px) {
   .world-map-credit { top: 190px; font-size: 8px; }
 }
+.world-building-bar {
+  position: absolute;
+  top: 145px;
+  left: max(16px, env(safe-area-inset-left));
+  width: 270px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #83ddc455;
+  border-radius: 14px;
+  color: #d9f6eb;
+  background: #07151de8;
+}
+.world-building-bar strong { width: 100%; font-size: 13px; }
+.world-building-bar button { min-height: 44px; padding: 8px; }
+.world-building-bar[hidden], .world-room-active .world-quest-tracker { display: none; }
+@media (max-height: 520px) {
+  .world-building-bar { top: 105px; width: 235px; }
+}

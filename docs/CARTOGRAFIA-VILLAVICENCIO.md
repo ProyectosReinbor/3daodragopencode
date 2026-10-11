@@ -31,7 +31,17 @@ Las carreteras tienen asfalto, líneas discontinuas, aceras y alumbrado. Los pun
 
 Los tramos de puente generan tableros inclinados, rampas, barandas y pilares, con una altura artística máxima de cuatro metros. La mascota y la cámara siguen la superficie elevada cuando cruzan el tablero. Los cursos de agua se representan bajo las vías. Las dimensiones de puentes y ríos son aproximadas; no proceden de un levantamiento topográfico.
 
-No se afirma una réplica fotográfica de fachadas, niveles de intercambiadores o relieve. Los interiores actuales de negocios conservan su sistema anterior. La ciudad exterior todavía permite atravesar edificios: las colisiones urbanas e interiores transitables son una siguiente etapa.
+No se afirma una réplica fotográfica de fachadas, niveles de intercambiadores o relieve. Las alturas visibles ahora se amplían artísticamente para ofrecer edificios de tres a seis pisos y locales especiales de cuatro a ocho pisos; los datos originales se conservan separados. La ciudad añade hasta 2.500 edificios procedurales sobre espacios sin contornos registrados, junto a calles y evitando otras construcciones, vías y parques. Estos edificios llevan `generated: true` y no se presentan como edificios reales levantados en campo.
+
+## Ciudad habitada e interiores
+
+Seis locales ficticios del juego cerca de la plaza: Botica Nébula, Café Luciérnaga, Galería AODASE, Mirador Llanero, Taller del Alba y Centro de Guardianes. Sus nombres no implican negocios reales ni afiliaciones. Tienen mostradores, NPC, compra de pociones y maná con monedas del juego y misiones; no procesan pagos reales.
+
+Acercarse a una puerta y usar F o el botón de interacción abre el interior en el mismo lugar geográfico. Los edificios con dimensiones suficientes, incluidos los procedurales, tienen pisos y terraza accesibles con ascensor. Solo se construye el piso activo; se retira temporalmente la carcasa exterior para dejar ver por ventanas transparentes a la ciudad que continúa renderizándose alrededor. Se conservan la posición de entrada, el límite del piso y la altura de cámara; salir restaura la fachada y vuelve a la calle. Las dimensiones del interior son de juego y no reproducciones de distribuciones arquitectónicas reales.
+
+Las fachadas exteriores bloquean el paso y permiten deslizarse por los bordes. La mascota se mantiene dentro de los límites del piso o de la terraza. Los monstruos exteriores no atacan dentro de edificios. No se simulan todavía escaleras transitables, caídas ni colisiones complejas contra cada mueble.
+
+La plaza incluye puestos, bancos y NPC con animación de brazos. Doce parques próximos registrados en OSM tienen zonas de combate y cuatro encuentros canónicos cada uno. La misión de parques exige ocho derrotas; el servidor cuenta únicamente enemigos de esos encuentros y paga una sola vez. Otras misiones urbanas usan los contadores existentes de materiales y fabricación. Los NPC y escenarios son elementos ficticios superpuestos a la geografía.
 
 ## Renderizado y actualización
 

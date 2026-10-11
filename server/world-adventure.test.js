@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import { mountFoodieWorld } from './foodie-world.js';
-import { CITY_WORLD } from '../shared/city-world.js';
+import { CITY_WORLD, CITY_ENCOUNTERS } from '../shared/city-world.js';
 
 test('world resources, timed mining, crafting and quest rewards persist without duplicate claims', async () => {
   let now=100000;
@@ -45,8 +45,17 @@ test('world resources, timed mining, crafting and quest rewards persist without 
     assert.equal((await request({action:'attack',slot:3,enemy:'city:999999',kind:'wolf'})).status,400);
     assert.equal((await request({action:'attack',slot:3,enemy:'city:0',kind:'wolf'})).status,200);
     assert.equal(profile.world.kills,1);
+    const parkIndex=CITY_ENCOUNTERS.findIndex(e=>e.park);
+    await request({action:'accept_quest',quest:'park_patrol'});
+    assert.equal((await request({action:'claim_quest',quest:'park_patrol'})).status,400);
+    for(let i=0;i<8;i++){now+=25000;assert.equal((await request({action:'attack',slot:3,enemy:'city:'+parkIndex,kind:CITY_ENCOUNTERS[parkIndex].kind})).status,200);}
+    assert.equal(profile.world.parkKills,8);
+    assert.equal((await request({action:'claim_quest',quest:'park_patrol'})).status,200);
+    const parkCoins=profile.world.coins;
+    assert.equal((await request({action:'claim_quest',quest:'park_patrol'})).status,400);
+    assert.equal(profile.world.coins,parkCoins);
     session=(await request({characterId:'pet'},'/start')).data.session;
     assert.equal((await request(claim)).status,400);
-    assert.equal((await request({action:'pickup',node:'starter-wood',position:CITY_WORLD.nodes.find(n=>n.id==='starter-wood')})).status,429);
+    assert.equal(profile.world.claimedQuests.includes('park_patrol'),true);
   } finally {await new Promise(r=>server.close(r));}
 });

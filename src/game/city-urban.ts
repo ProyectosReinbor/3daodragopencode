@@ -19,25 +19,14 @@ import {
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CITY_WORLD, geographicWorldPosition } from '../../shared/city-world.js';
 import { VILLAVICENCIO_URBAN } from '../../shared/villavicencio-urban.js';
+import { CITY_BUILDINGS, buildingHeight, buildingFloors } from '../../shared/city-life.js';
 
 const project = (points: number[][]) =>
   points.map(([lng, lat]) => {
     const p = geographicWorldPosition(lat, lng);
     return [p.x, p.z];
   });
-export const URBAN_BUILDINGS = VILLAVICENCIO_URBAN.buildings.map((b) => {
-  const points = project(b.points),
-    xs = points.map((p) => p[0]),
-    zs = points.map((p) => p[1]);
-  return {
-    ...b,
-    points,
-    minX: Math.min(...xs),
-    maxX: Math.max(...xs),
-    minZ: Math.min(...zs),
-    maxZ: Math.max(...zs),
-  };
-});
+export const URBAN_BUILDINGS = CITY_BUILDINGS;
 export interface RoadSegment {
   a: number[];
   b: number[];
@@ -191,6 +180,9 @@ export function mountCityUrban(scene: Scene) {
   let cell = '',
     activeBuildings: typeof URBAN_BUILDINGS = [],
     signalPhase = -1;
+  let openBuildingId: string | null = null;
+  let lastPosition: Vector3 | null = null;
+  let lastRoads: RoadSegment[] = [];
   const replaceGeometry = (mesh: Mesh, parts: BufferGeometry[]) => {
     mesh.geometry.dispose();
     mesh.geometry = parts.length ? mergeGeometries(parts)! : new BufferGeometry();
@@ -198,6 +190,8 @@ export function mountCityUrban(scene: Scene) {
     if (parts.length) mesh.geometry.computeBoundingSphere();
   };
   function update(position: Vector3, localRoads: RoadSegment[]) {
+    lastPosition = position.clone();
+    lastRoads = localRoads;
     const key = Math.floor(position.x / 50) + ':' + Math.floor(position.z / 50);
     if (key === cell) return;
     cell = key;
@@ -213,7 +207,9 @@ export function mountCityUrban(scene: Scene) {
       .slice(0, 500);
     const bodyParts: BufferGeometry[] = [],
       roofParts: BufferGeometry[] = [];
-    for (const b of activeBuildings) {
+    for (const original of activeBuildings) {
+      if (original.id === openBuildingId) continue;
+      const b = { ...original, height: buildingHeight(original), levels: buildingFloors(original) };
       const points = b.points.slice(0, -1),
         shape = new Shape(points.map((p) => new Vector2(p[0], -p[1])));
       const hash = Number(b.id.split('-').at(-1)) || 0;
@@ -445,6 +441,11 @@ export function mountCityUrban(scene: Scene) {
       });
   };
   scene.userData.citySurfaceHeight = citySurfaceHeight;
+  scene.userData.setCityOpenBuilding = (id: string | null) => {
+    openBuildingId = id;
+    cell = '';
+    if (lastPosition) update(lastPosition, lastRoads);
+  };
   scene.userData.cityBuildingAt = (x: number, z: number) =>
     buildingsNear(x, z, 0).some((b) => insideBuilding(x, z, b));
   scene.userData.animateCityUrban = animate;

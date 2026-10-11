@@ -27,6 +27,8 @@ import { createWorld } from './world';
 import type { ZoneWorld } from './zones';
 import type { Store, StoreDetail } from './stores';
 import { mountCityUrban, ROAD_SEGMENTS, URBAN_BUILDINGS } from './city-urban';
+import { populateCityLife } from './city-life';
+import { CITY_PARKS } from '../../shared/city-life.js';
 export interface CityBuilding {
   store: Store;
   mesh: Group;
@@ -119,7 +121,12 @@ export function createCityWorld(scene: Scene): ZoneWorld {
       mesh,
       hpBar: mesh.getObjectByName('encounter-health-bar') as Mesh,
       spawnPosition: mesh.position.clone(),
-      name: biomeAt(spec.x, spec.z).name + ' · ' + template.name,
+      name:
+        (spec.park
+          ? CITY_PARKS.find((p) => p.id === spec.park)?.name || 'Parque de combate'
+          : biomeAt(spec.x, spec.z).name) +
+        ' · ' +
+        template.name,
     };
   });
   for (const post of QUEST_POSTS) {
@@ -344,6 +351,7 @@ export function createCityWorld(scene: Scene): ZoneWorld {
       e.spawnPosition.copy(e.mesh.position);
     }
   });
+  populateCityLife(scene);
   return world;
 }
 export function addCityBusiness(scene: Scene, store: Store): CityBuilding | null {
