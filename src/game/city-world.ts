@@ -118,27 +118,75 @@ export function createCityWorld(scene: Scene): ZoneWorld {
     scene.add(mesh);
   }
   const segments = CITY_WORLD.roads.flatMap((r) =>
-    r.points.slice(1).map((p, i) => ({ a: r.points[i], b: p }))
+    r.points.slice(1).map((p, i) => ({ a: r.points[i], b: p, width: r.width }))
   );
-  const paths = new InstancedMesh(new BoxGeometry(8, 0.06, 1), material(0x618580), segments.length);
-  paths.name = 'city-road-network';
-  const matrix = new Matrix4();
+  // Index the real road network once; stream nearby segments instead of drawing the entire city.
+  const roadCells = new Map<string, Set<number>>();
   segments.forEach(({ a, b }, i) => {
+    for (
+      let x = Math.floor(Math.min(a[0], b[0]) / 100);
+      x <= Math.floor(Math.max(a[0], b[0]) / 100);
+      x++
+    )
+      for (
+        let z = Math.floor(Math.min(a[1], b[1]) / 100);
+        z <= Math.floor(Math.max(a[1], b[1]) / 100);
+        z++
+      ) {
+        const key = x + ':' + z;
+        if (!roadCells.has(key)) roadCells.set(key, new Set());
+        roadCells.get(key)!.add(i);
+      }
+  });
+  const nearbyRoads = (x: number, z: number, radius: number) => {
+    const ids = new Set<number>();
+    for (let dx = -radius; dx <= radius; dx++)
+      for (let dz = -radius; dz <= radius; dz++)
+        for (const id of roadCells.get(
+          Math.floor(x / 100) + dx + ':' + (Math.floor(z / 100) + dz)
+        ) || [])
+          ids.add(id);
+    return [...ids].map((id) => segments[id]);
+  };
+  const segmentDistance = (x: number, z: number, a: number[], b: number[]) => {
     const dx = b[0] - a[0],
       dz = b[1] - a[1];
-    matrix.makeRotationY(Math.atan2(dx, dz));
-    matrix.scale(new Vector3(1, 1, Math.hypot(dx, dz)));
-    matrix.setPosition((a[0] + b[0]) / 2, 0.07, (a[1] + b[1]) / 2);
-    paths.setMatrixAt(i, matrix);
-  });
+    const lengthSquared = dx * dx + dz * dz;
+    const t = lengthSquared
+      ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / lengthSquared))
+      : 0;
+    return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz);
+  };
+  const paths = new InstancedMesh(new BoxGeometry(1, 0.06, 1), material(0x618580), 4096);
+  paths.name = 'city-road-network';
+  const matrix = new Matrix4();
+  let previousRoadCell = '';
+  const updateRoads = (position: Vector3) => {
+    const key = Math.floor(position.x / 50) + ':' + Math.floor(position.z / 50);
+    if (key === previousRoadCell) return;
+    previousRoadCell = key;
+    let count = 0;
+    for (const { a, b, width } of nearbyRoads(position.x, position.z, 3)) {
+      if (count >= 4096 || segmentDistance(position.x, position.z, a, b) > 220) continue;
+      const dx = b[0] - a[0],
+        dz = b[1] - a[1];
+      if (!dx && !dz) continue;
+      matrix.makeRotationY(Math.atan2(dx, dz));
+      matrix.scale(new Vector3(width, 1, Math.hypot(dx, dz)));
+      matrix.setPosition((a[0] + b[0]) / 2, 0.07, (a[1] + b[1]) / 2);
+      paths.setMatrixAt(count++, matrix);
+    }
+    paths.count = count;
+    paths.instanceMatrix.needsUpdate = true;
+    paths.computeBoundingSphere();
+  };
+  updateRoads(new Vector3());
   scene.add(paths);
   const distanceToRoad = (x: number, z: number) =>
-    segments.reduce((best, { a, b }) => {
-      const dx = b[0] - a[0],
-        dz = b[1] - a[1],
-        t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)));
-      return Math.min(best, Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz));
-    }, Infinity);
+    nearbyRoads(x, z, 1).reduce(
+      (best, { a, b, width }) => Math.min(best, segmentDistance(x, z, a, b) - width / 2),
+      Infinity
+    );
   const vegetation = CITY_WORLD.biomes.map((b) => {
     const trunks = new InstancedMesh(
       new CylinderGeometry(0.17, 0.23, 2, 5),
@@ -158,6 +206,7 @@ export function createCityWorld(scene: Scene): ZoneWorld {
   });
   let previousCell = '';
   scene.userData.updateCityVegetation = (position: Vector3) => {
+    updateRoads(position);
     const cellX = Math.floor(position.x / 12),
       cellZ = Math.floor(position.z / 12),
       key = cellX + ':' + cellZ;

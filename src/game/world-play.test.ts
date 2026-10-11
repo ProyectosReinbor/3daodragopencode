@@ -79,6 +79,20 @@ describe('full screen world controls', () => {
       for (let i = 0; i < 8; i++) await Promise.resolve();
     };
     await settle();
+    document.querySelector<HTMLButtonElement>('[data-minimap]')!.click();
+    const map = document.querySelector<SVGSVGElement>('[data-city-map]')!;
+    expect(map).not.toBeNull();
+    expect(document.querySelector('[data-map-roads]')!.innerHTML).toContain('polyline');
+    expect(
+      document.querySelector('a[href="https://www.openstreetmap.org/copyright"]')
+    ).not.toBeNull();
+    document.querySelector<HTMLButtonElement>('[data-map-control="in"]')!.click();
+    expect(map.getAttribute('viewBox')!.split(' ')[2]).toBe('3000');
+    document.querySelector<HTMLButtonElement>('[data-map-control="all"]')!.click();
+    expect(Number(map.getAttribute('viewBox')!.split(' ')[2])).toBeGreaterThan(24000);
+    document.querySelector<HTMLButtonElement>('[data-map-place="viva"]')!.click();
+    expect(map.getAttribute('viewBox')!.split(' ')[2]).toBe('2000');
+    document.querySelector<HTMLButtonElement>('[data-close]')!.click();
     key('ArrowDown');
     tick();
     window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowDown' }));

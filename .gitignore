@@ -8,3 +8,4 @@ vendor/
 *.db-wal
 *.db-shm
 .foodie-test-data/
+.cartography-work/

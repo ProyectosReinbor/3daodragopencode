@@ -627,3 +627,25 @@
     display: flex;
   }
 }
+.world-map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.world-map-controls button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.world-map-credit {
+  position: absolute;
+  top: 277px;
+  right: max(16px, env(safe-area-inset-right));
+  color: #d5e9d2;
+  background: #07151de6;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+}
+@media (max-height: 520px) {
+  .world-map-credit { top: 190px; font-size: 8px; }
+}

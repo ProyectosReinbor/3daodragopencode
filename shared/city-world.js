@@ -1,96 +1,61 @@
-/** Gameplay reinterpretation: named corridors are references, not surveyed road geometry. */
+import { VILLAVICENCIO_OSM } from './villavicencio-osm.js';
+/** One world unit is one metre; north is -Z. */
+const metresPerDegree = (Math.PI * 6371008.8) / 180;
+export function geographicWorldPosition(lat, lng) {
+  return {
+    x:
+      (lng - VILLAVICENCIO_OSM.origin.lng) *
+      metresPerDegree *
+      Math.cos((VILLAVICENCIO_OSM.origin.lat * Math.PI) / 180),
+    z: (VILLAVICENCIO_OSM.origin.lat - lat) * metresPerDegree,
+  };
+}
+const realRoads = VILLAVICENCIO_OSM.roads.map((r) => ({
+  ...r,
+  width: ['footway', 'path', 'cycleway', 'steps'].includes(r.highway)
+    ? 2
+    : ['primary', 'trunk', 'secondary'].includes(r.highway)
+      ? 12
+      : 6,
+  points: r.points.map(([lng, lat]) => {
+    const p = geographicWorldPosition(lat, lng);
+    return [p.x, p.z];
+  }),
+}));
+const landmarkIds = {
+  'osm-way-181454390': 'viva',
+  'osm-way-241990757': 'unico',
+  'osm-way-68983015': 'unicentro',
+  'osm-way-611726309': 'primavera',
+  'osm-way-181455473': 'llanocentro',
+  'osm-way-181455472': 'villacentro',
+  'osm-way-108278125': 'unillanos',
+  'osm-way-183027857': 'unillanos-san-antonio',
+  'osm-node-4455378191': 'cooperativa',
+  'osm-way-105610688': 'unimeta',
+  'osm-way-771656259': 'santo-tomas',
+  'osm-way-96020851': 'parque-central',
+};
+const realLandmarks = VILLAVICENCIO_OSM.places
+  .filter((p) => landmarkIds[p.id])
+  .map((p) => ({
+    ...p,
+    osmId: p.id,
+    id: landmarkIds[p.id],
+    ...geographicWorldPosition(p.lat, p.lng),
+  }));
+const adventureRoads = realRoads.filter((r) =>
+  ['primary', 'secondary', 'tertiary', 'trunk'].includes(r.highway)
+);
 const layout = {
   name: 'Villavicencio',
-  size: 180,
-  origin: { lat: 4.1491688, lng: -73.6285475 },
-  cartography: 'conceptual',
-  landmarks: [
-    { id: 'viva', name: 'Viva', type: 'comercial', x: -36, z: 25 },
-    { id: 'unico', name: 'Único Outlet', type: 'comercial', x: 26, z: 30 },
-    { id: 'unicentro', name: 'Unicentro', type: 'comercial', x: -18, z: -17 },
-    { id: 'primavera', name: 'Primavera Urbana', type: 'comercial', x: -29, z: 3 },
-    { id: 'llanocentro', name: 'Llanocentro', type: 'comercial', x: -19, z: 18 },
-    { id: 'villacentro', name: 'Villacentro', type: 'comercial', x: -28, z: 16 },
-    { id: 'unillanos', name: 'Universidad de los Llanos', type: 'universidad', x: 44, z: -20 },
-    { id: 'cooperativa', name: 'Universidad Cooperativa', type: 'universidad', x: 9, z: 12 },
-    { id: 'unimeta', name: 'Unimeta', type: 'universidad', x: -9, z: -12 },
-    { id: 'santo-tomas', name: 'Universidad Santo Tomás', type: 'universidad', x: 36, z: 14 },
-    {
-      id: 'chorillano',
-      name: 'Cooperativa Chorillano · sede por confirmar',
-      type: 'universidad',
-      x: 55,
-      z: -9,
-    },
-    {
-      id: 'parque-central',
-      name: 'Parque Central · Campo de entrenamiento',
-      type: 'parque',
-      x: 0,
-      z: -6,
-    },
-  ],
-  roads: [
-    {
-      id: 'av40',
-      name: 'Avenida 40',
-      points: [
-        [-48, 48],
-        [-35, 22],
-        [-25, 0],
-        [-14, -22],
-        [-8, -45],
-      ],
-    },
-    {
-      id: 'anillo',
-      name: 'Anillo Vial',
-      points: [
-        [-48, 48],
-        [-8, 45],
-        [25, 38],
-        [52, 20],
-        [64, -5],
-      ],
-    },
-    {
-      id: 'catama',
-      name: 'Avenida Catama',
-      points: [
-        [-14, -22],
-        [10, -28],
-        [35, -25],
-        [65, -18],
-      ],
-    },
-    {
-      id: 'maracos',
-      name: 'Avenida Los Maracos',
-      points: [
-        [10, -28],
-        [18, 0],
-        [25, 38],
-      ],
-    },
-    {
-      id: 'kr34',
-      name: 'Carrera 34',
-      points: [
-        [-25, 0],
-        [-10, 14],
-        [-8, 45],
-      ],
-    },
-    {
-      id: 'barrios',
-      name: 'Senderos de los barrios',
-      points: [
-        [-10, 14],
-        [18, 0],
-        [52, 20],
-      ],
-    },
-  ],
+  size: 40000,
+  origin: VILLAVICENCIO_OSM.origin,
+  cartography: 'openstreetmap',
+  attribution: VILLAVICENCIO_OSM.attribution,
+  sourceUrl: VILLAVICENCIO_OSM.sourceUrl,
+  importedAt: VILLAVICENCIO_OSM.importedAt,
+  geographicBounds: VILLAVICENCIO_OSM.bounds,
   biomes: [
     {
       id: 'bosque',
@@ -179,13 +144,8 @@ const layout = {
 const scale = 40;
 export const CITY_WORLD = Object.freeze({
   ...layout,
-  size: layout.size * scale,
-  landmarks: layout.landmarks.map((p) => ({
-    ...p,
-    x: p.type === 'parque' ? p.x : p.x * scale,
-    z: p.type === 'parque' ? p.z : p.z * scale,
-  })),
-  roads: layout.roads.map((r) => ({ ...r, points: r.points.map((p) => p.map((v) => v * scale)) })),
+  landmarks: realLandmarks,
+  roads: realRoads,
   biomes: layout.biomes.map((b) => ({
     ...b,
     x: b.x * scale,
@@ -229,17 +189,19 @@ export const CITY_WORLD = Object.freeze({
       pickup: true,
     },
     ...layout.nodes.map((p) => ({ ...p, x: p.x * scale, z: p.z * scale })),
-    ...layout.roads.flatMap((r) =>
-      r.points.map((p, i) => ({
-        id: 'cache-' + r.id + '-' + i,
-        name: 'Hallazgo del camino',
-        x: p[0] * scale + 12,
-        z: p[1] * scale - 12,
-        material: ['madera', 'mineral', 'esencia', 'cristal', 'obsidiana'][i % 5],
-        amount: 1,
-        pickup: true,
-      }))
-    ),
+    ...adventureRoads
+      .filter((_, i) => i % Math.max(1, Math.ceil(adventureRoads.length / 60)) === 0)
+      .flatMap((r, roadIndex) =>
+        r.points.slice(0, 1).map((p, i) => ({
+          id: 'cache-' + r.id + '-' + i,
+          name: 'Hallazgo del camino',
+          x: p[0] + 12,
+          z: p[1] - 12,
+          material: ['madera', 'mineral', 'esencia', 'cristal', 'obsidiana'][roadIndex % 5],
+          amount: 1,
+          pickup: true,
+        }))
+      ),
   ],
 });
 export function biomeAt(x, z) {
@@ -251,8 +213,10 @@ export function biomeAt(x, z) {
 export function businessWorldPosition(store) {
   if (store.city_id && store.city_id !== 'CO-MET-VVC') return null;
   if (!Number.isFinite(store.lat) || !Number.isFinite(store.lng)) return null;
-  const x = (store.lng - CITY_WORLD.origin.lng) * 110800,
-    z = (CITY_WORLD.origin.lat - store.lat) * 1600;
+  const { x, z } = geographicWorldPosition(store.lat, store.lng);
+  const b = CITY_WORLD.geographicBounds;
+  if (store.lat < b.south || store.lat > b.north || store.lng < b.west || store.lng > b.east)
+    return null;
   if (Math.abs(x) > CITY_WORLD.size / 2 - 20 || Math.abs(z) > CITY_WORLD.size / 2 - 20) return null;
   return { x, z };
 }
@@ -279,7 +243,7 @@ export const CITY_ENCOUNTERS = [
               : 'wolf',
     }))
   ),
-  ...CITY_WORLD.roads.flatMap((r) =>
+  ...adventureRoads.flatMap((r) =>
     r.points.slice(1).flatMap((p, i) => {
       const a = r.points[i],
         length = Math.hypot(p[0] - a[0], p[1] - a[1]),

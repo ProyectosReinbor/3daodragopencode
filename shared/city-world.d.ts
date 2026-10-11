@@ -22,14 +22,26 @@ export const CITY_WORLD: {
   size: number;
   origin: { lat: number; lng: number };
   cartography: string;
-  landmarks: (CityPoint & { id: string; name: string; type: string })[];
-  roads: { id: string; name: string; points: number[][] }[];
+  attribution: string;
+  sourceUrl: string;
+  importedAt: string;
+  geographicBounds: { south: number; west: number; north: number; east: number };
+  landmarks: (CityPoint & {
+    id: string;
+    osmId: string;
+    name: string;
+    type: string;
+    lat: number;
+    lng: number;
+  })[];
+  roads: { id: string; name: string; highway: string; width: number; points: number[][] }[];
   biomes: CityBiome[];
   nodes: CityResource[];
   forge: CityPoint;
   spawn: CityPoint;
 };
 export function biomeAt(x: number, z: number): CityBiome;
+export function geographicWorldPosition(lat: number, lng: number): CityPoint;
 export function businessWorldPosition(store: {
   city_id?: string | null;
   lat: number | null;

@@ -1,3 +1,5 @@
+import { cityRoadMarkup } from './city-map';
+import { geographicWorldPosition } from '../../shared/city-world.js';
 import { WORLD_MATERIALS, WORLD_RECIPES } from '../../shared/world-crafting.js';
 import { WORLD_QUESTS, QUEST_POSTS, questProgress } from '../../shared/world-quests.js';
 import {
@@ -160,6 +162,15 @@ export function mountWorldPlay(options: {
   }
   prepare();
   const minimap = root.querySelector<SVGSVGElement>('.world-minimap svg');
+  if (minimap) {
+    const credit = document.createElement('a');
+    credit.className = 'world-map-credit';
+    credit.href = CITY_WORLD.sourceUrl;
+    credit.textContent = CITY_WORLD.attribution;
+    credit.target = '_blank';
+    credit.rel = 'noopener noreferrer';
+    root.append(credit);
+  }
   if (minimap)
     minimap.innerHTML =
       CITY_WORLD.biomes
@@ -168,12 +179,9 @@ export function mountWorldPlay(options: {
             `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`
         )
         .join('') +
-      CITY_WORLD.roads
-        .map(
-          (r) =>
-            `<polyline points="${r.points.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#aac5cd" stroke-width="12"/>`
-        )
-        .join('') +
+      '<g data-minimap-roads>' +
+      cityRoadMarkup(0, 0, 2400) +
+      '</g>' +
       CITY_WORLD.landmarks
         .map((l) => `<circle cx="${l.x}" cy="${l.z}" r="25" fill="#83ddc4"/>`)
         .join('') +
@@ -189,6 +197,7 @@ export function mountWorldPlay(options: {
       `<rect x="${CITY_WORLD.forge.x - 25}" y="${CITY_WORLD.forge.z - 25}" width="50" height="50" fill="#ff8b9c"/>`;
     minimap.querySelector('[data-minimap-player]')?.insertAdjacentHTML('beforebegin', pins);
   }
+  let minimapRoadCell = '';
   const minimapPlayer = minimap?.querySelector('[data-minimap-player]');
   const resize = () => {
     const box = root.getBoundingClientRect();
@@ -365,9 +374,27 @@ export function mountWorldPlay(options: {
     modal.hidden = false;
     modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Tienda del boticario"><button data-close aria-label="Cerrar tienda">✕</button><h2>El boticario</h2><p>Tienes ${progress.coins} monedas.</p><button data-buy="potions">❤️ Poción de vida · 15 monedas<small>Restaura 60% de tu vida máxima</small></button><button data-buy="mana">🧪 Elixir de maná · 12 monedas<small>Restaura 60 de maná</small></button></article>`;
   }
+  let mapX = 0,
+    mapZ = 0,
+    mapSpan = 24000;
+  function refreshCityMap() {
+    const svg = modal.querySelector<SVGSVGElement>('[data-city-map]');
+    if (!svg) return;
+    svg.setAttribute(
+      'viewBox',
+      [mapX - mapSpan / 2, mapZ - mapSpan / 2, mapSpan, mapSpan].join(' ')
+    );
+    svg.querySelector('[data-map-roads]')!.innerHTML = cityRoadMarkup(mapX, mapZ, mapSpan, true);
+    modal.querySelector('[data-map-scale]')!.textContent =
+      'Ancho visible: ' + (mapSpan / 1000).toFixed(1) + ' km · Norte ↑';
+  }
   function cityMap() {
     modal.hidden = false;
-    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Mundo abierto</h2><p>Reinterpretación fantástica. Posiciones de diseño, no rutas de navegación real.</p><p>Forja: X ${CITY_WORLD.forge.x}, Z ${CITY_WORLD.forge.z} · Guía inicial: X -5, Z -5</p><h3>Materiales y hallazgos</h3>${CITY_WORLD.nodes.map((n) => `<p>${safe(n.name)} · ${WORLD_MATERIALS[n.material]} · ${Math.round(Math.hypot(model.position.x - n.x, model.position.z - n.z))} m · X ${n.x}, Z ${n.z}</p>`).join('')}<svg style="width:100%;max-height:300px;background:#07151d" viewBox="-${CITY_WORLD.size / 2} -${CITY_WORLD.size / 2} ${CITY_WORLD.size} ${CITY_WORLD.size}" role="img" aria-label="Biomas y lugares de referencia">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}${CITY_WORLD.roads.map((r) => `<polyline points="${r.points.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#aac5cd" stroke-width="15"/>`).join('')}${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="45" fill="#83ddc4"><title>${safe(l.name)}</title></circle>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="60" fill="white"/></svg>${CITY_WORLD.landmarks.map((l) => `<p>${safe(l.name)} · ${Math.round(Math.hypot(model.position.x - l.x, model.position.z - l.z))} m · X ${l.x}, Z ${l.z}</p>`).join('')}<p>${CITY_WORLD.roads.map((r) => safe(r.name)).join(' · ')}</p></article>`;
+    mapX = model.position.x;
+    mapZ = model.position.z;
+    mapSpan = 6000;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Calles reales</h2><p>Geografía de OpenStreetMap · 1 unidad = 1 metro. Biomas y edificios de fantasía.</p><div class="world-map-controls"><button data-map-control="in" aria-label="Acercar mapa">＋</button><button data-map-control="out" aria-label="Alejar mapa">−</button><button data-map-control="north" aria-label="Mover mapa al norte">↑</button><button data-map-control="south" aria-label="Mover mapa al sur">↓</button><button data-map-control="west" aria-label="Mover mapa al oeste">←</button><button data-map-control="east" aria-label="Mover mapa al este">→</button><button data-map-control="player">Mi pet</button><button data-map-control="all">Ciudad</button></div><p data-map-scale></p><svg data-city-map style="width:100%;height:360px;background:#07151d" role="img" aria-label="Calles y lugares reales de Villavicencio">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}<g data-map-roads></g>${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="35" fill="#83ddc4"><title>${safe(l.name)}</title></circle><text x="${l.x + 45}" y="${l.z}" font-size="50" fill="#fff" stroke="#07151d" stroke-width="8" paint-order="stroke">${safe(l.name)}</text>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="45" fill="white"/></svg><p><a href="${CITY_WORLD.sourceUrl}" target="_blank" rel="noopener noreferrer">${safe(CITY_WORLD.attribution)}</a> · ODbL · Datos importados: ${CITY_WORLD.importedAt.slice(0, 10)}</p><h3>Lugares</h3>${CITY_WORLD.landmarks.map((l) => `<p><button data-map-place="${l.id}">${safe(l.name)}</button> · ${Math.round(Math.hypot(model.position.x - l.x, model.position.z - l.z))} m en línea recta</p>`).join('')}<p>Cooperativa Chorillano: sede pendiente de confirmar.</p><h3>Materiales y hallazgos</h3>${CITY_WORLD.nodes.map((n) => `<p>${safe(n.name)} · ${WORLD_MATERIALS[n.material]} · ${Math.round(Math.hypot(model.position.x - n.x, model.position.z - n.z))} m</p>`).join('')}</article>`;
+    refreshCityMap();
   }
 
   function quests() {
@@ -526,7 +553,36 @@ export function mountWorldPlay(options: {
       const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
       if (!button) return;
       if (button.dataset.menu === 'exit') exit();
-      else if (button.dataset.menu === 'equipment') equipment();
+      else if (button.dataset.mapControl || button.dataset.mapPlace) {
+        const control = button.dataset.mapControl;
+        if (control === 'in') mapSpan = Math.max(300, mapSpan / 2);
+        if (control === 'out') mapSpan = Math.min(40000, mapSpan * 2);
+        if (control === 'north') mapZ -= mapSpan / 3;
+        if (control === 'south') mapZ += mapSpan / 3;
+        if (control === 'west') mapX -= mapSpan / 3;
+        if (control === 'east') mapX += mapSpan / 3;
+        if (control === 'player') {
+          mapX = model.position.x;
+          mapZ = model.position.z;
+        }
+        if (control === 'all') {
+          const bounds = CITY_WORLD.geographicBounds;
+          const northWest = geographicWorldPosition(bounds.north, bounds.west);
+          const southEast = geographicWorldPosition(bounds.south, bounds.east);
+          mapX = (northWest.x + southEast.x) / 2;
+          mapZ = (northWest.z + southEast.z) / 2;
+          mapSpan = Math.max(southEast.x - northWest.x, southEast.z - northWest.z) + 400;
+        }
+        const place = CITY_WORLD.landmarks.find((l) => l.id === button.dataset.mapPlace);
+        if (place) {
+          mapX = place.x;
+          mapZ = place.z;
+          mapSpan = 2000;
+        }
+        mapX = Math.max(-19000, Math.min(19000, mapX));
+        mapZ = Math.max(-19000, Math.min(19000, mapZ));
+        refreshCityMap();
+      } else if (button.dataset.menu === 'equipment') equipment();
       else if (button.dataset.menu === 'quests') quests();
       else if (button.dataset.craft || button.dataset.gather || button.dataset.quest) {
         if (busy || !session) return;
@@ -741,6 +797,16 @@ export function mountWorldPlay(options: {
       }
     }
     if (minimap) {
+      const roadCell =
+        Math.floor(model.position.x / 300) + ':' + Math.floor(model.position.z / 300);
+      if (roadCell !== minimapRoadCell) {
+        minimapRoadCell = roadCell;
+        minimap.querySelector('[data-minimap-roads]')!.innerHTML = cityRoadMarkup(
+          model.position.x,
+          model.position.z,
+          2400
+        );
+      }
       minimap.setAttribute(
         'viewBox',
         `${model.position.x - 900} ${model.position.z - 900} 1800 1800`

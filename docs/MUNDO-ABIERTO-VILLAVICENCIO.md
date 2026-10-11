@@ -2,13 +2,13 @@
 
 ## Dirección de diseño
 
-Conservar la web, las mascotas 3D y la interfaz oscura futurista. Reinterpretar Villavicencio como un territorio continuo de bosque, selva, fuego, nieve y cuevas. El clima es fantástico. La primera distribución es conceptual: no reproduce coordenadas ni ofrece navegación urbana.
+Conservar la web, las mascotas 3D y la interfaz oscura futurista. Reinterpretar Villavicencio como un territorio continuo de bosque, selva, fuego, nieve y cuevas. El clima es fantástico. Desde el 11 de octubre de 2026 las calles y lugares usan coordenadas de OpenStreetMap; la distribución conceptual anterior quedó sustituida. Ver [cartografía y alcance](CARTOGRAFIA-VILLAVICENCIO.md).
 
-Referencias solicitadas: Viva, Único Outlet, Unicentro, Primavera Urbana, Llanocentro y Villacentro; Universidad de los Llanos, Cooperativa, Unimeta y Santo Tomás. Cooperativa Chorillano queda como referencia pendiente de confirmar la sede. Parque Central es un parque de juego con campo para entrenamiento y futuros torneos, no una afirmación sobre un parque real.
+Referencias solicitadas: Viva, Único Outlet, Unicentro, Primavera Urbana, Llanocentro y Villacentro; Universidad de los Llanos (Barcelona y San Antonio), Cooperativa, Unimeta y Santo Tomás. Cooperativa Chorillano queda pendiente de confirmar la sede y no recibe una posición ficticia. La Plaza de Los Libertadores es el origen geográfico; su campo de entrenamiento es una adaptación del juego.
 
 ## Primera base implementada
 
-Mapa continuo de 7200 unidades (7,2 km de lado en escala de juego), cinco biomas, corredores inspirados en Avenida 40, Anillo Vial, Catama, Los Maracos, Carrera 34 y conexiones barriales. Doce lugares de referencia, parque y campo central, edificios exteriores, mapa consultable y encuentros distribuidos fuera del punto inicial. Los edificios no implican afiliación comercial.
+Mapa continuo con terreno de 40 km de lado y extracto geográfico de aproximadamente 24 × 18 km, cinco biomas y 10.725 tramos reales de vías. Doce lugares georreferenciados, edificios exteriores artísticos, mapa con zoom y desplazamiento, minimapa y encuentros fuera del punto inicial. Los edificios no implican afiliación comercial.
 
 Se prepararon cinco yacimientos y tres recetas. El servidor conserva materiales, exige una extracción de tres segundos con un desafío temporal, impide recoger dos veces y aplica recuperación de treinta segundos. Fabricar comprueba todos los costes antes de descontar materiales. La gema auroral es una reliquia de poder; todavía no provoca evolución. La recolección, extracción y forja están integradas con F y el botón de interacción.
 
@@ -17,7 +17,7 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 ## Etapas siguientes y criterios de aceptación
 
 1. Integrar recolección, forja y catálogo real: entrar y salir de locales conservando posición, consultar productos publicados, fabricar y equipar con costes persistentes. Cada comercio requiere alta propia; universidades y centros comerciales son lugares contenedores.
-2. Cartografía: confirmar sedes, importar un trazado autorizado, conservar atribución y licencia, proyectar coordenadas, convertir cruces en conexiones y dividir terreno en sectores. Mantener separada la geografía real de la decoración fantástica.
+2. Cartografía: confirmar la sede de Chorillano, ampliar lugares, incorporar relieve y footprints de edificios y validar cobertura en campo. La importación OSM, atribución, proyección métrica y carga local de calles ya están implementadas. Mantener separada la geografía real de la decoración fantástica.
 3. Multijugador: movimiento validado en servidor, salas exteriores e interiores, sincronización, reconexión y privacidad. PvP voluntario, emparejamiento, límites diarios y registro de recompensas antes de habilitar premios por victorias.
 4. Eventos y minijuegos: desafíos emitidos por servidor, duración y resultado verificados, premios idempotentes, calendario y administración por negocio. Ampliar el campo central para torneos cuando exista esta autoridad.
 5. Minas y mazmorras: instancias, dificultad, nodos y enemigos autorizados por servidor, tablas de botín, recetas equilibradas y evolución mediante requisitos verificables. No aceptar resultados o cantidades enviados por el cliente.
@@ -31,9 +31,9 @@ Referencia municipal de corredores: https://villavicencio.gov.co/inician-obras-p
 
 ## Terreno y expansión
 
-El terreno es una única malla con color por vértice: los biomas no superponen superficies coplanares. Las transiciones mezclan colores próximos al límite. La distribución conceptual de avenidas, biomas y lugares se amplió 40 veces, conservando el tamaño de mascotas, edificios y velocidad. El parque se mantiene cerca del punto inicial. El mapa muestra distancias de juego, no recorridos geográficos medidos.
+El terreno es una única malla con color por vértice: los biomas no superponen superficies coplanares. Las transiciones mezclan colores próximos al límite. Las calles preservan los vértices OSM y sus curvas; negocios y lugares usan una proyección métrica común. El mapa muestra distancias geográficas en línea recta, no rutas peatonales. Los biomas y modelos siguen siendo fantásticos.
 
-La vegetación se actualiza por celdas alrededor de la mascota, con instancias limitadas a un radio de 100 unidades y exclusión de caminos, lugares y recursos; cada árbol pertenece a un único bioma. Hay reserva de superficie para nuevos negocios. La distribución exacta por sedes y la importación de cartografía siguen pendientes.
+La vegetación se actualiza por celdas alrededor de la mascota, con instancias limitadas a un radio de 100 metros y exclusión de caminos, lugares y recursos; cada árbol pertenece a un único bioma. Las calles usan un índice espacial y carga local a 220 metros. Hay reserva de superficie para nuevos negocios.
 
 ## Primera aventura jugable — 11 de octubre de 2026
 
