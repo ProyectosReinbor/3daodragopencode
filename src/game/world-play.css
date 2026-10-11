@@ -93,6 +93,8 @@
   user-select: none;
 }
 .foodie-world canvas {
+  touch-action: none;
+  cursor: grab;
   position: absolute;
   inset: 0;
   width: 100%;

@@ -678,9 +678,55 @@ export function mountWorldPlay(options: {
   let pointer: number | null = null,
     axisX = 0,
     axisZ = 0;
+  const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
+  const defaultPitch = Math.atan2(8.5, 10);
+  let cameraYaw = 0,
+    cameraPitch = defaultPitch;
+  let cameraPointer: number | null = null,
+    dragX = 0,
+    dragY = 0;
+  const hasMovementInput = () =>
+    Math.hypot(axisX, axisZ) > 0.05 ||
+    ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].some((key) => pressed.has(key));
+  canvas.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (event.button !== 0 || cameraPointer !== null || hasMovementInput() || !modal.hidden)
+        return;
+      event.preventDefault();
+      cameraPointer = event.pointerId;
+      dragX = event.clientX;
+      dragY = event.clientY;
+      canvas.setPointerCapture?.(event.pointerId);
+    },
+    { signal: events.signal }
+  );
+  canvas.addEventListener(
+    'pointermove',
+    (event) => {
+      if (event.pointerId !== cameraPointer) return;
+      if (!hasMovementInput() && modal.hidden && !document.hidden) {
+        cameraYaw -= (event.clientX - dragX) * 0.006;
+        cameraPitch = Math.max(0.25, Math.min(1.1, cameraPitch + (event.clientY - dragY) * 0.005));
+      }
+      dragX = event.clientX;
+      dragY = event.clientY;
+    },
+    { signal: events.signal }
+  );
+  for (const name of ['pointerup', 'pointercancel', 'lostpointercapture'] as const)
+    canvas.addEventListener(
+      name,
+      (event) => {
+        if (event.pointerId === cameraPointer) cameraPointer = null;
+      },
+      { signal: events.signal }
+    );
+  root.querySelector('.world-help')!.append(' · Arrastra el mundo: girar cámara en reposo');
   function reset() {
     pressed.clear();
     pointer = null;
+    cameraPointer = null;
     axisX = axisZ = 0;
     knob.style.transform = 'translate(0,0)';
   }
@@ -730,6 +776,7 @@ export function mountWorldPlay(options: {
     if (disposed) return;
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
+    let walking = false;
     if (
       modal.hidden &&
       !document.hidden &&
@@ -748,6 +795,7 @@ export function mountWorldPlay(options: {
       model.position.x = Math.max(-limit, Math.min(limit, model.position.x));
       model.position.z = Math.max(-limit, Math.min(limit, model.position.z));
       if (direction.length() > 0.05) model.rotation.y = Math.atan2(direction.x, direction.z);
+      walking = direction.length() > 0.05;
       model.position.y = direction.length() > 0.05 ? Math.abs(Math.sin(now * 0.012)) * 0.08 : 0;
       mana = Math.min(100, mana + dt * 4);
       world.enemies.forEach((enemy) => {
@@ -816,8 +864,21 @@ export function mountWorldPlay(options: {
         `translate(${model.position.x} ${model.position.z}) rotate(${180 - (model.rotation.y * 180) / Math.PI})`
       );
     }
-    camera.position.set(model.position.x, 8.5, model.position.z + 10);
-    camera.lookAt(model.position.x, 0.7, model.position.z - 1.5);
+    if (walking) {
+      const targetYaw = model.rotation.y + Math.PI;
+      const turn = Math.atan2(Math.sin(targetYaw - cameraYaw), Math.cos(targetYaw - cameraYaw));
+      const follow = 1 - Math.exp(-dt * 6);
+      cameraYaw += turn * follow;
+      cameraPitch += (defaultPitch - cameraPitch) * follow;
+    }
+    const radius = Math.hypot(10, 8.5),
+      horizontal = radius * Math.cos(cameraPitch);
+    camera.position.set(
+      model.position.x + Math.sin(cameraYaw) * horizontal,
+      0.7 + radius * Math.sin(cameraPitch),
+      model.position.z + Math.cos(cameraYaw) * horizontal
+    );
+    camera.lookAt(model.position.x, 0.7, model.position.z);
     if (!training) scene.userData.updateCityVegetation?.(model.position);
     presentation?.update(dt, now / 1000, model.position);
     renderer.render(scene, camera);

@@ -63,6 +63,36 @@ describe('full screen world controls', () => {
   function key(value: string) {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: value, cancelable: true }));
   }
+  it('orbits while idle and smoothly returns behind the pet when walking', () => {
+    tick();
+    const canvas = document.querySelector('canvas')!;
+    const point = (type: string, x: number, y: number) => {
+      const event = new MouseEvent(type, { clientX: x, clientY: y, button: 0, bubbles: true });
+      Object.defineProperty(event, 'pointerId', { value: 7 });
+      canvas.dispatchEvent(event);
+    };
+    const initial = { x: rendered.x, z: rendered.z };
+    point('pointerdown', 100, 100);
+    point('pointermove', 400, 100);
+    point('pointerup', 400, 100);
+    tick();
+    expect(Math.abs(rendered.x - initial.x)).toBeGreaterThan(5);
+    const idle = { x: rendered.x, z: rendered.z };
+    tick();
+    expect(rendered.x).toBe(idle.x);
+    expect(rendered.z).toBe(idle.z);
+    key('ArrowRight');
+    tick();
+    expect(Math.abs(rendered.z)).toBeGreaterThan(0.1);
+    for (let i = 0; i < 39; i++) tick();
+    expect(rendered.z).toBeCloseTo(0, 2);
+    expect(rendered.x).toBeLessThan(0);
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight' }));
+    const stopped = { x: rendered.x, z: rendered.z };
+    tick();
+    expect(rendered.x).toBe(stopped.x);
+    expect(rendered.z).toBe(stopped.z);
+  });
   it('opens the forge nearby and sends crafting and quest actions through the session API', async () => {
     stop();
     const pet = createStarterCharacter();
