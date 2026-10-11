@@ -14,7 +14,9 @@ export interface CityResource extends CityPoint {
   name: string;
   material: string;
   amount: number;
+  pickup?: boolean;
 }
+export const CITY_ENCOUNTERS: (CityPoint & { id: string; kind: string })[];
 export const CITY_WORLD: {
   name: string;
   size: number;

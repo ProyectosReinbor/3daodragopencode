@@ -550,44 +550,58 @@ describe('guardian habitat lifecycle and authoritative actions', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('opens immediately when the server confirms the third warmth action', async () => {
-    const loaded = snapshot(profile);
-    const egg = {
-      id: 'warm-birth',
-      theme: 'forest' as const,
-      label: 'Huevo del bosque',
-      care: 2,
-      requiredCare: 3,
-      createdAt: Date.now(),
-      readyAt: Date.now() + 90000,
-      status: 'incubating' as const,
-    };
-    loaded.guardian.eggs = [egg];
-    const warm = structuredClone(loaded);
-    warm.guardian.eggs[0].care = 3;
-    warm.guardian.eggs[0].status = 'ready';
-    const born = snapshot(profile);
-    const baby = structuredClone(profile.characters!.characters[0]);
-    baby.id = 'warm-baby';
-    born.profile = structuredClone(profile);
-    born.profile.characters!.characters.push(baby);
-    born.guardian.eggs = [{ ...egg, care: 3, status: 'hatched', petId: baby.id }];
-    fetchMock
-      .mockResolvedValueOnce(response(loaded))
-      .mockResolvedValueOnce(response(warm))
-      .mockResolvedValueOnce(response(born));
-    stop = mountGuardian(container, profile, callbacks);
-    await settle();
-    click('[data-guardian-tab="incubator"]');
-    click('[data-guardian-action="warm_egg"]');
-    await settle();
-    expect(fetchMock.mock.calls.slice(1).map((call) => JSON.parse(call[1].body).action)).toEqual([
-      'warm_egg',
-      'hatch',
-    ]);
-    expect(container.querySelector('.guardian-hatch-reveal')).not.toBeNull();
-    expect(callbacks.onProfile.mock.lastCall![0].characters.characters).toHaveLength(2);
-  });
+  it.each([false, true])(
+    'shows the birth scene after third warmth, reduced motion=%s',
+    async (reducedMotion) => {
+      vi.stubGlobal('matchMedia', () => ({ matches: reducedMotion }));
+      const loaded = snapshot(profile);
+      const egg = {
+        id: 'warm-birth',
+        theme: 'forest' as const,
+        label: 'Huevo del bosque',
+        care: 2,
+        requiredCare: 3,
+        createdAt: Date.now(),
+        readyAt: Date.now() + 90000,
+        status: 'incubating' as const,
+      };
+      loaded.guardian.eggs = [egg];
+      const warm = structuredClone(loaded);
+      warm.guardian.eggs[0].care = 3;
+      warm.guardian.eggs[0].status = 'ready';
+      const born = snapshot(profile);
+      const baby = structuredClone(profile.characters!.characters[0]);
+      baby.id = 'warm-baby';
+      born.profile = structuredClone(profile);
+      born.profile.characters!.characters.push(baby);
+      born.guardian.eggs = [{ ...egg, care: 3, status: 'hatched', petId: baby.id }];
+      fetchMock
+        .mockResolvedValueOnce(response(loaded))
+        .mockResolvedValueOnce(response(warm))
+        .mockResolvedValueOnce(response(born));
+      stop = mountGuardian(container, profile, callbacks);
+      await settle();
+      click('[data-guardian-tab="incubator"]');
+      click('[data-guardian-action="warm_egg"]');
+      await settle();
+      expect(fetchMock.mock.calls.slice(1).map((call) => JSON.parse(call[1].body).action)).toEqual([
+        'warm_egg',
+        'hatch',
+      ]);
+      expect(container.querySelector('.guardian-hatch-reveal')).not.toBeNull();
+      expect(callbacks.onProfile.mock.lastCall![0].characters.characters).toHaveLength(2);
+      expect(container.querySelector('.guardian-hatch-baby canvas')).not.toBeNull();
+      expect(
+        container
+          .querySelector('.guardian-hatch-reveal')
+          ?.classList.contains('guardian-hatch-reveal--gentle')
+      ).toBe(reducedMotion);
+      vi.advanceTimersByTime(1900);
+      expect(container.querySelector('.guardian-hatch-reveal')).not.toBeNull();
+      vi.advanceTimersByTime(100);
+      expect(container.querySelector('.guardian-hatch-reveal')).toBeNull();
+    }
+  );
 
   it('makes a single automatic hatch attempt and never loops retries after an error or refresh', async () => {
     const loaded = snapshot(profile);

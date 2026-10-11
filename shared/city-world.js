@@ -1,5 +1,5 @@
 /** Gameplay reinterpretation: named corridors are references, not surveyed road geometry. */
-export const CITY_WORLD = Object.freeze({
+const layout = {
   name: 'Villavicencio',
   size: 180,
   origin: { lat: 4.1491688, lng: -73.6285475 },
@@ -175,6 +175,72 @@ export const CITY_WORLD = Object.freeze({
   ],
   forge: { x: 0, z: 4 },
   spawn: { x: 0, z: 0 },
+};
+const scale = 40;
+export const CITY_WORLD = Object.freeze({
+  ...layout,
+  size: layout.size * scale,
+  landmarks: layout.landmarks.map((p) => ({
+    ...p,
+    x: p.type === 'parque' ? p.x : p.x * scale,
+    z: p.type === 'parque' ? p.z : p.z * scale,
+  })),
+  roads: layout.roads.map((r) => ({ ...r, points: r.points.map((p) => p.map((v) => v * scale)) })),
+  biomes: layout.biomes.map((b) => ({
+    ...b,
+    x: b.x * scale,
+    z: b.z * scale,
+    radius: b.radius * scale,
+  })),
+  nodes: [
+    {
+      id: 'starter-wood',
+      name: 'Madera del sendero',
+      x: 28,
+      z: 12,
+      material: 'madera',
+      amount: 2,
+      pickup: true,
+    },
+    {
+      id: 'starter-ore',
+      name: 'Veta del campamento',
+      x: 42,
+      z: -18,
+      material: 'mineral',
+      amount: 2,
+    },
+    {
+      id: 'starter-crystal',
+      name: 'Fragmento perdido',
+      x: -32,
+      z: 24,
+      material: 'cristal',
+      amount: 1,
+      pickup: true,
+    },
+    {
+      id: 'starter-essence',
+      name: 'Esencia del claro',
+      x: -45,
+      z: -22,
+      material: 'esencia',
+      amount: 1,
+      pickup: true,
+    },
+    ...layout.nodes.map((p) => ({ ...p, x: p.x * scale, z: p.z * scale })),
+    ...layout.roads.flatMap((r) =>
+      r.points.map((p, i) => ({
+        id: 'cache-' + r.id + '-' + i,
+        name: 'Hallazgo del camino',
+        x: p[0] * scale + 12,
+        z: p[1] * scale - 12,
+        material: ['madera', 'mineral', 'esencia', 'cristal', 'obsidiana'][i % 5],
+        amount: 1,
+        pickup: true,
+      }))
+    ),
+  ],
 });
 export function biomeAt(x, z) {
   return CITY_WORLD.biomes.reduce(
@@ -185,8 +251,45 @@ export function biomeAt(x, z) {
 export function businessWorldPosition(store) {
   if (store.city_id && store.city_id !== 'CO-MET-VVC') return null;
   if (!Number.isFinite(store.lat) || !Number.isFinite(store.lng)) return null;
-  const x = (store.lng - CITY_WORLD.origin.lng) * 1600,
+  const x = (store.lng - CITY_WORLD.origin.lng) * 110800,
     z = (CITY_WORLD.origin.lat - store.lat) * 1600;
-  if (Math.abs(x) > 82 || Math.abs(z) > 82) return null;
+  if (Math.abs(x) > CITY_WORLD.size / 2 - 20 || Math.abs(z) > CITY_WORLD.size / 2 - 20) return null;
   return { x, z };
 }
+
+export const CITY_ENCOUNTERS = [
+  ...[70, 120, 185, 250].map((x, i) => ({
+    id: 'path-' + i,
+    x,
+    z: (i % 2 ? 1 : -1) * 25,
+    kind: i % 2 ? 'skeleton' : 'wolf',
+  })),
+  ...CITY_WORLD.biomes.flatMap((b) =>
+    Array.from({ length: 6 }, (_, i) => ({
+      id: b.id + '-' + i,
+      x: b.x + ((i % 3) - 1) * 70,
+      z: b.z + (i < 3 ? -55 : 55),
+      kind:
+        b.id === 'fuego'
+          ? 'golem'
+          : b.id === 'cueva'
+            ? 'spirit'
+            : b.id === 'nieve'
+              ? 'skeleton'
+              : 'wolf',
+    }))
+  ),
+  ...CITY_WORLD.roads.flatMap((r) =>
+    r.points.slice(1).flatMap((p, i) => {
+      const a = r.points[i],
+        length = Math.hypot(p[0] - a[0], p[1] - a[1]),
+        count = Math.floor(length / 350);
+      return Array.from({ length: count }, (_, j) => ({
+        id: r.id + '-' + i + '-' + j,
+        x: a[0] + ((p[0] - a[0]) * (j + 1)) / (count + 1) + 18,
+        z: a[1] + ((p[1] - a[1]) * (j + 1)) / (count + 1) + 18,
+        kind: j % 3 === 0 ? 'spirit' : 'wolf',
+      }));
+    })
+  ),
+];

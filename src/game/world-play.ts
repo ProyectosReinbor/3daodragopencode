@@ -1,3 +1,5 @@
+import { WORLD_MATERIALS, WORLD_RECIPES } from '../../shared/world-crafting.js';
+import { WORLD_QUESTS, QUEST_POSTS, questProgress } from '../../shared/world-quests.js';
 import {
   Scene,
   PerspectiveCamera,
@@ -36,6 +38,7 @@ export function mountWorldPlay(options: {
   const training = !profile;
   let progress = profile?.world || initialWorldProgress(),
     session = '',
+    serverOffset = 0,
     busy = false,
     disposed = false;
   let health = 100 + totalStats(pet).hp * 8,
@@ -52,7 +55,7 @@ export function mountWorldPlay(options: {
   const root = document.createElement('section');
   root.className = 'foodie-world';
   root.setAttribute('aria-label', training ? 'Campo de prueba' : 'Mundo AODASE PETS');
-  root.innerHTML = `<canvas aria-label="Mundo 3D"></canvas><header><div class="world-vitals"><strong>${safe(pet.name)}</strong><small class="world-level"></small><div class="world-health"><i></i><span></span></div><div class="world-mana"><i></i><span></span></div></div><div class="world-title"><b>${training ? 'CAMPO DE PRUEBA' : 'AODASE PETS'}</b><small class="world-zone">Aldea</small><small class="world-coins"></small></div><nav>${training ? '' : '<button data-menu="map">Mapa</button>'}<button data-menu="equipment">🛡️ Equipo</button><button data-menu="fullscreen" aria-label="Pantalla completa">⛶</button><button data-menu="exit">Salir</button></nav></header><div class="world-target"></div><p class="world-notice" role="status"></p><div class="world-joystick" aria-label="Joystick de movimiento"><span>↑<br>← →<br>↓</span><i></i></div><div class="world-quick"><button data-use="potions">❤️<span>Poción · 1</span><small></small></button><button data-use="mana">🧪<span>Maná · 2</span><small></small></button></div><div class="world-actions"><button class="world-interact" data-interact>${training ? 'Reiniciar rival' : 'Explorar'} <kbd>F</kbd></button><div class="world-spells"></div><button class="world-attack" data-attack>⚔️<span>Atacar</span><kbd>Espacio</kbd></button></div><p class="world-help">Flechas: mover · Q W E R: poderes · Espacio: atacar · 1 / 2: poción y maná · F: interactuar</p><div class="world-modal" hidden></div><div class="world-rotate"><b>↻</b><strong>Gira tu celular</strong><p>Juega en horizontal para tener todos los controles a mano.</p><button data-menu="exit">Volver</button></div>`;
+  root.innerHTML = `<canvas aria-label="Mundo 3D"></canvas><header><div class="world-vitals"><strong>${safe(pet.name)}</strong><small class="world-level"></small><div class="world-health"><i></i><span></span></div><div class="world-mana"><i></i><span></span></div></div><div class="world-title"><b>${training ? 'CAMPO DE PRUEBA' : 'AODASE PETS'}</b><small class="world-zone">Aldea</small><small class="world-coins"></small></div><nav>${training ? '' : '<button data-menu="quests">Misiones</button>'}<button data-menu="equipment">🛡️ Equipo</button><button data-menu="fullscreen" aria-label="Pantalla completa">⛶</button><button data-menu="exit">Salir</button></nav></header>${training ? '' : '<button class="world-minimap" data-minimap aria-label="Abrir mapa completo"><svg aria-hidden="true"></svg><span>N</span><small>⤢</small></button>'}<p class="world-quest-tracker"></p><div class="world-target"></div><p class="world-notice" role="status"></p><div class="world-joystick" aria-label="Joystick de movimiento"><span>↑<br>← →<br>↓</span><i></i></div><div class="world-quick"><button data-use="potions">❤️<span>Poción · 1</span><small></small></button><button data-use="mana">🧪<span>Maná · 2</span><small></small></button></div><div class="world-actions"><button class="world-interact" data-interact>${training ? 'Reiniciar rival' : 'Explorar'} <kbd>F</kbd></button><div class="world-spells"></div><button class="world-attack" data-attack>⚔️<span>Atacar</span><kbd>Espacio</kbd></button></div><p class="world-help">Flechas: mover · Q W E R: poderes · Espacio: atacar · 1 / 2: poción y maná · F: interactuar</p><div class="world-modal" hidden></div><div class="world-rotate"><b>↻</b><strong>Gira tu celular</strong><p>Juega en horizontal para tener todos los controles a mano.</p><button data-menu="exit">Volver</button></div>`;
   document.body.append(root);
   document.body.classList.add('world-playing');
   const background = document.getElementById('app'),
@@ -156,6 +159,37 @@ export function mountWorldPlay(options: {
     presentation = createWorldPresentation(scene, renderer, zone, training);
   }
   prepare();
+  const minimap = root.querySelector<SVGSVGElement>('.world-minimap svg');
+  if (minimap)
+    minimap.innerHTML =
+      CITY_WORLD.biomes
+        .map(
+          (b) =>
+            `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`
+        )
+        .join('') +
+      CITY_WORLD.roads
+        .map(
+          (r) =>
+            `<polyline points="${r.points.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#aac5cd" stroke-width="12"/>`
+        )
+        .join('') +
+      CITY_WORLD.landmarks
+        .map((l) => `<circle cx="${l.x}" cy="${l.z}" r="25" fill="#83ddc4"/>`)
+        .join('') +
+      '<g data-minimap-player><circle r="58" fill="#07151d"/><polygon points="0,-38 25,28 0,15 -25,28" fill="#fff"/></g>';
+  if (minimap) {
+    const pins =
+      CITY_WORLD.nodes
+        .map((n) => `<circle cx="${n.x}" cy="${n.z}" r="16" fill="#e7cc87"/>`)
+        .join('') +
+      QUEST_POSTS.map(
+        (p) => `<text x="${p.x}" y="${p.z}" font-size="60" fill="#ffe394">!</text>`
+      ).join('') +
+      `<rect x="${CITY_WORLD.forge.x - 25}" y="${CITY_WORLD.forge.z - 25}" width="50" height="50" fill="#ff8b9c"/>`;
+    minimap.querySelector('[data-minimap-player]')?.insertAdjacentHTML('beforebegin', pins);
+  }
+  const minimapPlayer = minimap?.querySelector('[data-minimap-player]');
   const resize = () => {
     const box = root.getBoundingClientRect();
     renderer.setSize(box.width, box.height, false);
@@ -169,12 +203,17 @@ export function mountWorldPlay(options: {
     const response = await fetch('/api/world/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-      body: JSON.stringify({ ...body, session }),
+      body: JSON.stringify({
+        ...body,
+        session,
+        position: { x: model.position.x, z: model.position.z },
+      }),
       signal: events.signal,
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     if (!disposed) {
+      if (data.serverNow) serverOffset = data.serverNow - Date.now();
       profile = data.profile;
       progress = profile!.world!;
       pet = profile!.characters!.characters.find((p) => p.id === pet.id)!;
@@ -193,11 +232,10 @@ export function mountWorldPlay(options: {
         if (!response.ok) throw new Error(data.error);
         if (disposed) return;
         session = data.session;
+        if (data.serverNow) serverOffset = data.serverNow - Date.now();
         profile = data.profile;
         progress = profile!.world!;
-        notify(
-          'Explora los biomas de Villavicencio. Abre el mapa para localizar centros comerciales, universidades y el parque.'
-        );
+        notify('Habla con el guía junto al inicio. Recoge materiales con F y fabrica en la forja.');
       })
       .catch((e) => notify(e.message));
   else notify('Derrota al rival de prueba. Aquí no se gastan tus recursos reales.');
@@ -292,7 +330,7 @@ export function mountWorldPlay(options: {
         notify(
           training
             ? '¡Rival derrotado! Reinícialo con F o vuelve a tu Pet.'
-            : `+${reward.xp} XP · +${reward.coins} monedas${reward.potions ? ' · ❤️ Poción' : ''}${reward.mana ? ' · 🧪 Maná' : ''}${reward.item ? ' · ' + WORLD_ITEMS[reward.item].name : ''}`
+            : `+${reward.xp} XP · +${reward.coins} monedas${reward.potions ? ' · ❤️ Poción' : ''}${reward.mana ? ' · 🧪 Maná' : ''}${reward.item ? ' · ' + WORLD_ITEMS[reward.item].name : ''}${reward.material ? ' · ' + reward.amount + ' ' + WORLD_MATERIALS[reward.material] : ''}`
         );
       }
     } catch (e) {
@@ -306,7 +344,13 @@ export function mountWorldPlay(options: {
   function equipment() {
     modal.hidden = false;
     const equipped = progress.equipped[pet.id] || {};
-    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Equipo del personaje"><button data-close aria-label="Cerrar equipo">✕</button><h2>Equipo de ${safe(pet.name)}</h2><div class="world-slots">${(['weapon', 'armor', 'relic'] as const).map((slot) => `<div><small>${{ weapon: 'Arma', armor: 'Armadura', relic: 'Reliquia' }[slot]}</small><strong>${equipped[slot] ? WORLD_ITEMS[equipped[slot]!].name : 'Sin equipar'}</strong></div>`).join('')}</div>${
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Equipo del personaje"><button data-close aria-label="Cerrar equipo">✕</button><h2>Equipo de ${safe(pet.name)}</h2><p>${Object.entries(
+      WORLD_MATERIALS
+    )
+      .map(([id, name]) => name + ': ' + (progress.materials?.[id] || 0))
+      .join(
+        ' · '
+      )}</p><div class="world-slots">${(['weapon', 'armor', 'relic'] as const).map((slot) => `<div><small>${{ weapon: 'Arma', armor: 'Armadura', relic: 'Reliquia' }[slot]}</small><strong>${equipped[slot] ? WORLD_ITEMS[equipped[slot]!].name : 'Sin equipar'}</strong></div>`).join('')}</div>${
       progress.items.length
         ? progress.items
             .map((id) => {
@@ -323,8 +367,78 @@ export function mountWorldPlay(options: {
   }
   function cityMap() {
     modal.hidden = false;
-    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Mundo abierto</h2><p>Reinterpretación fantástica. Posiciones de diseño, no rutas de navegación real.</p><svg style="width:100%;max-height:300px;background:#07151d" viewBox="-90 -90 180 180" role="img" aria-label="Biomas y lugares de referencia">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}${CITY_WORLD.roads.map((r) => `<polyline points="${r.points.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#aac5cd" stroke-width="2"/>`).join('')}${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="2" fill="#83ddc4"><title>${safe(l.name)}</title></circle>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="3" fill="white"/></svg>${CITY_WORLD.landmarks.map((l) => `<p>${safe(l.name)} · X ${l.x}, Z ${l.z}</p>`).join('')}<p>${CITY_WORLD.roads.map((r) => safe(r.name)).join(' · ')}</p></article>`;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Mundo abierto</h2><p>Reinterpretación fantástica. Posiciones de diseño, no rutas de navegación real.</p><p>Forja: X ${CITY_WORLD.forge.x}, Z ${CITY_WORLD.forge.z} · Guía inicial: X -5, Z -5</p><h3>Materiales y hallazgos</h3>${CITY_WORLD.nodes.map((n) => `<p>${safe(n.name)} · ${WORLD_MATERIALS[n.material]} · ${Math.round(Math.hypot(model.position.x - n.x, model.position.z - n.z))} m · X ${n.x}, Z ${n.z}</p>`).join('')}<svg style="width:100%;max-height:300px;background:#07151d" viewBox="-${CITY_WORLD.size / 2} -${CITY_WORLD.size / 2} ${CITY_WORLD.size} ${CITY_WORLD.size}" role="img" aria-label="Biomas y lugares de referencia">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}${CITY_WORLD.roads.map((r) => `<polyline points="${r.points.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#aac5cd" stroke-width="15"/>`).join('')}${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="45" fill="#83ddc4"><title>${safe(l.name)}</title></circle>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="60" fill="white"/></svg>${CITY_WORLD.landmarks.map((l) => `<p>${safe(l.name)} · ${Math.round(Math.hypot(model.position.x - l.x, model.position.z - l.z))} m · X ${l.x}, Z ${l.z}</p>`).join('')}<p>${CITY_WORLD.roads.map((r) => safe(r.name)).join(' · ')}</p></article>`;
   }
+
+  function quests() {
+    modal.hidden = false;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Misiones del mundo"><button data-close aria-label="Cerrar misiones">✕</button><h2>Misiones del mundo</h2>${Object.entries(
+      WORLD_QUESTS
+    )
+      .map(([id, q]) => {
+        const accepted = progress.acceptedQuests?.includes(id),
+          claimed = progress.claimedQuests?.includes(id),
+          value = questProgress(progress, id);
+        return `<section class="world-quest-card"><h3>${safe(q.name)}</h3><p>${safe(q.description)}</p><p>${value}/${q.target} · ${q.coins} monedas · ${q.xp} XP · 1 poción</p><button data-quest="${id}" data-quest-action="${accepted ? 'claim_quest' : 'accept_quest'}" ${claimed || (accepted && value < q.target) ? 'disabled' : ''}>${claimed ? 'Recompensa cobrada' : accepted ? 'Cobrar recompensa' : 'Aceptar misión'}</button></section>`;
+      })
+      .join('')}</article>`;
+  }
+  function forge() {
+    modal.hidden = false;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Forja"><button data-close aria-label="Cerrar forja">✕</button><h2>Forja del campamento</h2><p>${Object.entries(
+      WORLD_MATERIALS
+    )
+      .map(([id, name]) => `${name}: ${progress.materials?.[id] || 0}`)
+      .join(' · ')}</p>${Object.entries(WORLD_RECIPES)
+      .map(([id, r]) => {
+        const owned = progress.items.includes(r.output),
+          enough = Object.entries(r.cost).every(([m, n]) => (progress.materials?.[m] || 0) >= n);
+        return `<button data-craft="${id}" ${owned || !enough ? 'disabled' : ''}>${safe(r.name)}<small>${Object.entries(
+          r.cost
+        )
+          .map(([m, n]) => `${WORLD_MATERIALS[m]} ${progress.materials?.[m] || 0}/${n}`)
+          .join(' · ')} · ${owned ? 'Ya fabricado' : 'Fabricar'}</small></button>`;
+      })
+      .join('')}<p>Equipa tus creaciones desde Equipo.</p></article>`;
+  }
+  async function gather(node: (typeof CITY_WORLD.nodes)[number]) {
+    if (busy || !session) return;
+    busy = true;
+    try {
+      if (node.pickup) {
+        const data = await request({ action: 'pickup', node: node.id });
+        notify(`+${data.reward.amount} ${WORLD_MATERIALS[data.reward.material]}`);
+        return;
+      }
+      const data = await request({ action: 'begin_gather', node: node.id });
+      if (disposed) return;
+      modal.hidden = false;
+      modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Extracción"><button data-close aria-label="Cerrar extracción">✕</button><h2>${safe(node.name)}</h2><p>Extrayendo material…</p><progress max="3" value="0"></progress><button data-gather="${node.id}" disabled>Recoger material</button></article>`;
+      const start = performance.now();
+      const tick = () => {
+        if (
+          disposed ||
+          modal.hidden ||
+          modal.querySelector('[data-gather]')?.getAttribute('data-gather') !== node.id
+        )
+          return;
+        const elapsed = (performance.now() - start) / 1000;
+        modal.querySelector<HTMLProgressElement>('progress')!.value = Math.min(3, elapsed);
+        if (elapsed >= 3.1) {
+          const button = modal.querySelector<HTMLButtonElement>('[data-gather]')!;
+          button.disabled = false;
+          button.dataset.token = data.challenge.token;
+          modal.querySelector('p')!.textContent = 'Extracción completada.';
+        } else window.setTimeout(tick, 100);
+      };
+      tick();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      busy = false;
+    }
+  }
+
   function interact() {
     if (training) {
       const e = world.enemies[0];
@@ -336,6 +450,24 @@ export function mountWorldPlay(options: {
       mana = 100;
       cooldown.fill(0);
       notify('Rival reiniciado. ¡Prueba tus poderes!');
+      return;
+    }
+    if (busy || !modal.hidden) return;
+    if (
+      Math.hypot(model.position.x - CITY_WORLD.forge.x, model.position.z - CITY_WORLD.forge.z) < 4
+    ) {
+      forge();
+      return;
+    }
+    if (QUEST_POSTS.some((p) => Math.hypot(model.position.x - p.x, model.position.z - p.z) < 4)) {
+      quests();
+      return;
+    }
+    const resource = CITY_WORLD.nodes.find(
+      (n) => Math.hypot(model.position.x - n.x, model.position.z - n.z) < 4
+    );
+    if (resource) {
+      void gather(resource);
       return;
     }
     const landmark = CITY_WORLD.landmarks.find(
@@ -395,7 +527,35 @@ export function mountWorldPlay(options: {
       if (!button) return;
       if (button.dataset.menu === 'exit') exit();
       else if (button.dataset.menu === 'equipment') equipment();
-      else if (button.dataset.menu === 'map') cityMap();
+      else if (button.dataset.menu === 'quests') quests();
+      else if (button.dataset.craft || button.dataset.gather || button.dataset.quest) {
+        if (busy || !session) return;
+        busy = true;
+        try {
+          const data = await request(
+            button.dataset.craft
+              ? { action: 'craft', recipe: button.dataset.craft }
+              : button.dataset.gather
+                ? { action: 'gather', node: button.dataset.gather, token: button.dataset.token }
+                : { action: button.dataset.questAction, quest: button.dataset.quest }
+          );
+          if (disposed) return;
+          if (button.dataset.craft) {
+            forge();
+            notify('Objeto fabricado. Equípalo desde Equipo.');
+          } else if (button.dataset.quest) {
+            quests();
+            notify(data.reward ? 'Recompensa recibida.' : 'Misión aceptada.');
+          } else {
+            modal.hidden = true;
+            notify('+ ' + data.reward.amount + ' ' + WORLD_MATERIALS[data.reward.material]);
+          }
+        } catch (e) {
+          notify((e as Error).message);
+        } finally {
+          busy = false;
+        }
+      } else if (button.hasAttribute('data-minimap')) cityMap();
       else if (button.dataset.menu === 'fullscreen') {
         try {
           if (document.fullscreenElement) await document.exitFullscreen();
@@ -535,6 +695,8 @@ export function mountWorldPlay(options: {
       model.position.y = direction.length() > 0.05 ? Math.abs(Math.sin(now * 0.012)) * 0.08 : 0;
       mana = Math.min(100, mana + dt * 4);
       world.enemies.forEach((enemy) => {
+        if (!training && enemy.alive)
+          enemy.mesh.visible = enemy.mesh.position.distanceTo(model.position) < 110;
         if (!enemy.alive) {
           if (respawns.has(enemy) && now > respawns.get(enemy)!) {
             enemy.alive = true;
@@ -578,8 +740,19 @@ export function mountWorldPlay(options: {
         effects.splice(i, 1);
       }
     }
+    if (minimap) {
+      minimap.setAttribute(
+        'viewBox',
+        `${model.position.x - 900} ${model.position.z - 900} 1800 1800`
+      );
+      minimapPlayer?.setAttribute(
+        'transform',
+        `translate(${model.position.x} ${model.position.z}) rotate(${180 - (model.rotation.y * 180) / Math.PI})`
+      );
+    }
     camera.position.set(model.position.x, 8.5, model.position.z + 10);
     camera.lookAt(model.position.x, 0.7, model.position.z - 1.5);
+    if (!training) scene.userData.updateCityVegetation?.(model.position);
     presentation?.update(dt, now / 1000, model.position);
     renderer.render(scene, camera);
     for (const [selector, value, max, label] of [
@@ -609,6 +782,39 @@ export function mountWorldPlay(options: {
       const remaining = Math.max(0, cooldown[i] - now);
       button.querySelector('em')!.textContent = remaining ? `${Math.ceil(remaining / 1000)}s` : '';
       button.disabled = remaining > 0 || mana < skills[i].energyCost || busy;
+    }
+    if (!training) {
+      const active = (progress.acceptedQuests || []).find(
+        (id) => !progress.claimedQuests?.includes(id)
+      );
+      root.querySelector('.world-quest-tracker')!.textContent = active
+        ? WORLD_QUESTS[active].name +
+          ' · ' +
+          questProgress(progress, active) +
+          '/' +
+          WORLD_QUESTS[active].target
+        : '';
+      const node = CITY_WORLD.nodes.find(
+        (n) => Math.hypot(model.position.x - n.x, model.position.z - n.z) < 4
+      );
+      root.querySelector('.world-interact')!.innerHTML =
+        (node
+          ? 'Recoger'
+          : Math.hypot(
+                model.position.x - CITY_WORLD.forge.x,
+                model.position.z - CITY_WORLD.forge.z
+              ) < 4
+            ? 'Craftear'
+            : QUEST_POSTS.some(
+                  (p) => Math.hypot(model.position.x - p.x, model.position.z - p.z) < 4
+                )
+              ? 'Misiones'
+              : 'Explorar') + ' <kbd>F</kbd>';
+      for (const n of CITY_WORLD.nodes) {
+        const object = scene.getObjectByName('resource-' + n.id);
+        if (object)
+          object.visible = (progress.resourceCooldowns?.[n.id] || 0) <= Date.now() + serverOffset;
+      }
     }
     const enemy = target(12);
     root.querySelector('.world-target')!.textContent = enemy

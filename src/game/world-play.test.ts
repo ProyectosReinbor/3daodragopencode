@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStarterCharacter } from './characters';
 import { mountWorldPlay } from './world-play';
+import { createProfile } from './profile';
+import { initialWorldProgress } from '../../shared/world-items.js';
 
 const rendered = vi.hoisted(() => ({ x: 0, z: 0, disposed: false }));
 vi.mock('three', async () => {
@@ -61,6 +63,39 @@ describe('full screen world controls', () => {
   function key(value: string) {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: value, cancelable: true }));
   }
+  it('opens the forge nearby and sends crafting and quest actions through the session API', async () => {
+    stop();
+    const pet = createStarterCharacter();
+    const profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    profile.world.materials = { mineral: 4, madera: 2 };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ session: 'qa-world', profile, reward: { item: 'explorer_blade' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    const settle = async () => {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    };
+    await settle();
+    key('ArrowDown');
+    tick();
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowDown' }));
+    key('f');
+    expect(document.querySelector('[aria-label="Forja"]')).not.toBeNull();
+    document.querySelector<HTMLButtonElement>('[data-craft="hoja"]')!.click();
+    await settle();
+    const crafting = JSON.parse(fetchMock.mock.lastCall![1].body);
+    expect(crafting.action).toBe('craft');
+    expect(crafting.session).toBe('qa-world');
+    expect(crafting.position.z).toBeGreaterThan(0);
+    document.querySelector<HTMLButtonElement>('[data-close]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-menu="quests"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-quest="supplies"]')!.click();
+    await settle();
+    expect(JSON.parse(fetchMock.mock.lastCall![1].body).action).toBe('accept_quest');
+  });
   it('W casts a power without walking and arrow keys move the pet', () => {
     tick();
     const before = rendered.z;

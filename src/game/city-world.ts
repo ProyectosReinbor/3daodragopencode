@@ -1,5 +1,7 @@
+import { QUEST_POSTS } from '../../shared/world-quests.js';
 import {
   BoxGeometry,
+  Float32BufferAttribute,
   CircleGeometry,
   Color,
   ConeGeometry,
@@ -14,7 +16,12 @@ import {
   Scene,
   Vector3,
 } from 'three';
-import { CITY_WORLD, biomeAt, businessWorldPosition } from '../../shared/city-world.js';
+import {
+  CITY_WORLD,
+  CITY_ENCOUNTERS,
+  biomeAt,
+  businessWorldPosition,
+} from '../../shared/city-world.js';
 import { createWorld } from './world';
 import type { ZoneWorld } from './zones';
 import type { Store, StoreDetail } from './stores';
@@ -36,21 +43,37 @@ export function createCityWorld(scene: Scene): ZoneWorld {
   ) as Mesh;
   if (ground) {
     ground.geometry.dispose();
-    ground.geometry = new PlaneGeometry(CITY_WORLD.size, CITY_WORLD.size);
-    (ground.material as MeshLambertMaterial).color.setHex(0x163d3c);
+    ground.geometry = new PlaneGeometry(CITY_WORLD.size, CITY_WORLD.size, 128, 128);
+    ground.name = 'city-terrain';
+    const positions = ground.geometry.getAttribute('position'),
+      colors = new Float32Array(positions.count * 3);
+    const tint = new Color(),
+      secondary = new Color();
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i),
+        z = -positions.getY(i);
+      const nearest = [...CITY_WORLD.biomes].sort(
+        (a, b) => Math.hypot(x - a.x, z - a.z) - Math.hypot(x - b.x, z - b.z)
+      );
+      const delta =
+        Math.hypot(x - nearest[1].x, z - nearest[1].z) -
+        Math.hypot(x - nearest[0].x, z - nearest[0].z);
+      tint
+        .setHex(nearest[0].color)
+        .lerp(secondary.setHex(nearest[1].color), Math.max(0, 1 - delta / 120) * 0.5);
+      tint.toArray(colors, i * 3);
+    }
+    ground.geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+    const surface = ground.material as MeshLambertMaterial;
+    surface.color.setHex(0xffffff);
+    surface.vertexColors = true;
+    surface.needsUpdate = true;
   }
   world.groundSize = CITY_WORLD.size;
   world.portals = [];
   scene.background = new Color(0x07151d);
   scene.fog = new Fog(0x102831, 28, 85);
-  const terrains = new Group();
-  terrains.name = 'city-biomes';
-  scene.add(terrains);
   for (const b of CITY_WORLD.biomes) {
-    const patch = new Mesh(new CircleGeometry(b.radius, 40), material(b.color));
-    patch.rotation.x = -Math.PI / 2;
-    patch.position.set(b.x, 0.025, b.z);
-    terrains.add(patch);
     const extraScene = new Scene(),
       extra = createWorld(extraScene, b.zone);
     for (const [i, enemy] of extra.enemies.slice(0, 2).entries()) {
@@ -68,14 +91,36 @@ export function createCityWorld(scene: Scene): ZoneWorld {
     });
     extraScene.clear();
   }
+  const templates = [...world.enemies];
+  templates.forEach((e) => {
+    e.hpBar.name = 'encounter-health-bar';
+    scene.remove(e.mesh);
+  });
+  world.enemies = CITY_ENCOUNTERS.map((spec) => {
+    const template = templates.find((e) => e.kind === spec.kind)!;
+    const mesh = template.mesh.clone(true);
+    mesh.position.set(spec.x, 0, spec.z);
+    scene.add(mesh);
+    return {
+      ...template,
+      mesh,
+      hpBar: mesh.getObjectByName('encounter-health-bar') as Mesh,
+      spawnPosition: mesh.position.clone(),
+      name: biomeAt(spec.x, spec.z).name + ' · ' + template.name,
+    };
+  });
+  for (const post of QUEST_POSTS) {
+    const mesh = new Group();
+    mesh.name = 'quest-' + post.id;
+    mesh.position.set(post.x, 0, post.z);
+    box(mesh, new Vector3(0.3, 2.8, 0.3), new Vector3(0, 1.4, 0), 0x526c79);
+    box(mesh, new Vector3(1.8, 1.2, 0.3), new Vector3(0, 2.2, 0), 0xe7cc87);
+    scene.add(mesh);
+  }
   const segments = CITY_WORLD.roads.flatMap((r) =>
     r.points.slice(1).map((p, i) => ({ a: r.points[i], b: p }))
   );
-  const paths = new InstancedMesh(
-    new BoxGeometry(2.6, 0.06, 1),
-    material(0x618580),
-    segments.length
-  );
+  const paths = new InstancedMesh(new BoxGeometry(8, 0.06, 1), material(0x618580), segments.length);
   paths.name = 'city-road-network';
   const matrix = new Matrix4();
   segments.forEach(({ a, b }, i) => {
@@ -94,51 +139,72 @@ export function createCityWorld(scene: Scene): ZoneWorld {
         t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)));
       return Math.min(best, Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz));
     }, Infinity);
-  let seed = 8147;
-  const random = () => {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-  for (const b of CITY_WORLD.biomes) {
-    const positions: Vector3[] = [];
-    for (let i = 0; i < 64; i++) {
-      const x = b.x + (random() - 0.5) * b.radius * 1.6,
-        z = b.z + (random() - 0.5) * b.radius * 1.6;
-      if (
-        Math.abs(x) > 83 ||
-        Math.abs(z) > 83 ||
-        Math.hypot(x, z) < 12 ||
-        distanceToRoad(x, z) < 4 ||
-        CITY_WORLD.nodes.some((n) => Math.hypot(x - n.x, z - n.z) < 5)
-      )
-        continue;
-      positions.push(new Vector3(x, 0, z));
-    }
+  const vegetation = CITY_WORLD.biomes.map((b) => {
     const trunks = new InstancedMesh(
-        new CylinderGeometry(0.17, 0.23, 2, 5),
-        material(0x35504f),
-        positions.length
-      ),
-      leaves = new InstancedMesh(
-        new ConeGeometry(b.id === 'selva' ? 1.6 : 1.15, 3.5, 7),
-        material(b.id === 'nieve' ? 0xbedfe8 : b.id === 'fuego' ? 0x975055 : 0x3c8a70),
-        positions.length
-      );
-    positions.forEach((p, i) => {
-      matrix.makeTranslation(p.x, 1, p.z);
-      trunks.setMatrixAt(i, matrix);
-      matrix.makeTranslation(p.x, 3, p.z);
-      leaves.setMatrixAt(i, matrix);
-    });
+      new CylinderGeometry(0.17, 0.23, 2, 5),
+      material(0x35504f),
+      625
+    );
+    const leaves = new InstancedMesh(
+      new ConeGeometry(b.id === 'selva' ? 1.6 : 1.15, 3.5, 7),
+      material(b.id === 'nieve' ? 0xbedfe8 : b.id === 'fuego' ? 0x975055 : 0x3c8a70),
+      625
+    );
+    trunks.name = 'city-trunks-' + b.id;
+    leaves.name = 'city-leaves-' + b.id;
+    trunks.count = leaves.count = 0;
     scene.add(trunks, leaves);
-  }
+    return { b, trunks, leaves };
+  });
+  let previousCell = '';
+  scene.userData.updateCityVegetation = (position: Vector3) => {
+    const cellX = Math.floor(position.x / 12),
+      cellZ = Math.floor(position.z / 12),
+      key = cellX + ':' + cellZ;
+    if (key === previousCell) return;
+    previousCell = key;
+    const counts = new Map(vegetation.map((v) => [v.b.id, 0]));
+    for (let dx = -10; dx <= 10; dx++)
+      for (let dz = -10; dz <= 10; dz++) {
+        const cx = cellX + dx,
+          cz = cellZ + dz;
+        const hash = (Math.imul(cx, 73856093) ^ Math.imul(cz, 19349663)) >>> 0;
+        const x = cx * 12 + (hash % 100) / 20,
+          z = cz * 12 + ((hash >>> 8) % 100) / 20;
+        if (
+          Math.hypot(x - position.x, z - position.z) > 100 ||
+          Math.hypot(x, z) < 45 ||
+          distanceToRoad(x, z) < 7 ||
+          Math.abs(x) > CITY_WORLD.size / 2 - 20 ||
+          Math.abs(z) > CITY_WORLD.size / 2 - 20 ||
+          CITY_WORLD.landmarks.some((l) => Math.hypot(x - l.x, z - l.z) < 18) ||
+          CITY_WORLD.nodes.some((n) => Math.hypot(x - n.x, z - n.z) < 6)
+        )
+          continue;
+        const owner = biomeAt(x, z),
+          v = vegetation.find((v) => v.b.id === owner.id)!,
+          i = counts.get(owner.id)!;
+        matrix.makeTranslation(x, 1, z);
+        v.trunks.setMatrixAt(i, matrix);
+        matrix.makeTranslation(x, 3, z);
+        v.leaves.setMatrixAt(i, matrix);
+        counts.set(owner.id, i + 1);
+      }
+    for (const v of vegetation) {
+      v.trunks.count = v.leaves.count = counts.get(v.b.id)!;
+      v.trunks.instanceMatrix.needsUpdate = v.leaves.instanceMatrix.needsUpdate = true;
+      v.trunks.computeBoundingSphere();
+      v.leaves.computeBoundingSphere();
+    }
+  };
+  scene.userData.updateCityVegetation(new Vector3());
   for (const node of CITY_WORLD.nodes) {
     const group = new Group();
     group.name = 'resource-' + node.id;
     group.position.set(node.x, 0, node.z);
     for (const side of [-1, 0, 1]) {
       const crystal = new Mesh(
-        new ConeGeometry(0.55, 2.2, 5),
+        new ConeGeometry(node.pickup ? 0.4 : 0.55, node.pickup ? 0.7 : 2.2, 5),
         material(
           node.material === 'obsidiana'
             ? 0x9b5063
@@ -161,7 +227,9 @@ export function createCityWorld(scene: Scene): ZoneWorld {
   scene.add(forge);
   const park = new Group();
   park.name = 'central-training-park';
-  const lawn = new Mesh(new CircleGeometry(12, 48), material(0x286c58));
+  const parkLandmark = CITY_WORLD.landmarks.find((l) => l.type === 'parque')!;
+  park.position.set(parkLandmark.x, 0, parkLandmark.z);
+  const lawn = new Mesh(new CircleGeometry(40, 48), material(0x286c58));
   lawn.rotation.x = -Math.PI / 2;
   lawn.position.y = 0.1;
   park.add(lawn);
@@ -192,8 +260,8 @@ export function createCityWorld(scene: Scene): ZoneWorld {
     scene.add(building);
   }
   world.enemies.forEach((e) => {
-    if (Math.hypot(e.mesh.position.x, e.mesh.position.z) < 15) {
-      e.mesh.position.x = e.mesh.position.x < 0 ? -20 : 20;
+    if (Math.hypot(e.mesh.position.x, e.mesh.position.z) < 50) {
+      e.mesh.position.x = e.mesh.position.x < 0 ? -55 : 55;
       e.spawnPosition.copy(e.mesh.position);
     }
   });
