@@ -1,4 +1,4 @@
-# Reinos Ancestrales — Contexto Completo del Proyecto
+# AODASE Pets — Contexto Completo del Proyecto
 
 > Este documento contiene todo el contexto necesario para trabajar con el proyecto.
 > Úsalo como referencia en ChatGPT, Copilot, Claude o cualquier herramienta de IA.
@@ -7,11 +7,11 @@
 
 ## 1. Descripción General
 
-**Reinos Ancestrales** es un RPG 3D browser-based (Progressive Web App) donde el jugador crea un guerrero único, explora zonas, combate criaturas, recolecta recursos, completa misiones y sube de nivel en un mundo 3D renderizado con Three.js.
+**AODASE Pets** (antes Reinos Ancestrales) es un RPG 3D browser-based (Progressive Web App) donde el jugador crea un guerrero único, explora zonas, combate criaturas, recolecta recursos, completa misiones y sube de nivel en un mundo 3D renderizado con Three.js.
 
-- **Nombre**: Reinos Ancestrales
-- **URL principal**: https://3daodrag.reinbor.cloud/
-- **Servicio systemd**: `reinos.service` (activo)
+- **Nombre**: AODASE Pets
+- **URL principal**: https://aodase.reinbor.cloud/
+- **Servicio systemd**: `aodase.service` (activo)
 - **Puerto de escucha**: 3002 (nginx → 127.0.0.1:3002)
 - **Idioma**: Español (toda la UI)
 - **Tipo**: PWA instalable con soporte offline
@@ -34,7 +34,7 @@
 ## 3. Estructura de Carpetas y Archivos
 
 ```
-/home/3daodrag/
+/home/aodase/
 │
 ├── index.html                     # SPA entry: TODAS las secciones HTML (HUD, paneles, pantallas)
 ├── package.json                   # Root: three, vite, vitest, eslint
@@ -308,7 +308,7 @@ type AppScreen =
 
 ## 8. Panel de Administración
 
-- **URL**: `https://3daodrag.reinbor.cloud/admin`
+- **URL**: `https://aodaseadmin.reinbor.cloud/`
 - **Login**: POST `/api/admin/login` con `{username, password}`
 - **Username**: `ProyectosReinbor`
 - **Password**: `reinbor-2026`
@@ -320,10 +320,10 @@ type AppScreen =
 
 ## 9. Despliegue
 
-- **Nginx**: proxy a `127.0.0.1:3002` para `3daodrag.reinbor.cloud`
+- **Nginx**: `aodase.reinbor.cloud` sirve `dist/` y hace proxy de `/api` a `127.0.0.1:3002`; `aodaseadmin.reinbor.cloud` hace proxy total al mismo backend
 - **HTTPS**: Let's Encrypt válido
 - **HTTP/2**: habilitado
-- **Service**: `reinos.service` (systemd, auto-restart)
+- **Service**: `aodase.service` (systemd, auto-restart)
 - **Build**: `npm run build` → `dist/`
 - **CI/CD**: GitHub Actions (lint, format, test, build)
 

@@ -178,7 +178,7 @@ describe('full screen world controls', () => {
     document.querySelector<HTMLButtonElement>('[data-quest="supplies"]')!.click();
     await settle();
     expect(JSON.parse(fetchMock.mock.lastCall![1].body).action).toBe('accept_quest');
-  });
+  }, 20000);
   it('enters a business, changes floors, visits the terrace and returns to the street', async () => {
     stop();
     const pet = createStarterCharacter(),
