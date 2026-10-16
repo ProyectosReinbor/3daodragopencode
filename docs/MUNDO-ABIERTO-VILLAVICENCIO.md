@@ -25,6 +25,14 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Primera aventura guiada — 16 de octubre de 2026
+
+Ari inicia un recorrido persistente de cinco pasos: recoger seis materiales desde el inicio de la aventura, derrotar tres monstruos de los parques, fabricar o poseer la Hoja del explorador, equiparla en la mascota activa y volver con el guía. La interfaz muestra el objetivo, su progreso, distancia en línea recta, flecha relativa a la cámara, anillo de destino y marca en el minimapa. Las instrucciones explican controles, extracción y receta; el panel permite avanzar cuando el servidor confirma los requisitos.
+
+El servidor guarda etapa y contadores iniciales en `world.adventure`, exige la etapa esperada y entrega una vez 75 monedas, 100 XP, dos pociones y dos elixires de maná. Las etapas no pueden saltarse mediante cantidades enviadas por el cliente. Reiniciar la sesión conserva la aventura; una solicitud repetida devuelve el perfil actual para recuperar la interfaz sin duplicar premios. Las cuentas que ya poseen el arma pueden continuar sin fabricar una copia imposible.
+
+La proximidad a Ari usa la posición reportada; no implica movimiento autoritativo ni verificación de visita física. La brújula indica dirección directa, no una ruta peatonal calculada alrededor de edificios. Las demás misiones siguen disponibles. La cámara libre y el joystick respecto a la vista se conservan; las colisiones urbanas comprueban además un margen de 0,45 metros alrededor de la mascota para reducir el solapamiento con fachadas.
+
 La cámara conserva el ángulo elegido al arrastrar el mundo, tanto en reposo como durante el movimiento. El joystick y las flechas se interpretan respecto a la vista: arriba avanza hacia el fondo de la pantalla y derecha desplaza a la derecha. La mascota gira hacia su desplazamiento; ese giro no modifica la cámara.
 
 Instanciar vegetación y caminos; medir tiempos de renderizado en móvil horizontal antes de aumentar densidad. Probar continuidad del mapa, entradas y salida, persistencia, doble reclamación, caducidad, pérdidas de conexión y limpieza de recursos. No anunciar torneos, recompensas comerciales ni visitas verificadas antes de completar sus servicios.

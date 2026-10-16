@@ -57,5 +57,32 @@ test('world resources, timed mining, crafting and quest rewards persist without 
     session=(await request({characterId:'pet'},'/start')).data.session;
     assert.equal((await request(claim)).status,400);
     assert.equal(profile.world.claimedQuests.includes('park_patrol'),true);
+    assert.equal((await request({action:'adventure_start',position:{x:100,z:100}})).status,400);
+    const guide={x:-5,z:-5};
+    assert.equal((await request({action:'adventure_start',position:guide})).status,200);
+    assert.equal((await request({action:'adventure_advance',stage:0,position:guide})).status,400);
+    session=(await request({characterId:'pet'},'/start')).data.session;
+    assert.equal(profile.world.adventure.stage,0);
+    for(const id of ['starter-wood','starter-crystal','starter-essence'])assert.equal((await request({action:'pickup',node:id,position:CITY_WORLD.nodes.find(n=>n.id===id)})).status,200);
+    begin=await request({action:'begin_gather',node:node.id,position:node});now+=3100;
+    assert.equal((await request({...gather,token:begin.data.challenge.token})).status,200);
+    assert.equal((await request({action:'adventure_advance',stage:1,position:guide})).status,400);
+    assert.equal((await request({action:'adventure_advance',stage:0,position:guide})).status,200);
+    assert.equal((await request({action:'adventure_advance',stage:0,position:guide})).status,400);
+    for(let i=0;i<3;i++){now+=25000;assert.equal((await request({action:'attack',slot:3,enemy:'city:'+parkIndex,kind:CITY_ENCOUNTERS[parkIndex].kind})).status,200);}
+    assert.equal((await request({action:'adventure_advance',stage:1,position:guide})).status,200);
+    assert.equal((await request({action:'adventure_advance',stage:2,position:guide})).status,200);
+    assert.equal((await request({action:'adventure_advance',stage:3,position:guide})).status,400);
+    assert.equal((await request({action:'equip',item:'explorer_blade'})).status,200);
+    assert.equal((await request({action:'adventure_advance',stage:3,position:guide})).status,200);
+    assert.equal((await request({action:'adventure_advance',stage:4,position:{x:999,z:999}})).status,400);
+    const beforeReward=profile.world.coins, beforePotions=profile.world.potions;
+    assert.equal((await request({action:'adventure_advance',stage:4,position:guide})).status,200);
+    assert.equal(profile.world.coins,beforeReward+75);assert.equal(profile.world.potions,beforePotions+2);
+    session=(await request({characterId:'pet'},'/start')).data.session;
+    assert.equal(profile.world.adventure.completed,true);
+    assert.equal((await request({action:'adventure_advance',stage:4,position:guide})).status,400);
+    assert.equal((await request({action:'adventure_start',position:guide})).status,400);
+    assert.equal(profile.world.coins,beforeReward+75);
   } finally {await new Promise(r=>server.close(r));}
 });

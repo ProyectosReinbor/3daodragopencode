@@ -4,6 +4,7 @@ import { WORLD_ITEMS, MONSTER_REWARDS, initialWorldProgress } from '../shared/wo
 import { CITY_WORLD, CITY_ENCOUNTERS } from '../shared/city-world.js';
 import { craftWorldItem, WORLD_RECIPES, MONSTER_MATERIALS, normalizeMaterials } from '../shared/world-crafting.js';
 import { applyPurchaseExperience } from './foodie-growth.js';
+import { startAdventure, advanceAdventure } from '../shared/world-adventure.js';
 // Sessions own combat cooldowns and encounter health. Rewards never come from profile PUT.
 export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = () => Date.now() }) {
   const sessions = new Map();
@@ -28,7 +29,15 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
     const world = profile.world ||= initialWorldProgress();
     const { action, item, enemy, kind, slot } = req.body;
     let reward = null, damage = 0;
-    if (action === 'buy') {
+    if(action==='adventure_start'||action==='adventure_advance') {
+      try {
+        if(action==='adventure_start')startAdventure(world,req.body.position);
+        else {
+          reward=advanceAdventure(world,pet.id,req.body.stage,req.body.position);
+          if(reward){world.coins+=reward.coins;world.potions+=reward.potions;world.mana+=reward.mana;applyPurchaseExperience(profile,reward.xp,pet.id);}
+        }
+      } catch(error){return res.status(400).json({error:error.message,profile,serverNow:clock()});}
+    } else if (action === 'buy') {
       const price = item === 'potions' ? 15 : item === 'mana' ? 12 : 0;
       if (!price || world.coins < price) return res.status(400).json({ error: 'No tienes suficientes monedas.' });
       world.coins -= price; world[item]++;

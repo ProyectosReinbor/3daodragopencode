@@ -3,6 +3,7 @@ import { createStarterCharacter } from './characters';
 import { mountWorldPlay } from './world-play';
 import { createProfile } from './profile';
 import { initialWorldProgress } from '../../shared/world-items.js';
+import { startAdventure } from '../../shared/world-adventure.js';
 import { CITY_BUILDINGS, CITY_VENUES } from '../../shared/city-life.js';
 
 const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false }));
@@ -211,6 +212,54 @@ describe('full screen world controls', () => {
     tick();
     expect((document.querySelector('.world-building-bar') as HTMLElement).hidden).toBe(true);
     expect(rendered.y).toBeLessThan(10);
+  });
+  it('guides the player to Ari and resumes a server-saved first adventure', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.action === 'adventure_start') startAdventure(profile.world!, body.position);
+      return {
+        ok: true,
+        json: async () => ({ session: 'adventure-qa', profile: structuredClone(profile) }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const settle = async () => {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    };
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    await settle();
+    tick();
+    const tracker = document.querySelector<HTMLButtonElement>(
+      '[aria-label="Ver primera aventura"]'
+    )!;
+    expect(tracker.textContent).toContain('Tu primera aventura');
+    expect(
+      document.querySelector<HTMLElement>('.world-adventure-arrow')!.style.transform
+    ).toContain('-45');
+    key('ArrowLeft');
+    key('ArrowUp');
+    for (let i = 0; i < 10; i++) tick();
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowLeft' }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowUp' }));
+    tracker.click();
+    document.querySelector<HTMLButtonElement>('[data-adventure="start"]')!.click();
+    await settle();
+    expect(profile.world?.adventure?.stage).toBe(0);
+    expect(document.querySelector('[aria-label="Primera aventura"]')!.textContent).toContain(
+      'Reúne tus provisiones'
+    );
+    expect(JSON.parse(fetchMock.mock.lastCall![1].body as string).position.x).toBeLessThan(0);
+    stop();
+    stop = mountWorldPlay({ pet, profile: structuredClone(profile), onExit: vi.fn() });
+    await settle();
+    tick();
+    expect(document.querySelector('[aria-label="Ver primera aventura"]')!.textContent).toContain(
+      'Reúne tus provisiones'
+    );
   });
   it('W casts a power without walking and arrow keys move the pet', () => {
     tick();

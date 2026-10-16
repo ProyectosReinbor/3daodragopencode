@@ -5,6 +5,11 @@ import { geographicWorldPosition } from '../../shared/city-world.js';
 import { WORLD_MATERIALS, WORLD_RECIPES } from '../../shared/world-crafting.js';
 import { WORLD_QUESTS, QUEST_POSTS, questProgress } from '../../shared/world-quests.js';
 import {
+  adventureObjective,
+  ADVENTURE_GUIDE,
+  ADVENTURE_REWARD,
+} from '../../shared/world-adventure.js';
+import {
   Scene,
   PerspectiveCamera,
   WebGLRenderer,
@@ -109,6 +114,33 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  const adventureTracker = document.createElement('button');
+  adventureTracker.className = 'world-adventure-tracker';
+  adventureTracker.dataset.menu = 'adventure';
+  adventureTracker.hidden = training;
+  adventureTracker.setAttribute('aria-label', 'Ver primera aventura');
+  adventureTracker.innerHTML =
+    '<span class="world-adventure-arrow" aria-hidden="true">↑</span><strong></strong><small></small>';
+  root.append(adventureTracker);
+  const destinationMarker = new Mesh(
+    new TorusGeometry(1.4, 0.13, 5, 24),
+    new MeshLambertMaterial({ color: 0xffd98a, emissive: 0x74551e })
+  );
+  destinationMarker.name = 'adventure-destination';
+  destinationMarker.rotation.x = -Math.PI / 2;
+  destinationMarker.visible = false;
+  scene.add(destinationMarker);
+  function adventureDialog() {
+    pressed.clear();
+    modal.hidden = false;
+    const goal = adventureObjective(progress, pet.id);
+    const distance = Math.hypot(
+      model.position.x - ADVENTURE_GUIDE.x,
+      model.position.z - ADVENTURE_GUIDE.z
+    );
+    const canContinue = goal.ready && (goal.stage !== 4 || (distance <= 6 && !activeRoom));
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Primera aventura"><button data-close aria-label="Cerrar aventura">✕</button><small>${goal.stage < 0 ? 'ARI · GUÍA DE LA CIUDAD' : goal.stage === 5 ? 'AVENTURA COMPLETADA' : 'PASO ' + (goal.stage + 1) + ' / 5'}</small><h2>${safe(goal.title)}</h2><p>${safe(goal.description)}</p>${goal.stage >= 0 && goal.stage < 4 ? `<p>Progreso: ${goal.current}/${goal.total}</p>` : ''}${goal.destination ? `<p>Destino: ${safe(goal.destination.name)} · ${Math.round(Math.hypot(model.position.x - goal.destination.x, model.position.z - goal.destination.z))} m en línea recta. Sigue la flecha del mundo.</p>` : ''}${goal.stage < 0 ? '<p>Reúne provisiones, protege un parque, fabrica y equipa tu primera arma. Tu progreso se conserva al salir.</p><button data-adventure="start" ' + (session && !busy ? '' : 'disabled') + '>Comenzar con Ari</button>' : goal.stage < 5 ? `<button data-adventure="advance" data-stage="${goal.stage}" ${canContinue && session && !busy ? '' : 'disabled'}>${goal.stage === 4 ? 'Recibir recompensa' : 'Continuar al siguiente paso'}</button>` : '<p>Tu recompensa ya fue entregada. Puedes seguir explorando y aceptar las demás misiones.</p>'}${goal.action === 'equip' ? '<button data-menu="equipment">Abrir Equipo</button>' : ''}<p>Recompensa: ${ADVENTURE_REWARD.coins} monedas · ${ADVENTURE_REWARD.xp} XP · ${ADVENTURE_REWARD.potions} pociones · ${ADVENTURE_REWARD.mana} elixires de maná.</p><p>Movimiento: joystick o flechas. Cámara: arrastra el mundo. Interacción: F o botón Explorar.</p></article>`;
+  }
   const buildingBar = document.createElement('div');
   buildingBar.className = 'world-building-bar';
   buildingBar.hidden = true;
@@ -268,6 +300,11 @@ export function mountWorldPlay(options: {
   }
   let minimapRoadCell = '';
   const minimapPlayer = minimap?.querySelector('[data-minimap-player]');
+  minimap?.insertAdjacentHTML(
+    'beforeend',
+    '<circle data-adventure-pin r="30" fill="none" stroke="#ffd98a" stroke-width="12"/>'
+  );
+  const adventurePin = minimap?.querySelector('[data-adventure-pin]');
   const resize = () => {
     const box = root.getBoundingClientRect();
     renderer.setSize(box.width, box.height, false);
@@ -289,13 +326,13 @@ export function mountWorldPlay(options: {
       signal: events.signal,
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error);
-    if (!disposed) {
+    if (!disposed && data.profile) {
       if (data.serverNow) serverOffset = data.serverNow - Date.now();
       profile = data.profile;
       progress = profile!.world!;
       pet = profile!.characters!.characters.find((p) => p.id === pet.id)!;
     }
+    if (!response.ok) throw new Error(data.error);
     return data;
   }
   if (!training)
@@ -313,6 +350,7 @@ export function mountWorldPlay(options: {
         if (data.serverNow) serverOffset = data.serverNow - Date.now();
         profile = data.profile;
         progress = profile!.world!;
+        if (modal.querySelector('[data-adventure]')) adventureDialog();
         notify('Habla con el guía junto al inicio. Recoge materiales con F y fabrica en la forja.');
       })
       .catch((e) => notify(e.message));
@@ -582,7 +620,8 @@ export function mountWorldPlay(options: {
       (n) => Math.hypot(n.x - model.position.x, n.z - model.position.z) < 4
     );
     if (citizen) {
-      quests([citizen.quest]);
+      if (citizen.id === 'camp-guide') adventureDialog();
+      else quests([citizen.quest]);
       notify(citizen.name + ' tiene una misión para ti.');
       return;
     }
@@ -659,7 +698,29 @@ export function mountWorldPlay(options: {
       const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
       if (!button) return;
       if (button.dataset.menu === 'exit') exit();
-      else if (button.dataset.roomLevel !== undefined && activeRoom) {
+      else if (button.dataset.menu === 'adventure') adventureDialog();
+      else if (button.dataset.adventure) {
+        if (busy || !session) return;
+        busy = true;
+        button.disabled = true;
+        try {
+          const data = await request({
+            action: button.dataset.adventure === 'start' ? 'adventure_start' : 'adventure_advance',
+            stage: Number(button.dataset.stage),
+          });
+          if (disposed) return;
+          notify(
+            data.reward
+              ? 'Aventura completada: +75 monedas, +100 XP y consumibles.'
+              : 'Objetivo actualizado. Sigue tu brújula.'
+          );
+        } catch (error) {
+          notify((error as Error).message);
+        } finally {
+          busy = false;
+          if (!disposed) adventureDialog();
+        }
+      } else if (button.dataset.roomLevel !== undefined && activeRoom) {
         const level = Number(button.dataset.roomLevel);
         if (Number.isInteger(level) && level >= 0 && level <= activeRoom.floors)
           enterBuilding(activeRoom.building, level);
@@ -1010,6 +1071,38 @@ export function mountWorldPlay(options: {
         'transform',
         `translate(${model.position.x} ${model.position.z}) rotate(${180 - (model.rotation.y * 180) / Math.PI})`
       );
+    }
+    if (!training) {
+      const goal = adventureObjective(progress, pet.id);
+      adventureTracker.hidden = goal.stage === 5;
+      adventureTracker.querySelector('strong')!.textContent = goal.title;
+      const destination = goal.destination;
+      adventureTracker.querySelector('small')!.textContent = destination
+        ? `${goal.stage >= 0 && goal.stage < 4 ? goal.current + '/' + goal.total + ' · ' : ''}${Math.round(Math.hypot(destination.x - model.position.x, destination.z - model.position.z))} m · ${goal.ready ? 'Ver siguiente paso' : 'Ver objetivo'}`
+        : `${goal.current}/${goal.total} · ${goal.ready ? 'Continuar' : 'Abrir objetivo'}`;
+      const arrow = adventureTracker.querySelector<HTMLElement>('.world-adventure-arrow')!;
+      arrow.hidden = !destination;
+      destinationMarker.visible = !!destination && !activeRoom && goal.stage !== 5;
+      adventurePin?.setAttribute(
+        'visibility',
+        destination && goal.stage !== 5 ? 'visible' : 'hidden'
+      );
+      if (destination) {
+        const dx = destination.x - model.position.x,
+          dz = destination.z - model.position.z;
+        adventurePin?.setAttribute('cx', String(destination.x));
+        adventurePin?.setAttribute('cy', String(destination.z));
+        const right = dx * Math.cos(cameraYaw) - dz * Math.sin(cameraYaw),
+          forward = -dx * Math.sin(cameraYaw) - dz * Math.cos(cameraYaw);
+        arrow.style.transform = `rotate(${(Math.atan2(right, forward) * 180) / Math.PI}deg)`;
+        destinationMarker.position.set(
+          destination.x,
+          (scene.userData.citySurfaceHeight?.(destination.x, destination.z) || 0) + 0.3,
+          destination.z
+        );
+        destinationMarker.scale.setScalar(1 + Math.sin(now * 0.003) * 0.08);
+      }
+      root.classList.toggle('world-guided-adventure', goal.stage !== 5);
     }
     const radius = activeRoom && !activeRoom.terrace ? 4.2 : Math.hypot(10, 8.5),
       horizontal = radius * Math.cos(cameraPitch);

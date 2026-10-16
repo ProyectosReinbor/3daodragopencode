@@ -105,6 +105,16 @@ export function buildingsNear(x: number, z: number, radius = 2) {
         ids.add(i);
   return [...ids].map((i) => URBAN_BUILDINGS[i]);
 }
+export function cityBuildingCollision(x: number, z: number, radius = 0.45): boolean {
+  return buildingsNear(x, z, 1).some(
+    (b) =>
+      insideBuilding(x, z, b) ||
+      insideBuilding(x - radius, z, b) ||
+      insideBuilding(x + radius, z, b) ||
+      insideBuilding(x, z - radius, b) ||
+      insideBuilding(x, z + radius, b)
+  );
+}
 function tintGeometry(geometry: BufferGeometry, hex: number) {
   const color = new Color(hex),
     colors = new Float32Array(geometry.getAttribute('position').count * 3);
@@ -446,8 +456,7 @@ export function mountCityUrban(scene: Scene) {
     cell = '';
     if (lastPosition) update(lastPosition, lastRoads);
   };
-  scene.userData.cityBuildingAt = (x: number, z: number) =>
-    buildingsNear(x, z, 0).some((b) => insideBuilding(x, z, b));
+  scene.userData.cityBuildingAt = (x: number, z: number) => cityBuildingCollision(x, z);
   scene.userData.animateCityUrban = animate;
   return {
     update,

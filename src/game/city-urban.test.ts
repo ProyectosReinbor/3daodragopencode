@@ -1,11 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
 import { InstancedMesh, Mesh, MeshLambertMaterial, Scene, Vector3 } from 'three';
 import { createCityWorld } from './city-world';
-import { ROAD_SEGMENTS, URBAN_BUILDINGS, citySurfaceHeight } from './city-urban';
+import {
+  ROAD_SEGMENTS,
+  URBAN_BUILDINGS,
+  citySurfaceHeight,
+  cityBuildingCollision,
+  insideBuilding,
+} from './city-urban';
 import { geographicWorldPosition } from '../../shared/city-world.js';
 import { VILLAVICENCIO_URBAN } from '../../shared/villavicencio-urban.js';
 
 describe('geographic 3D city', () => {
+  it('keeps the pet radius outside walls instead of testing only its center', () => {
+    const b = URBAN_BUILDINGS.find((b) => b.generated)!;
+    const z = (b.minZ + b.maxZ) / 2;
+    expect(insideBuilding(b.minX - 0.2, z, b)).toBe(false);
+    expect(cityBuildingCollision(b.minX - 0.2, z)).toBe(true);
+    expect(cityBuildingCollision(b.minX - 1, z)).toBe(false);
+  });
   it('extrudes actual footprints locally and releases replaced sector geometry', () => {
     expect(URBAN_BUILDINGS.length).toBeGreaterThan(7000);
     const scene = new Scene();

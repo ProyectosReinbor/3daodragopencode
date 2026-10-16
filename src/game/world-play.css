@@ -671,3 +671,24 @@
 @media (max-height: 520px) {
   .world-building-bar { top: 105px; width: 235px; }
 }
+.world-adventure-tracker {
+  position: absolute;
+  top: 145px;
+  left: max(16px, env(safe-area-inset-left));
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 5px;
+  width: 235px;
+  padding: 12px;
+  text-align: left;
+  color: #f5e3b6;
+  background: #07151de8;
+  border: 1px solid #e7cc8766;
+  border-radius: 14px;
+}
+.world-adventure-tracker strong { font-size: 13px; }
+.world-adventure-tracker small { grid-column: 2; font-size: 11px; }
+.world-adventure-arrow { grid-row: span 2; align-self: center; font-size: 28px; text-align: center; }
+.world-adventure-tracker[hidden], .world-room-active .world-adventure-tracker,
+.world-guided-adventure .world-quest-tracker { display: none; }
+@media(max-height:520px) { .world-adventure-tracker { top: 105px; width: 215px; padding: 9px; } }
