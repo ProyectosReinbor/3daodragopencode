@@ -5,9 +5,22 @@ import { createProfile } from './profile';
 import { initialWorldProgress } from '../../shared/world-items.js';
 import { startAdventure } from '../../shared/world-adventure.js';
 import { CITY_BUILDINGS, CITY_VENUES } from '../../shared/city-life.js';
+import type { Enemy } from './world';
 
 const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false }));
 const roomControl = vi.hoisted(() => ({ entrance: false }));
+const battleControl = vi.hoisted(() => ({ enemy: null as Enemy | null }));
+vi.mock('./world', async () => {
+  const actual = await vi.importActual<typeof import('./world')>('./world');
+  return {
+    ...actual,
+    createWorld: (...args: Parameters<typeof actual.createWorld>) => {
+      const world = actual.createWorld(...args);
+      battleControl.enemy = world.enemies[0];
+      return world;
+    },
+  };
+});
 vi.mock('./city-life', async () => {
   const actual = await vi.importActual<typeof import('./city-life')>('./city-life');
   return {
@@ -260,6 +273,58 @@ describe('full screen world controls', () => {
     expect(document.querySelector('[aria-label="Ver primera aventura"]')!.textContent).toContain(
       'Reúne tus provisiones'
     );
+  });
+  it('warns before an enemy strike and allows moving out of the marked area', () => {
+    const enemy = battleControl.enemy!;
+    enemy.mesh.position.set(0, 0, 1.7);
+    enemy.speed = 0;
+    tick();
+    const before = document.querySelector('.world-health')!.textContent;
+    const danger = document.querySelector<HTMLElement>('.world-danger')!;
+    expect(danger.hidden).toBe(false);
+    expect(document.querySelector('.world-target')!.textContent).toContain('Preparando ataque');
+    for (let i = 0; i < 5; i++) tick();
+    key('ArrowRight');
+    for (let i = 0; i < 18; i++) tick();
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight' }));
+    expect(document.querySelector('.world-health')!.textContent).toBe(before);
+    expect(danger.hidden).toBe(true);
+  });
+  it('shows a defeat screen and recovers with temporary protection', () => {
+    const enemy = battleControl.enemy!;
+    enemy.mesh.position.set(0, 0, 1.7);
+    enemy.speed = 0;
+    enemy.damage = 1000;
+    tick();
+    for (let i = 0; i < 14; i++) tick();
+    expect(document.querySelector('[aria-label="Mascota derrotada"]')).not.toBeNull();
+    expect(document.querySelector('.world-health')!.textContent).toContain('Vida 0');
+    document.querySelector<HTMLButtonElement>('[data-menu="equipment"]')!.click();
+    expect(document.querySelector('[data-recover]')).not.toBeNull();
+    document.querySelector<HTMLButtonElement>('[data-recover]')!.click();
+    tick();
+    expect(document.querySelector('[aria-label="Mascota derrotada"]')).toBeNull();
+    expect(document.querySelector('.world-health')!.textContent).toContain('148 / 148');
+    enemy.mesh.position.set(0, 0, 1.7);
+    for (let i = 0; i < 50; i++) tick();
+    expect(document.querySelector('.world-health')!.textContent).toContain('148 / 148');
+    for (let i = 0; i < 80; i++) tick();
+    expect(document.querySelector('[aria-label="Mascota derrotada"]')).not.toBeNull();
+  });
+  it('cancels a pending strike when a menu pauses the game', () => {
+    const enemy = battleControl.enemy!;
+    enemy.mesh.position.set(0, 0, 1.7);
+    enemy.speed = 0;
+    enemy.damage = 1000;
+    tick();
+    expect((document.querySelector('.world-danger') as HTMLElement).hidden).toBe(false);
+    document.querySelector<HTMLButtonElement>('[data-menu="equipment"]')!.click();
+    for (let i = 0; i < 30; i++) tick();
+    expect((document.querySelector('.world-danger') as HTMLElement).hidden).toBe(true);
+    document.querySelector<HTMLButtonElement>('[data-close]')!.click();
+    tick();
+    expect(document.querySelector('[aria-label="Mascota derrotada"]')).toBeNull();
+    expect(document.querySelector('.world-health')!.textContent).toContain('148 / 148');
   });
   it('W casts a power without walking and arrow keys move the pet', () => {
     tick();

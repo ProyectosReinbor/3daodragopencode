@@ -25,6 +25,14 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Combate legible y recuperación — 16 de octubre de 2026
+
+Los monstruos preparan el golpe antes de aplicarlo: un círculo rojo fija el área del ataque y una advertencia explica cómo esquivarlo. Cada especie tiene un tiempo de preparación entre 0,7 y 1,4 segundos y un periodo de recuperación propio. Salir del círculo antes del golpe o cambiar de altura evita el daño. Los enemigos se detienen durante la preparación y regresan a su punto cuando pierden al jugador. Las advertencias se cancelan al pausar con menús o entrar a un edificio para evitar golpes instantáneos al regresar.
+
+La mascota muestra la cantidad de daño y un borde de impacto breve; el borde se oculta con la preferencia de movimiento reducido. Al llegar a cero de vida se pausa el juego y aparece la opción de volver al punto seguro con vida y maná completos, cuatro segundos de protección y sin descontar equipo, monedas, materiales ni misiones. Las recargas de poderes se conservan para coincidir con las del servidor. No se admiten otras acciones mientras está abierta la pantalla de derrota.
+
+Caminar e Impulso usan el mismo desplazamiento por pasos pequeños, con deslizamiento contra paredes y límites de pisos, terrazas y terreno. Esto impide atravesar fachadas delgadas con el desplazamiento corto. Las pruebas cubren esquiva, preparación, recuperación, pausa y colisiones del impulso. La vida recibida y la IA siguen siendo simulación local; el servidor mantiene las recompensas y los contadores de aventura, pero esta etapa no añade combate multijugador autoritativo.
+
 ### Primera aventura guiada — 16 de octubre de 2026
 
 Ari inicia un recorrido persistente de cinco pasos: recoger seis materiales desde el inicio de la aventura, derrotar tres monstruos de los parques, fabricar o poseer la Hoja del explorador, equiparla en la mascota activa y volver con el guía. La interfaz muestra el objetivo, su progreso, distancia en línea recta, flecha relativa a la cámara, anillo de destino y marca en el minimapa. Las instrucciones explican controles, extracción y receta; el panel permite avanzar cuando el servidor confirma los requisitos.

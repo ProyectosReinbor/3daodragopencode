@@ -692,3 +692,33 @@
 .world-adventure-tracker[hidden], .world-room-active .world-adventure-tracker,
 .world-guided-adventure .world-quest-tracker { display: none; }
 @media(max-height:520px) { .world-adventure-tracker { top: 105px; width: 215px; padding: 9px; } }
+.world-danger {
+  position: absolute;
+  bottom: 165px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border: 1px solid #ef8c65;
+  border-radius: 12px;
+  background: #2d1822e8;
+  color: #ffdaaa;
+  font-size: 13px;
+  pointer-events: none;
+}
+.world-damage-feedback {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  color: #ff9584;
+  font-size: 25px;
+  text-shadow: 0 2px 8px #07151d;
+  pointer-events: none;
+}
+.world-hit-flash {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 65px #d74b4b80;
+  pointer-events: none;
+}
+.world-danger[hidden], .world-damage-feedback[hidden], .world-hit-flash[hidden] { display: none; }
+@media(prefers-reduced-motion:reduce) { .world-hit-flash { display: none; } }

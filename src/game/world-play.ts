@@ -18,6 +18,9 @@ import {
   TorusGeometry,
   Fog,
   MeshLambertMaterial,
+  CircleGeometry,
+  RingGeometry,
+  Group,
 } from 'three';
 import type { Character } from './characters';
 import { totalStats } from './characters';
@@ -32,6 +35,13 @@ import { WORLD_ITEMS, MONSTER_REWARDS, initialWorldProgress } from '../../shared
 import './world-play.css';
 import { createWorldPresentation, type WorldPresentation } from './world-presentation';
 import { disposePetModel } from './pet-model';
+import {
+  createEnemyAttack,
+  cancelEnemyAttack,
+  stepEnemyAttack,
+  type EnemyAttackState,
+} from './enemy-combat';
+import { moveWithCollisions } from './world-movement';
 
 const safe = (value: string) =>
   value.replace(
@@ -55,6 +65,9 @@ export function mountWorldPlay(options: {
     mana = 100,
     shield = 0,
     zone: ZoneId = 'aldea';
+  let defeated = false,
+    invulnerableUntil = 0,
+    damageFeedbackUntil = 0;
   let frame = 0,
     last = performance.now(),
     attackAt = 0,
@@ -87,8 +100,10 @@ export function mountWorldPlay(options: {
   const model = buildNftModel({ ...pet, phoneId: '' });
   let world = training ? createWorld(scene, zone) : createCityWorld(scene);
   let presentation: WorldPresentation | undefined;
-  const respawns = new Map<Enemy, number>(),
-    strikes = new Map<Enemy, number>();
+  const respawns = new Map<Enemy, number>();
+  const attacks = new Map<Enemy, EnemyAttackState>(),
+    threats = new Map<Enemy, Group>(),
+    enemyScales = new Map<Enemy, Vector3>();
   const effects: { mesh: Mesh; end: number }[] = [];
   const choices =
     pet.powers?.map((id) => getAllAbilities().find((a) => a.id === id)).filter((a) => !!a) || [];
@@ -114,6 +129,107 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  root.insertAdjacentHTML(
+    'beforeend',
+    '<p class="world-danger" role="status" hidden></p><p class="world-damage-feedback" hidden></p><div class="world-hit-flash" aria-hidden="true" hidden></div>'
+  );
+  const dangerText = root.querySelector<HTMLElement>('.world-danger')!,
+    damageFeedback = root.querySelector<HTMLElement>('.world-damage-feedback')!,
+    hitFlash = root.querySelector<HTMLElement>('.world-hit-flash')!;
+  function stopThreat(enemy: Enemy, now: number) {
+    const state = attacks.get(enemy);
+    if (state) cancelEnemyAttack(state, now);
+    const indicator = threats.get(enemy);
+    if (indicator) indicator.visible = false;
+    const scale = enemyScales.get(enemy);
+    if (scale) enemy.mesh.scale.copy(scale);
+  }
+  function clearThreats(now: number) {
+    for (const enemy of attacks.keys()) stopThreat(enemy, now);
+    dangerText.hidden = true;
+  }
+  function showDefeat() {
+    defeated = true;
+    health = 0;
+    reset();
+    clearThreats(performance.now());
+    modal.hidden = false;
+    modal.innerHTML =
+      '<article role="dialog" aria-modal="true" aria-label="Mascota derrotada"><h2>Tu mascota necesita descansar</h2><p>Volverás al punto seguro con vida y maná completos. Conservas tu equipo, monedas, materiales y progreso de misiones.</p><button data-recover>Volver al punto seguro</button><button data-menu="exit">Salir al menú</button></article>';
+  }
+  function recover() {
+    defeated = false;
+    health = maxHealth();
+    mana = 100;
+    shield = 0;
+    invulnerableUntil = performance.now() + 4000;
+    damageFeedbackUntil = 0;
+    damageFeedback.hidden = true;
+    hitFlash.hidden = true;
+    const start = zoneConfig(zone).playerStart;
+    model.position.set(start.x, 0, start.z);
+    world.enemies.forEach((e) => e.mesh.position.copy(e.spawnPosition));
+    clearThreats(performance.now());
+    reset();
+    modal.hidden = true;
+    modal.replaceChildren();
+    notify('Recuperación completa. Tienes 4 segundos de protección y conservas tu progreso.');
+  }
+  function movePet(direction: Vector3, distance: number) {
+    const limit = world.groundSize / 2 - 3;
+    const bounds = activeRoom
+      ? {
+          minX: activeRoom.x - activeRoom.width / 2 + 0.8,
+          maxX: activeRoom.x + activeRoom.width / 2 - 0.8,
+          minZ: activeRoom.z - activeRoom.depth / 2 + 0.8,
+          maxZ: activeRoom.z + activeRoom.depth / 2 - 0.8,
+        }
+      : { minX: -limit, maxX: limit, minZ: -limit, maxZ: limit };
+    const next = moveWithCollisions(
+      model.position,
+      { x: direction.x * distance, z: direction.z * distance },
+      bounds,
+      (x, z) => !training && !activeRoom && !!scene.userData.cityBuildingAt?.(x, z)
+    );
+    model.position.x = next.x;
+    model.position.z = next.z;
+  }
+  function showThreat(enemy: Enemy, state: EnemyAttackState, radius: number, progress: number) {
+    let group = threats.get(enemy);
+    if (!group) {
+      group = new Group();
+      group.name = 'enemy-attack-warning';
+      const ring = new Mesh(
+        new RingGeometry(radius * 0.86, radius, 32),
+        new MeshLambertMaterial({
+          color: 0xff695b,
+          emissive: 0x872923,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: false,
+        })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      const fill = new Mesh(
+        new CircleGeometry(radius, 32),
+        new MeshLambertMaterial({
+          color: 0xff695b,
+          emissive: 0x872923,
+          transparent: true,
+          opacity: 0.16,
+          depthWrite: false,
+        })
+      );
+      fill.rotation.x = -Math.PI / 2;
+      fill.position.y = -0.01;
+      group.add(ring, fill);
+      scene.add(group);
+      threats.set(enemy, group);
+    }
+    group.visible = true;
+    group.position.set(state.aim.x, state.aim.y + 0.08, state.aim.z);
+    (group.children[1] as Mesh).scale.setScalar(0.3 + progress * 0.7);
+  }
   const adventureTracker = document.createElement('button');
   adventureTracker.className = 'world-adventure-tracker';
   adventureTracker.dataset.menu = 'adventure';
@@ -217,6 +333,9 @@ export function mountWorldPlay(options: {
       }
     });
     scene.clear();
+    attacks.clear();
+    threats.clear();
+    enemyScales.clear();
   }
   function prepare() {
     world.stations.forEach((s) => scene.remove(s.mesh));
@@ -357,7 +476,10 @@ export function mountWorldPlay(options: {
   else notify('Derrota al rival de prueba. Aquí no se gastan tus recursos reales.');
   const target = (range = 9) =>
     world.enemies
-      .filter((e) => !activeRoom && e.alive && e.mesh.position.distanceTo(model.position) < range)
+      .filter(
+        (e) =>
+          !defeated && !activeRoom && e.alive && e.mesh.position.distanceTo(model.position) < range
+      )
       .sort(
         (a, b) =>
           a.mesh.position.distanceTo(model.position) - b.mesh.position.distanceTo(model.position)
@@ -369,13 +491,13 @@ export function mountWorldPlay(options: {
     );
     mesh.rotation.x = Math.PI / 2;
     mesh.position.copy(position);
-    mesh.position.y = 0.7;
+    mesh.position.y = position.y + 0.7;
     scene.add(mesh);
     effects.push({ mesh, end: performance.now() + 600 });
   }
   async function attack(slot = -1) {
     const now = performance.now();
-    if (busy || !modal.hidden || (!training && !session)) return;
+    if (defeated || busy || !modal.hidden || (!training && !session)) return;
     if (slot < 0 && now < attackAt) return;
     if (slot >= 0 && (now < cooldown[slot] || mana < skills[slot].energyCost)) {
       notify('Espera la recarga o utiliza un elixir.');
@@ -394,10 +516,7 @@ export function mountWorldPlay(options: {
       if (effect?.type === 'heal') health = Math.min(maxHealth(), health + effect.value);
       if (effect?.type === 'shield') shield = now + 5000;
       if (slot === 2 || effect?.type === 'dash') {
-        model.position.addScaledVector(
-          new Vector3(Math.sin(model.rotation.y), 0, Math.cos(model.rotation.y)),
-          3
-        );
+        movePet(new Vector3(Math.sin(model.rotation.y), 0, Math.cos(model.rotation.y)), 3);
       }
       burst(model.position);
       notify(skills[slot].name);
@@ -436,6 +555,7 @@ export function mountWorldPlay(options: {
           kind: enemy.kind,
           enemy: `${training ? zone : 'city'}:${world.enemies.indexOf(enemy)}`,
         });
+        if (disposed) return;
         enemy.health = data.enemyHealth;
         reward = data.reward;
       }
@@ -565,7 +685,7 @@ export function mountWorldPlay(options: {
         return;
       }
       const data = await request({ action: 'begin_gather', node: node.id });
-      if (disposed) return;
+      if (disposed || defeated) return;
       modal.hidden = false;
       modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Extracción"><button data-close aria-label="Cerrar extracción">✕</button><h2>${safe(node.name)}</h2><p>Extrayendo material…</p><progress max="3" value="0"></progress><button data-gather="${node.id}" disabled>Recoger material</button></article>`;
       const start = performance.now();
@@ -596,6 +716,7 @@ export function mountWorldPlay(options: {
   function interact() {
     if (training) {
       const e = world.enemies[0];
+      stopThreat(e, performance.now());
       e.alive = true;
       e.mesh.visible = true;
       e.health = e.maxHealth;
@@ -660,7 +781,7 @@ export function mountWorldPlay(options: {
       scene.remove(model);
       release();
       respawns.clear();
-      strikes.clear();
+      attacks.clear();
       effects.length = 0;
       zone = portal.targetZone;
       world = createWorld(scene, zone);
@@ -669,6 +790,7 @@ export function mountWorldPlay(options: {
     } else notify('Acércate a un lugar del mapa o al boticario.');
   }
   async function consume(item: 'potions' | 'mana') {
+    if (defeated) return;
     if (busy || !progress[item] || performance.now() < consumeAt || (!training && !session)) return;
     if ((item === 'potions' && health >= maxHealth()) || (item === 'mana' && mana >= 100)) {
       notify('Ya estás al máximo.');
@@ -678,6 +800,7 @@ export function mountWorldPlay(options: {
     try {
       if (training) progress[item]--;
       else await request({ action: 'consume', item });
+      if (disposed || defeated) return;
       if (item === 'potions') health = Math.min(maxHealth(), health + maxHealth() * 0.6);
       else mana = Math.min(100, mana + 60);
       consumeAt = performance.now() + 1500;
@@ -697,6 +820,14 @@ export function mountWorldPlay(options: {
     async (event) => {
       const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
       if (!button) return;
+      if (defeated && button.hasAttribute('data-recover')) {
+        recover();
+        return;
+      }
+      if (defeated && button.dataset.menu !== 'exit') {
+        showDefeat();
+        return;
+      }
       if (button.dataset.menu === 'exit') exit();
       else if (button.dataset.menu === 'adventure') adventureDialog();
       else if (button.dataset.adventure) {
@@ -833,6 +964,10 @@ export function mountWorldPlay(options: {
       )
         event.preventDefault();
       pressed.add(key);
+      if (defeated) {
+        if (key === 'escape') exit();
+        return;
+      }
       if (event.repeat) return;
       if (key === 'escape') {
         if (!modal.hidden) modal.hidden = true;
@@ -952,6 +1087,7 @@ export function mountWorldPlay(options: {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     if (
+      !defeated &&
       modal.hidden &&
       !document.hidden &&
       !(innerHeight > innerWidth && matchMedia('(pointer:coarse)').matches)
@@ -965,34 +1101,7 @@ export function mountWorldPlay(options: {
       );
       if (direction.length() > 1) direction.normalize();
       direction.applyAxisAngle(new Vector3(0, 1, 0), cameraYaw);
-      const previousX = model.position.x,
-        previousZ = model.position.z;
-      model.position.addScaledVector(direction, dt * (4 + stats().spd * 0.08));
-      if (
-        !training &&
-        !activeRoom &&
-        scene.userData.cityBuildingAt?.(model.position.x, model.position.z) &&
-        !scene.userData.cityBuildingAt?.(previousX, previousZ)
-      ) {
-        if (!scene.userData.cityBuildingAt(model.position.x, previousZ))
-          model.position.z = previousZ;
-        else if (!scene.userData.cityBuildingAt(previousX, model.position.z))
-          model.position.x = previousX;
-        else model.position.set(previousX, model.position.y, previousZ);
-      }
-      const limit = world.groundSize / 2 - 3;
-      model.position.x = Math.max(-limit, Math.min(limit, model.position.x));
-      model.position.z = Math.max(-limit, Math.min(limit, model.position.z));
-      if (activeRoom) {
-        model.position.x = Math.max(
-          activeRoom.x - activeRoom.width / 2 + 0.8,
-          Math.min(activeRoom.x + activeRoom.width / 2 - 0.8, model.position.x)
-        );
-        model.position.z = Math.max(
-          activeRoom.z - activeRoom.depth / 2 + 0.8,
-          Math.min(activeRoom.z + activeRoom.depth / 2 - 0.8, model.position.z)
-        );
-      }
+      movePet(direction, dt * (4 + stats().spd * 0.08));
       if (direction.length() > 0.05) model.rotation.y = Math.atan2(direction.x, direction.z);
       model.position.y =
         (activeRoom
@@ -1002,14 +1111,17 @@ export function mountWorldPlay(options: {
             : (scene.userData.citySurfaceHeight?.(model.position.x, model.position.z) || 0) +
               0.13) + (direction.length() > 0.05 ? Math.abs(Math.sin(now * 0.012)) * 0.08 : 0);
       mana = Math.min(100, mana + dt * 4);
+      let incoming = 0;
       world.enemies.forEach((enemy) => {
         if (activeRoom) {
+          stopThreat(enemy, now);
           enemy.mesh.visible = false;
           return;
         }
         if (!training && enemy.alive)
           enemy.mesh.visible = enemy.mesh.position.distanceTo(model.position) < 110;
         if (!enemy.alive) {
+          stopThreat(enemy, now);
           if (respawns.has(enemy) && now > respawns.get(enemy)!) {
             enemy.alive = true;
             enemy.mesh.visible = true;
@@ -1020,27 +1132,64 @@ export function mountWorldPlay(options: {
           return;
         }
         const distance = enemy.mesh.position.distanceTo(model.position);
-        if (distance < 10 && distance > 1.5) {
+        let state = attacks.get(enemy);
+        if (!state) {
+          state = createEnemyAttack();
+          attacks.set(enemy, state);
+          enemyScales.set(enemy, enemy.mesh.scale.clone());
+        }
+        if (now < invulnerableUntil || health <= 0) {
+          stopThreat(enemy, now);
+          return;
+        }
+        if (state.phase === 'idle' && distance < 10 && distance > 1.5) {
           const chase = model.position.clone().sub(enemy.mesh.position).setY(0).normalize();
-          enemy.mesh.position.addScaledVector(chase, dt * enemy.speed);
+          const next = enemy.mesh.position.clone().addScaledVector(chase, dt * enemy.speed);
+          if (training || !scene.userData.cityBuildingAt?.(next.x, next.z))
+            enemy.mesh.position.copy(next);
           enemy.mesh.rotation.y = Math.atan2(chase.x, chase.z);
         }
-        if (distance < 1.9 && now > (strikes.get(enemy) || 0)) {
-          strikes.set(enemy, now + 1400);
-          health -= Math.max(1, enemy.damage - stats().def * 0.3) * (now < shield ? 0.25 : 1);
+        if (
+          state.phase === 'idle' &&
+          distance >= 10 &&
+          enemy.mesh.position.distanceTo(enemy.spawnPosition) > 0.2
+        ) {
+          const home = enemy.spawnPosition.clone().sub(enemy.mesh.position).setY(0);
+          const step = Math.min(home.length(), dt * enemy.speed);
+          enemy.mesh.position.addScaledVector(home.normalize(), step);
+        }
+        const strike = stepEnemyAttack(state, enemy.kind, now, enemy.mesh.position, model.position);
+        if (state.phase === 'windup') {
+          incoming++;
+          showThreat(enemy, state, strike.radius, strike.progress);
+          const base = enemyScales.get(enemy)!;
+          enemy.mesh.scale.set(
+            base.x * (1 + strike.progress * 0.1),
+            base.y * (1 - strike.progress * 0.12),
+            base.z * (1 + strike.progress * 0.1)
+          );
+        } else {
+          const marker = threats.get(enemy);
+          if (marker) marker.visible = false;
+          enemy.mesh.scale.copy(enemyScales.get(enemy)!);
+        }
+        if (strike.hit) {
+          const damage = Math.max(1, enemy.damage - stats().def * 0.3) * (now < shield ? 0.25 : 1);
+          health -= damage;
+          damageFeedbackUntil = now + 450;
+          damageFeedback.textContent = '−' + Math.ceil(damage);
+          damageFeedback.hidden = false;
+          hitFlash.hidden = false;
           burst(model.position);
         }
         enemy.hpBar.scale.x = Math.max(0.001, enemy.health / enemy.maxHealth);
       });
-      if (health <= 0) {
-        health = maxHealth();
-        mana = 100;
-        const start = zoneConfig(zone).playerStart;
-        model.position.set(start.x, 0, start.z);
-        world.enemies.forEach((e) => e.mesh.position.copy(e.spawnPosition));
-        notify('Volviste al punto seguro. Conservas tu equipo y monedas.');
-      }
-    }
+      dangerText.hidden = incoming === 0;
+      dangerText.textContent = incoming ? '¡Apártate del círculo rojo!' : '';
+      if (health <= 0) showDefeat();
+    } else clearThreats(now);
+    damageFeedback.hidden = now >= damageFeedbackUntil;
+    hitFlash.hidden = now >= damageFeedbackUntil - 300;
     for (let i = effects.length - 1; i >= 0; i--) {
       const effect = effects[i];
       effect.mesh.scale.setScalar(1 + (600 - (effect.end - now)) / 180);
@@ -1145,13 +1294,13 @@ export function mountWorldPlay(options: {
     for (const item of ['potions', 'mana'] as const) {
       const button = root.querySelector<HTMLButtonElement>(`[data-use="${item}"]`)!;
       button.querySelector('small')!.textContent = `× ${progress[item]}`;
-      button.disabled = !progress[item] || busy;
+      button.disabled = defeated || !progress[item] || busy;
     }
     for (let i = 0; i < 4; i++) {
       const button = root.querySelector<HTMLButtonElement>(`[data-power="${i}"]`)!;
       const remaining = Math.max(0, cooldown[i] - now);
       button.querySelector('em')!.textContent = remaining ? `${Math.ceil(remaining / 1000)}s` : '';
-      button.disabled = remaining > 0 || mana < skills[i].energyCost || busy;
+      button.disabled = defeated || remaining > 0 || mana < skills[i].energyCost || busy;
     }
     if (!training) {
       const active = (progress.acceptedQuests || []).find(
@@ -1196,7 +1345,7 @@ export function mountWorldPlay(options: {
     }
     const enemy = target(12);
     root.querySelector('.world-target')!.textContent = enemy
-      ? `${enemy.name} · ${Math.ceil(enemy.health)} / ${enemy.maxHealth} ❤️`
+      ? `${enemy.name} · ${Math.ceil(enemy.health)} / ${enemy.maxHealth} ❤️${attacks.get(enemy)?.phase === 'windup' ? ' · Preparando ataque' : ''}`
       : '';
     frame = requestAnimationFrame(loop);
   }
