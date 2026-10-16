@@ -238,6 +238,7 @@ export function mountWorldPlay(options: {
   adventureTracker.innerHTML =
     '<span class="world-adventure-arrow" aria-hidden="true">↑</span><strong></strong><small></small>';
   root.append(adventureTracker);
+  let waypoint: { id: string; name: string; x: number; z: number } | null = null;
   const destinationMarker = new Mesh(
     new TorusGeometry(1.4, 0.13, 5, 24),
     new MeshLambertMaterial({ color: 0xffd98a, emissive: 0x74551e })
@@ -614,14 +615,26 @@ export function mountWorldPlay(options: {
     svg.querySelector('[data-map-roads]')!.innerHTML = cityRoadMarkup(mapX, mapZ, mapSpan, true);
     modal.querySelector('[data-map-scale]')!.textContent =
       'Ancho visible: ' + (mapSpan / 1000).toFixed(1) + ' km · Norte ↑';
+    svg.querySelector('[data-waypoint-line]')?.remove();
+    if (waypoint)
+      svg.insertAdjacentHTML(
+        'beforeend',
+        `<g data-waypoint-line><line x1="${model.position.x}" y1="${model.position.z}" x2="${waypoint.x}" y2="${waypoint.z}" stroke="#83ddf5" stroke-width="8" stroke-dasharray="24 18"/><circle cx="${waypoint.x}" cy="${waypoint.z}" r="40" fill="none" stroke="#83ddf5" stroke-width="12"/></g>`
+      );
   }
   function cityMap() {
     modal.hidden = false;
     mapX = model.position.x;
     mapZ = model.position.z;
     mapSpan = 6000;
-    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Calles reales</h2><p>Geografía de OpenStreetMap · 1 unidad = 1 metro. Biomas y edificios de fantasía.</p><div class="world-map-controls"><button data-map-control="in" aria-label="Acercar mapa">＋</button><button data-map-control="out" aria-label="Alejar mapa">−</button><button data-map-control="north" aria-label="Mover mapa al norte">↑</button><button data-map-control="south" aria-label="Mover mapa al sur">↓</button><button data-map-control="west" aria-label="Mover mapa al oeste">←</button><button data-map-control="east" aria-label="Mover mapa al este">→</button><button data-map-control="player">Mi pet</button><button data-map-control="all">Ciudad</button></div><p data-map-scale></p><svg data-city-map style="width:100%;height:360px;background:#07151d" role="img" aria-label="Calles y lugares reales de Villavicencio">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}<g data-map-roads></g>${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="35" fill="#83ddc4"><title>${safe(l.name)}</title></circle><text x="${l.x + 45}" y="${l.z}" font-size="50" fill="#fff" stroke="#07151d" stroke-width="8" paint-order="stroke">${safe(l.name)}</text>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="45" fill="white"/></svg><p><a href="${CITY_WORLD.sourceUrl}" target="_blank" rel="noopener noreferrer">${safe(CITY_WORLD.attribution)}</a> · ODbL · Datos importados: ${CITY_WORLD.importedAt.slice(0, 10)}</p><h3>Lugares</h3>${CITY_WORLD.landmarks.map((l) => `<p><button data-map-place="${l.id}">${safe(l.name)}</button> · ${Math.round(Math.hypot(model.position.x - l.x, model.position.z - l.z))} m en línea recta</p>`).join('')}<p>Cooperativa Chorillano: sede pendiente de confirmar.</p><h3>Materiales y hallazgos</h3>${CITY_WORLD.nodes.map((n) => `<p>${safe(n.name)} · ${WORLD_MATERIALS[n.material]} · ${Math.round(Math.hypot(model.position.x - n.x, model.position.z - n.z))} m</p>`).join('')}</article>`;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Calles reales</h2><p>Geografía de OpenStreetMap · 1 unidad = 1 metro. Biomas y edificios de fantasía.</p><div class="world-map-controls"><button data-map-control="in" aria-label="Acercar mapa">＋</button><button data-map-control="out" aria-label="Alejar mapa">−</button><button data-map-control="north" aria-label="Mover mapa al norte">↑</button><button data-map-control="south" aria-label="Mover mapa al sur">↓</button><button data-map-control="west" aria-label="Mover mapa al oeste">←</button><button data-map-control="east" aria-label="Mover mapa al este">→</button><button data-map-control="player">Mi pet</button><button data-map-control="all">Ciudad</button></div><p data-map-scale></p><svg data-city-map style="width:100%;height:360px;background:#07151d" role="img" aria-label="Calles y lugares reales de Villavicencio">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}<g data-map-roads></g>${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="35" fill="#83ddc4"><title>${safe(l.name)}</title></circle><text x="${l.x + 45}" y="${l.z}" font-size="50" fill="#fff" stroke="#07151d" stroke-width="8" paint-order="stroke">${safe(l.name)}</text>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="45" fill="white"/></svg><p><a href="${CITY_WORLD.sourceUrl}" target="_blank" rel="noopener noreferrer">${safe(CITY_WORLD.attribution)}</a> · ODbL · Datos importados: ${CITY_WORLD.importedAt.slice(0, 10)}</p><h3>Lugares</h3>${CITY_WORLD.landmarks.map((l) => `<p><button data-map-place="${l.id}">${safe(l.name)}</button> · ${Math.round(Math.hypot(model.position.x - l.x, model.position.z - l.z))} m en línea recta</p>`).join('')}<p>Cooperativa Chorillano: sede pendiente de confirmar.</p><h3>Materiales y hallazgos</h3>${CITY_WORLD.nodes.map((n) => `<p><button data-map-place="${n.id}">${safe(n.name)}</button> · ${WORLD_MATERIALS[n.material]} · ${Math.round(Math.hypot(model.position.x - n.x, model.position.z - n.z))} m</p>`).join('')}</article>`;
     refreshCityMap();
+    modal
+      .querySelector('article')!
+      .insertAdjacentHTML(
+        'afterbegin',
+        `<section class="world-navigation"><p>${waypoint ? 'Destino: ' + safe(waypoint.name) : 'Selecciona un lugar y pulsa Seguir destino.'} · Guía en línea recta, sin ruta por calles.</p>${waypoint ? '<button data-clear-waypoint>Quitar destino y volver a la aventura</button>' : ''}<div data-map-selection></div></section>`
+      );
     modal
       .querySelector('[data-city-map]')!
       .insertAdjacentHTML(
@@ -851,6 +864,23 @@ export function mountWorldPlay(options: {
           busy = false;
           if (!disposed) adventureDialog();
         }
+      } else if (button.dataset.menu === 'navigation') cityMap();
+      else if (button.hasAttribute('data-clear-waypoint')) {
+        waypoint = null;
+        cityMap();
+      } else if (button.dataset.followPlace) {
+        const place = [
+          ...CITY_WORLD.landmarks,
+          ...CITY_VENUES,
+          ...CITY_PARKS,
+          ...CITY_WORLD.nodes,
+        ].find((p) => p.id === button.dataset.followPlace);
+        if (place) {
+          waypoint = { id: place.id, name: place.name, x: place.x, z: place.z };
+          modal.hidden = true;
+          reset();
+          notify('Sigue la flecha hacia ' + place.name + '. Distancia en línea recta.');
+        }
       } else if (button.dataset.roomLevel !== undefined && activeRoom) {
         const level = Number(button.dataset.roomLevel);
         if (Number.isInteger(level) && level >= 0 && level <= activeRoom.floors)
@@ -881,13 +911,18 @@ export function mountWorldPlay(options: {
           mapZ = (northWest.z + southEast.z) / 2;
           mapSpan = Math.max(southEast.x - northWest.x, southEast.z - northWest.z) + 400;
         }
-        const place = [...CITY_WORLD.landmarks, ...CITY_VENUES, ...CITY_PARKS].find(
-          (l) => l.id === button.dataset.mapPlace
-        );
+        const place = [
+          ...CITY_WORLD.landmarks,
+          ...CITY_VENUES,
+          ...CITY_PARKS,
+          ...CITY_WORLD.nodes,
+        ].find((l) => l.id === button.dataset.mapPlace);
         if (place) {
           mapX = place.x;
           mapZ = place.z;
           mapSpan = 2000;
+          modal.querySelector('[data-map-selection]')!.innerHTML =
+            `<h3>${safe(place.name)}</h3><button data-follow-place="${safe(place.id)}">Seguir destino</button>`;
         }
         mapX = Math.max(-19000, Math.min(19000, mapX));
         mapZ = Math.max(-19000, Math.min(19000, mapZ));
@@ -1223,18 +1258,40 @@ export function mountWorldPlay(options: {
     }
     if (!training) {
       const goal = adventureObjective(progress, pet.id);
-      adventureTracker.hidden = goal.stage === 5;
-      adventureTracker.querySelector('strong')!.textContent = goal.title;
-      const destination = goal.destination;
-      adventureTracker.querySelector('small')!.textContent = destination
-        ? `${goal.stage >= 0 && goal.stage < 4 ? goal.current + '/' + goal.total + ' · ' : ''}${Math.round(Math.hypot(destination.x - model.position.x, destination.z - model.position.z))} m · ${goal.ready ? 'Ver siguiente paso' : 'Ver objetivo'}`
-        : `${goal.current}/${goal.total} · ${goal.ready ? 'Continuar' : 'Abrir objetivo'}`;
+      if (
+        waypoint &&
+        modal.hidden &&
+        !defeated &&
+        !activeRoom &&
+        Math.hypot(waypoint.x - model.position.x, waypoint.z - model.position.z) <= 8
+      ) {
+        notify('Llegaste a ' + waypoint.name + '. Usa F o Explorar para interactuar.');
+        waypoint = null;
+      }
+      adventureTracker.hidden = !waypoint && goal.stage === 5;
+      adventureTracker.dataset.menu = waypoint ? 'navigation' : 'adventure';
+      adventureTracker.setAttribute(
+        'aria-label',
+        waypoint ? 'Ver destino en el mapa' : 'Ver primera aventura'
+      );
+      adventureTracker.classList.toggle('world-navigation-active', !!waypoint);
+      adventureTracker.querySelector('strong')!.textContent = waypoint?.name || goal.title;
+      const destination = waypoint || goal.destination;
+      adventureTracker.querySelector('small')!.textContent = waypoint
+        ? `${Math.round(Math.hypot(waypoint.x - model.position.x, waypoint.z - model.position.z))} m en línea recta · Ver mapa`
+        : destination
+          ? `${goal.stage >= 0 && goal.stage < 4 ? goal.current + '/' + goal.total + ' · ' : ''}${Math.round(Math.hypot(destination.x - model.position.x, destination.z - model.position.z))} m · ${goal.ready ? 'Ver siguiente paso' : 'Ver objetivo'}`
+          : `${goal.current}/${goal.total} · ${goal.ready ? 'Continuar' : 'Abrir objetivo'}`;
       const arrow = adventureTracker.querySelector<HTMLElement>('.world-adventure-arrow')!;
       arrow.hidden = !destination;
-      destinationMarker.visible = !!destination && !activeRoom && goal.stage !== 5;
+      destinationMarker.visible = !!destination && !activeRoom && (!!waypoint || goal.stage !== 5);
+      (destinationMarker.material as MeshLambertMaterial).color.setHex(
+        waypoint ? 0x83ddf5 : 0xffd98a
+      );
+      adventurePin?.setAttribute('stroke', waypoint ? '#83ddf5' : '#ffd98a');
       adventurePin?.setAttribute(
         'visibility',
-        destination && goal.stage !== 5 ? 'visible' : 'hidden'
+        destination && (waypoint || goal.stage !== 5) ? 'visible' : 'hidden'
       );
       if (destination) {
         const dx = destination.x - model.position.x,
@@ -1251,7 +1308,7 @@ export function mountWorldPlay(options: {
         );
         destinationMarker.scale.setScalar(1 + Math.sin(now * 0.003) * 0.08);
       }
-      root.classList.toggle('world-guided-adventure', goal.stage !== 5);
+      root.classList.toggle('world-guided-adventure', !!waypoint || goal.stage !== 5);
     }
     const radius = activeRoom && !activeRoom.terrace ? 4.2 : Math.hypot(10, 8.5),
       horizontal = radius * Math.cos(cameraPitch);

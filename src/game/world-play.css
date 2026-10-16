@@ -689,6 +689,9 @@
 .world-adventure-tracker strong { font-size: 13px; }
 .world-adventure-tracker small { grid-column: 2; font-size: 11px; }
 .world-adventure-arrow { grid-row: span 2; align-self: center; font-size: 28px; text-align: center; }
+.world-navigation-active { color: #b5edff; border-color: #83ddf577; }
+.world-navigation { border: 1px solid #83ddf544; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+.world-navigation button { min-height: 44px; }
 .world-adventure-tracker[hidden], .world-room-active .world-adventure-tracker,
 .world-guided-adventure .world-quest-tracker { display: none; }
 @media(max-height:520px) { .world-adventure-tracker { top: 105px; width: 215px; padding: 9px; } }

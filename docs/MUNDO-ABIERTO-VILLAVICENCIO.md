@@ -25,6 +25,12 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Destinos de exploración — 16 de octubre de 2026
+
+El mapa permite seleccionar lugares de referencia, negocios, parques y nodos de materiales y pulsar «Seguir destino». La guía muestra nombre, distancia en metros y flecha relativa a la cámara; comparte el espacio del objetivo de aventura para evitar superponer paneles. El destino aparece en el minimapa, en el mundo y mediante una línea discontinua en el mapa completo. La indicación es en línea recta: todavía no calcula una ruta transitable por calles ni evita edificios.
+
+Al llegar a ocho metros en el exterior se muestra un aviso y vuelve el objetivo de aventura. Tocar la guía abre el mapa; «Quitar destino» permite cancelar y recuperar la guía de misión sin modificar su progreso. Los destinos son temporales durante la sesión y no otorgan recompensas ni teletransportan al personaje. Las pruebas verifican selección de negocios y recursos, marcas del mapa y cancelación.
+
 ### Combate legible y recuperación — 16 de octubre de 2026
 
 Los monstruos preparan el golpe antes de aplicarlo: un círculo rojo fija el área del ataque y una advertencia explica cómo esquivarlo. Cada especie tiene un tiempo de preparación entre 0,7 y 1,4 segundos y un periodo de recuperación propio. Salir del círculo antes del golpe o cambiar de altura evita el daño. Los enemigos se detienen durante la preparación y regresan a su punto cuando pierden al jugador. Las advertencias se cancelan al pausar con menús o entrar a un edificio para evitar golpes instantáneos al regresar.

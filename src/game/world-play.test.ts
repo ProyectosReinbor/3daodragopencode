@@ -5,6 +5,7 @@ import { createProfile } from './profile';
 import { initialWorldProgress } from '../../shared/world-items.js';
 import { startAdventure } from '../../shared/world-adventure.js';
 import { CITY_BUILDINGS, CITY_VENUES } from '../../shared/city-life.js';
+import { CITY_WORLD } from '../../shared/city-world.js';
 import type { Enemy } from './world';
 
 const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false }));
@@ -274,6 +275,50 @@ describe('full screen world controls', () => {
       'Reúne tus provisiones'
     );
   });
+  it('follows a chosen map destination and restores the adventure when cancelled', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ session: 'navigation-qa', profile }) })
+    );
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    tick();
+    document.querySelector<HTMLButtonElement>('[data-minimap]')!.click();
+    const venue = CITY_VENUES[0];
+    document.querySelector<HTMLButtonElement>(`[data-map-place="${venue.id}"]`)!.click();
+    expect(document.querySelector('[data-map-selection]')!.textContent).toContain(venue.name);
+    document.querySelector<HTMLButtonElement>('[data-follow-place]')!.click();
+    tick();
+    const tracker = document.querySelector<HTMLButtonElement>(
+      '[aria-label="Ver destino en el mapa"]'
+    )!;
+    expect(tracker.textContent).toContain(venue.name);
+    expect(tracker.textContent).toContain('línea recta');
+    expect(document.querySelector('[data-adventure-pin]')!.getAttribute('cx')).toBe(
+      String(venue.x)
+    );
+    tracker.click();
+    expect(document.querySelector('[data-waypoint-line]')).not.toBeNull();
+    document.querySelector<HTMLButtonElement>('[data-clear-waypoint]')!.click();
+    tick();
+    expect(document.querySelector('[aria-label="Ver primera aventura"]')!.textContent).toContain(
+      'Tu primera aventura'
+    );
+    expect(document.querySelector('[data-waypoint-line]')).toBeNull();
+    const node = CITY_WORLD.nodes[0];
+    document.querySelector<HTMLButtonElement>(`[data-map-place="${node.id}"]`)!.click();
+    document.querySelector<HTMLButtonElement>('[data-follow-place]')!.click();
+    tick();
+    expect(document.querySelector('[aria-label="Ver destino en el mapa"]')!.textContent).toContain(
+      node.name
+    );
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);
