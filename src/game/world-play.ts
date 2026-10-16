@@ -6,6 +6,7 @@ import { WORLD_MATERIALS, WORLD_RECIPES } from '../../shared/world-crafting.js';
 import { WORLD_QUESTS, QUEST_POSTS, questProgress } from '../../shared/world-quests.js';
 import { questStatus, nearestQuestPlace, type QuestStatus } from './quest-journal';
 import { equipmentStats, previewEquipment, type EquipmentStats } from './equipment-preview';
+import { planRecipe, nearestMaterialSource } from './forge-planner';
 import {
   adventureObjective,
   ADVENTURE_GUIDE,
@@ -751,13 +752,21 @@ export function mountWorldPlay(options: {
       .map(([id, name]) => `${name}: ${progress.materials?.[id] || 0}`)
       .join(' · ')}</p>${Object.entries(WORLD_RECIPES)
       .map(([id, r]) => {
-        const owned = progress.items.includes(r.output),
-          enough = Object.entries(r.cost).every(([m, n]) => (progress.materials?.[m] || 0) >= n);
-        return `<button data-craft="${id}" ${owned || !enough ? 'disabled' : ''}>${safe(r.name)}<small>${Object.entries(
-          r.cost
-        )
-          .map(([m, n]) => `${WORLD_MATERIALS[m]} ${progress.materials?.[m] || 0}/${n}`)
-          .join(' · ')} · ${owned ? 'Ya fabricado' : 'Fabricar'}</small></button>`;
+        const plan = planRecipe(progress, id)!;
+        const preview = previewEquipment(
+          totalStats(pet),
+          progress.equipped[pet.id] || {},
+          r.output
+        )!;
+        const changes =
+          (Object.keys(statLabels) as (keyof EquipmentStats)[])
+            .filter((stat) => preview.delta[stat] !== 0)
+            .map(
+              (stat) =>
+                `${statLabels[stat]} ${preview.delta[stat] > 0 ? '+' : ''}${preview.delta[stat]}`
+            )
+            .join(' · ') || 'Sin cambios de estadísticas';
+        return `<section class="world-forge-recipe" data-recipe="${id}"><h3>${safe(r.name)}</h3><p>${plan.owned ? 'Ya tienes esta pieza' : plan.ready ? 'Lista para fabricar' : 'Faltan materiales'}</p><p>Al equipar: ${changes}. Reemplaza ${preview.replaced && WORLD_ITEMS[preview.replaced] ? safe(WORLD_ITEMS[preview.replaced].name) : 'una ranura vacía'}.</p><ul>${plan.ingredients.map((ingredient) => `<li>${WORLD_MATERIALS[ingredient.material]}: ${ingredient.owned}/${ingredient.required} · ${ingredient.missing ? 'Faltan ' + ingredient.missing : 'Completo'}${ingredient.missing && !plan.owned ? ` <button data-material-location="${ingredient.material}">Buscar ${WORLD_MATERIALS[ingredient.material]}</button>` : ''}</li>`).join('')}</ul><button data-craft="${id}" ${!plan.ready || busy || !session ? 'disabled' : ''}>${plan.owned ? 'Ya fabricado' : 'Fabricar ' + safe(r.name)}</button>${plan.owned ? '<button data-menu="equipment">Ver en Equipo</button>' : ''}</section>`;
       })
       .join('')}<p>Equipa tus creaciones desde Equipo.</p></article>`;
   }
@@ -937,6 +946,22 @@ export function mountWorldPlay(options: {
           busy = false;
           if (!disposed) adventureDialog();
         }
+      } else if (button.dataset.materialLocation) {
+        const source = nearestMaterialSource(
+          button.dataset.materialLocation,
+          model.position,
+          CITY_WORLD.nodes,
+          progress.resourceCooldowns || {},
+          Date.now() + serverOffset
+        );
+        if (source) {
+          cityMap();
+          selectMapPlace(source.node);
+          if (source.waitSeconds)
+            notify(
+              `La fuente cercana se recupera en ${source.waitSeconds} s. Puedes marcarla para volver.`
+            );
+        } else notify('No hay fuentes de este material en el mapa actual.');
       } else if (button.dataset.equipmentFilter) {
         if (['all', 'weapon', 'armor', 'relic'].includes(button.dataset.equipmentFilter)) {
           equipmentFilter = button.dataset.equipmentFilter;
@@ -1025,6 +1050,7 @@ export function mountWorldPlay(options: {
       else if (button.dataset.craft || button.dataset.gather || button.dataset.quest) {
         if (busy || !session) return;
         busy = true;
+        if (button.dataset.craft) forge();
         try {
           const data = await request(
             button.dataset.craft
@@ -1048,6 +1074,7 @@ export function mountWorldPlay(options: {
           notify((e as Error).message);
         } finally {
           busy = false;
+          if (!disposed && !modal.hidden && modal.querySelector('[aria-label="Forja"]')) forge();
         }
       } else if (button.hasAttribute('data-minimap')) cityMap();
       else if (button.dataset.menu === 'fullscreen') {

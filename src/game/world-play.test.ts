@@ -410,6 +410,38 @@ describe('full screen world controls', () => {
     tick();
     expect(document.querySelector('.world-health')!.textContent).toContain('/ 148');
   }, 20000);
+  it('shows recipe shortages and finds an available source of the missing material', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    profile.world.materials = { mineral: 3, madera: 2 };
+    profile.world.resourceCooldowns = { 'starter-ore': Date.now() + 60000 };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ session: 'forge-plan-qa', profile }) });
+    vi.stubGlobal('fetch', fetchMock);
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    key('ArrowDown');
+    tick();
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowDown' }));
+    key('f');
+    const recipe = document.querySelector('[data-recipe="hoja"]')!;
+    expect(recipe.textContent).toContain('Faltan 1');
+    expect(recipe.textContent).toContain('Al equipar');
+    expect(recipe.querySelector<HTMLButtonElement>('[data-craft="hoja"]')!.disabled).toBe(true);
+    expect(recipe.querySelector('[data-material-location="madera"]')).toBeNull();
+    const requests = fetchMock.mock.calls.length;
+    recipe.querySelector<HTMLButtonElement>('[data-material-location="mineral"]')!.click();
+    const selected =
+      document.querySelector<HTMLButtonElement>('[data-follow-place]')!.dataset.followPlace;
+    const node = CITY_WORLD.nodes.find((n) => n.id === selected)!;
+    expect(node.material).toBe('mineral');
+    expect(node.id).not.toBe('starter-ore');
+    expect(fetchMock.mock.calls.length).toBe(requests);
+    expect(profile.world.materials.mineral).toBe(3);
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);

@@ -25,6 +25,12 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Forja y búsqueda de materiales — 16 de octubre de 2026
+
+Cada receta muestra sus cantidades disponibles, requisitos y faltantes, además de la variación de estadísticas frente a la pieza equipada. Fabricar conserva la validación del servidor; los botones se bloquean mientras se procesa la petición y las piezas ya poseídas ofrecen acceso a Equipo. Consultar recetas o buscar materiales no consume recursos.
+
+«Buscar material» abre el mapa con una fuente del material requerido. Prioriza las fuentes sin recarga conocida y elige la más cercana en línea recta. Si todas están recuperándose, propone la más cercana e informa los segundos de espera según el reloj del servidor. Esta orientación no reserva un nodo ni garantiza un camino transitable; el servidor vuelve a comprobar disponibilidad al recoger. Las pruebas cubren faltantes, recetas ya poseídas, fuentes en recarga y selección desde la interfaz.
+
 ### Comparación de equipo — 16 de octubre de 2026
 
 El panel Equipo muestra las estadísticas actuales, las tres ranuras y filtros de armas, armaduras y reliquias. «Comparar» calcula una sustitución local: resta la pieza de esa ranura, añade la candidata y muestra valores actuales, previstos y diferencias con signo. Las reliquias que cambian de atributo muestran tanto la pérdida como la ganancia, incluida la vida máxima derivada de Vitalidad. La vista previa no envía peticiones ni modifica el inventario.
