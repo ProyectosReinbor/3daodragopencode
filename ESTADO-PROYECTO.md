@@ -310,8 +310,7 @@ type AppScreen =
 
 - **URL**: `https://aodaseadmin.reinbor.cloud/`
 - **Login**: POST `/api/admin/login` con `{username, password}`
-- **Username**: `ProyectosReinbor`
-- **Password**: `reinbor-2026`
+- **Credenciales**: se configuran de forma privada; no guardar usuarios administrativos ni contraseñas en este documento.
 - **Token**: JWT firmado con JWT_SECRET, role=`admin`, vigencia 24h
 - **Header auth**: `Authorization: Bearer <token>`
 - **Vistas**: Dashboard, Usuarios, Facturas, Tiendas
