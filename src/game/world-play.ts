@@ -5,6 +5,7 @@ import { geographicWorldPosition } from '../../shared/city-world.js';
 import { WORLD_MATERIALS, WORLD_RECIPES } from '../../shared/world-crafting.js';
 import { WORLD_QUESTS, QUEST_POSTS, questProgress } from '../../shared/world-quests.js';
 import { questStatus, nearestQuestPlace, type QuestStatus } from './quest-journal';
+import { equipmentStats, previewEquipment, type EquipmentStats } from './equipment-preview';
 import {
   adventureObjective,
   ADVENTURE_GUIDE,
@@ -323,12 +324,7 @@ export function mountWorldPlay(options: {
     modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Ascensor"><button data-close aria-label="Cerrar ascensor">✕</button><h2>${safe(activeRoom.name)}</h2><p>Selecciona un piso. Las ventanas y la terraza miran hacia la ciudad real.</p>${Array.from({ length: activeRoom.floors }, (_, i) => `<button data-room-level="${i}">Piso ${i + 1}${i === 0 ? ' · Recepción y negocio' : ''}</button>`).join('')}<button data-room-level="${activeRoom.floors}">Terraza panorámica</button></article>`;
   }
   function stats() {
-    const value = { ...totalStats(pet) };
-    for (const id of Object.values(progress.equipped[pet.id] || {})) {
-      const item = WORLD_ITEMS[id!];
-      if (item) value[item.stat] += item.bonus;
-    }
-    return value;
+    return equipmentStats(totalStats(pet), progress.equipped[pet.id] || {});
   }
   const maxHealth = () => 100 + stats().hp * 8;
   function notify(message: string) {
@@ -589,24 +585,57 @@ export function mountWorldPlay(options: {
       busy = false;
     }
   }
+  let equipmentFilter = 'all';
+  let previewItem: string | null = null;
+  const statLabels: Record<keyof EquipmentStats, string> = {
+    atk: 'Ataque',
+    def: 'Defensa',
+    spd: 'Velocidad',
+    hp: 'Vitalidad',
+    ability: 'Poder',
+  };
   function equipment() {
     modal.hidden = false;
     const equipped = progress.equipped[pet.id] || {};
+    const owned = [...new Set(progress.items)].filter((id) => Object.hasOwn(WORLD_ITEMS, id));
+    const visible = owned.filter(
+      (id) => equipmentFilter === 'all' || WORLD_ITEMS[id].slot === equipmentFilter
+    );
+    const preview =
+      previewItem && owned.includes(previewItem)
+        ? previewEquipment(totalStats(pet), equipped, previewItem)
+        : null;
+    const summary = Object.entries(stats())
+      .map(
+        ([key, value]) => `<span>${statLabels[key as keyof EquipmentStats]} <b>${value}</b></span>`
+      )
+      .join('');
+    const comparison = preview
+      ? `<section class="world-equipment-preview" aria-label="Comparación de equipo"><h3>${safe(WORLD_ITEMS[previewItem!].name)}</h3><p>Reemplaza: ${preview.replaced && WORLD_ITEMS[preview.replaced] ? safe(WORLD_ITEMS[preview.replaced].name) : 'Ranura vacía'}</p><ul>${(Object.keys(statLabels) as (keyof EquipmentStats)[]).map((stat) => `<li>${statLabels[stat]}: ${preview.current[stat]} → ${preview.next[stat]} <strong class="${preview.delta[stat] > 0 ? 'equipment-gain' : preview.delta[stat] < 0 ? 'equipment-loss' : ''}">(${preview.delta[stat] > 0 ? '+' : ''}${preview.delta[stat]})</strong></li>`).join('')}</ul><p>Vida máxima: ${100 + preview.current.hp * 8} → ${100 + preview.next.hp * 8}. Equipar no recupera vida.</p></section>`
+      : '<p>Selecciona Comparar para ver los cambios antes de equipar.</p>';
     modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Equipo del personaje"><button data-close aria-label="Cerrar equipo">✕</button><h2>Equipo de ${safe(pet.name)}</h2><p>${Object.entries(
       WORLD_MATERIALS
     )
       .map(([id, name]) => name + ': ' + (progress.materials?.[id] || 0))
       .join(
         ' · '
-      )}</p><div class="world-slots">${(['weapon', 'armor', 'relic'] as const).map((slot) => `<div><small>${{ weapon: 'Arma', armor: 'Armadura', relic: 'Reliquia' }[slot]}</small><strong>${equipped[slot] ? WORLD_ITEMS[equipped[slot]!].name : 'Sin equipar'}</strong></div>`).join('')}</div>${
-      progress.items.length
-        ? progress.items
+      )}</p><div class="world-equipment-stats" aria-label="Estadísticas con equipo">${summary}</div><div class="world-slots">${(['weapon', 'armor', 'relic'] as const).map((slot) => `<div><small>${{ weapon: 'Arma', armor: 'Armadura', relic: 'Reliquia' }[slot]}</small><strong>${equipped[slot] && Object.hasOwn(WORLD_ITEMS, equipped[slot]!) ? safe(WORLD_ITEMS[equipped[slot]!].name) : 'Sin equipar'}</strong></div>`).join('')}</div><div class="world-journal-filters" role="group" aria-label="Filtrar equipo">${Object.entries(
+      { all: 'Todo', weapon: 'Armas', armor: 'Armaduras', relic: 'Reliquias' }
+    )
+      .map(
+        ([id, label]) =>
+          `<button data-equipment-filter="${id}" aria-pressed="${equipmentFilter === id}">${label}</button>`
+      )
+      .join('')}</div>${comparison}${
+      visible.length
+        ? visible
             .map((id) => {
               const item = WORLD_ITEMS[id];
-              return `<button data-equip="${id}">${item.icon} ${item.name}<small>+${item.bonus} ${{ atk: 'Ataque', def: 'Defensa', ability: 'Poder', hp: 'Vida' }[item.stat]} · ${equipped[item.slot] === id ? 'Equipado' : 'Equipar'}</small></button>`;
+              const current = equipped[item.slot] === id;
+              return `<section class="world-equipment-item"><h3>${item.icon} ${safe(item.name)}</h3><p>+${item.bonus} ${statLabels[item.stat]}${current ? ' · Equipado' : ''}</p><button data-preview-item="${id}" aria-pressed="${previewItem === id}">Comparar</button><button data-equip="${id}" ${current || busy || training || !session ? 'disabled' : ''}>${current ? 'Equipado' : 'Equipar'}</button></section>`;
             })
             .join('')
-        : '<p>Los lobos dejan colmillos y pelaje; los espíritus, gemas; los guardianes, espadas; y los gólems, corazas y reliquias.</p>'
+        : '<p>No tienes piezas en esta categoría. Los monstruos dejan equipo y la forja permite fabricar nuevas piezas.</p>'
     }</article>`;
   }
   function shop() {
@@ -908,6 +937,17 @@ export function mountWorldPlay(options: {
           busy = false;
           if (!disposed) adventureDialog();
         }
+      } else if (button.dataset.equipmentFilter) {
+        if (['all', 'weapon', 'armor', 'relic'].includes(button.dataset.equipmentFilter)) {
+          equipmentFilter = button.dataset.equipmentFilter;
+          previewItem = null;
+          equipment();
+        }
+      } else if (button.dataset.previewItem) {
+        if (progress.items.includes(button.dataset.previewItem)) {
+          previewItem = button.dataset.previewItem;
+          equipment();
+        }
       } else if (button.dataset.questFilter) {
         const filter = button.dataset.questFilter;
         if (['all', 'available', 'active', 'ready', 'completed'].includes(filter)) {
@@ -1025,18 +1065,29 @@ export function mountWorldPlay(options: {
       else if (button.dataset.buy || button.dataset.equip) {
         if (busy || training) return;
         busy = true;
+        if (button.dataset.equip) equipment();
         try {
           await request(
             button.dataset.buy
               ? { action: 'buy', item: button.dataset.buy }
               : { action: 'equip', item: button.dataset.equip }
           );
+          if (disposed) return;
           if (button.dataset.buy) shop();
-          else equipment();
+          else {
+            health = Math.min(health, maxHealth());
+            notify('Equipo actualizado. Tus estadísticas ya incluyen la nueva pieza.');
+          }
         } catch (e) {
           notify((e as Error).message);
         } finally {
           busy = false;
+          if (
+            !disposed &&
+            !modal.hidden &&
+            modal.querySelector('[aria-label="Equipo del personaje"]')
+          )
+            equipment();
         }
       }
     },

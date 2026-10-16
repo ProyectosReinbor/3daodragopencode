@@ -364,6 +364,52 @@ describe('full screen world controls', () => {
     expect(document.querySelector('[aria-label="Ver primera aventura"]')).not.toBeNull();
     expect(profile.world.claimedQuests).toEqual(['patrol']);
   }, 20000);
+  it('previews equipment locally and only applies a replacement after the server accepts it', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    pet.baseStats = { atk: 6, def: 5, spd: 6, hp: 6, ability: 5 };
+    profile.world = initialWorldProgress();
+    profile.world.items = ['fang', 'heart', 'aurora_gem'];
+    profile.world.equipped[pet.id] = { relic: 'heart' };
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.action === 'equip') profile.world!.equipped[pet.id].relic = body.item;
+      return {
+        ok: true,
+        json: async () => ({ session: 'equipment-qa', profile: structuredClone(profile) }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    const settle = async () => {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    };
+    await settle();
+    document.querySelector<HTMLButtonElement>('[data-menu="equipment"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-equipment-filter="relic"]')!.click();
+    expect(document.querySelector('[data-equip="fang"]')).toBeNull();
+    const callsBeforePreview = fetchMock.mock.calls.length;
+    document.querySelector<HTMLButtonElement>('[data-preview-item="aurora_gem"]')!.click();
+    const comparison = document.querySelector('[aria-label="Comparación de equipo"]')!;
+    expect(comparison.textContent).toContain('Corazón de piedra');
+    expect(comparison.textContent).toContain('(-6)');
+    expect(comparison.textContent).toContain('(+10)');
+    expect(fetchMock.mock.calls.length).toBe(callsBeforePreview);
+    expect(profile.world.equipped[pet.id].relic).toBe('heart');
+    document.querySelector<HTMLButtonElement>('[data-equip="aurora_gem"]')!.click();
+    await settle();
+    expect(JSON.parse(fetchMock.mock.lastCall![1].body as string).action).toBe('equip');
+    expect(document.querySelector<HTMLButtonElement>('[data-equip="aurora_gem"]')!.disabled).toBe(
+      true
+    );
+    expect(document.querySelector<HTMLButtonElement>('[data-equip="heart"]')!.disabled).toBe(false);
+    expect(document.querySelector('[aria-label="Comparación de equipo"]')!.textContent).toContain(
+      '(0)'
+    );
+    tick();
+    expect(document.querySelector('.world-health')!.textContent).toContain('/ 148');
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);

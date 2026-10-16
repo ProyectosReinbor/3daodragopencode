@@ -25,6 +25,12 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Comparación de equipo — 16 de octubre de 2026
+
+El panel Equipo muestra las estadísticas actuales, las tres ranuras y filtros de armas, armaduras y reliquias. «Comparar» calcula una sustitución local: resta la pieza de esa ranura, añade la candidata y muestra valores actuales, previstos y diferencias con signo. Las reliquias que cambian de atributo muestran tanto la pérdida como la ganancia, incluida la vida máxima derivada de Vitalidad. La vista previa no envía peticiones ni modifica el inventario.
+
+«Equipar» conserva la operación autenticada del servidor; las piezas equipadas y los controles durante una petición quedan deshabilitados. Las estadísticas se actualizan con la respuesta confirmada. Reducir la vida máxima limita la vida actual sin curarla; aumentar la vida máxima tampoco cura. Los objetos desconocidos de datos antiguos se omiten sin romper el panel. Las pruebas cubren sustitución de armas, intercambio entre vitalidad y poder, filtros, vista previa sin peticiones y confirmación del servidor.
+
 ### Diario de misiones — 16 de octubre de 2026
 
 Las misiones se pueden filtrar por disponibles, en curso, listas para cobrar y completadas. Cada categoría muestra su cantidad y cada tarjeta incluye progreso accesible, recompensa y estado. Cumplir una métrica antes de aceptar la misión no la presenta como aceptada; las recompensas cobradas siguen deshabilitadas. Las misiones de un NPC conservan su alcance después de aceptar o cobrar y ofrecen acceso explícito al diario completo.
