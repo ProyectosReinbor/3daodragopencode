@@ -692,6 +692,11 @@
 .world-navigation-active { color: #b5edff; border-color: #83ddf577; }
 .world-navigation { border: 1px solid #83ddf544; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
 .world-navigation button { min-height: 44px; }
+.world-journal-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.world-journal-filters button { min-height: 44px; }
+.world-journal-filters button[aria-pressed="true"] { border-color: #83ddc4; background: #19404b; color: #e5fff5; }
+.world-quest-card progress { width: 100%; height: 10px; accent-color: #83ddc4; }
+.world-quest-card > small { color: #a6dfcf; }
 .world-adventure-tracker[hidden], .world-room-active .world-adventure-tracker,
 .world-guided-adventure .world-quest-tracker { display: none; }
 @media(max-height:520px) { .world-adventure-tracker { top: 105px; width: 215px; padding: 9px; } }

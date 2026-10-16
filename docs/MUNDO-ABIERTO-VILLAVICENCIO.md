@@ -25,6 +25,12 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Diario de misiones — 16 de octubre de 2026
+
+Las misiones se pueden filtrar por disponibles, en curso, listas para cobrar y completadas. Cada categoría muestra su cantidad y cada tarjeta incluye progreso accesible, recompensa y estado. Cumplir una métrica antes de aceptar la misión no la presenta como aceptada; las recompensas cobradas siguen deshabilitadas. Las misiones de un NPC conservan su alcance después de aceptar o cobrar y ofrecen acceso explícito al diario completo.
+
+«Ver objetivo en mapa» sugiere el nodo más cercano para materiales, el parque más cercano para combate o la forja para fabricación. Desde allí se utiliza «Seguir destino». Son sugerencias en línea recta: un nodo puede estar en recarga y los caminos pueden tener obstáculos. El diario no modifica las reglas del servidor ni entrega premios por visitar la marca. Los filtros son temporales; las misiones y recompensas conservan su persistencia existente.
+
 ### Destinos de exploración — 16 de octubre de 2026
 
 El mapa permite seleccionar lugares de referencia, negocios, parques y nodos de materiales y pulsar «Seguir destino». La guía muestra nombre, distancia en metros y flecha relativa a la cámara; comparte el espacio del objetivo de aventura para evitar superponer paneles. El destino aparece en el minimapa, en el mundo y mediante una línea discontinua en el mapa completo. La indicación es en línea recta: todavía no calcula una ruta transitable por calles ni evita edificios.

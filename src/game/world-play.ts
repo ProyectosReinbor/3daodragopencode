@@ -4,6 +4,7 @@ import { CITY_CITIZENS, CITY_VENUES, CITY_PARKS } from '../../shared/city-life.j
 import { geographicWorldPosition } from '../../shared/city-world.js';
 import { WORLD_MATERIALS, WORLD_RECIPES } from '../../shared/world-crafting.js';
 import { WORLD_QUESTS, QUEST_POSTS, questProgress } from '../../shared/world-quests.js';
+import { questStatus, nearestQuestPlace, type QuestStatus } from './quest-journal';
 import {
   adventureObjective,
   ADVENTURE_GUIDE,
@@ -239,6 +240,16 @@ export function mountWorldPlay(options: {
     '<span class="world-adventure-arrow" aria-hidden="true">↑</span><strong></strong><small></small>';
   root.append(adventureTracker);
   let waypoint: { id: string; name: string; x: number; z: number } | null = null;
+  const forgePlace = { ...CITY_WORLD.forge, id: 'camp-forge', name: 'Forja del campamento' };
+  const mapPlaces = [
+    ...CITY_WORLD.landmarks,
+    ...CITY_VENUES,
+    ...CITY_PARKS,
+    ...CITY_WORLD.nodes,
+    forgePlace,
+  ];
+  let journalFilter: QuestStatus | 'all' = 'all';
+  let journalScope: string[] | undefined;
   const destinationMarker = new Mesh(
     new TorusGeometry(1.4, 0.13, 5, 24),
     new MeshLambertMaterial({ color: 0xffd98a, emissive: 0x74551e })
@@ -622,6 +633,14 @@ export function mountWorldPlay(options: {
         `<g data-waypoint-line><line x1="${model.position.x}" y1="${model.position.z}" x2="${waypoint.x}" y2="${waypoint.z}" stroke="#83ddf5" stroke-width="8" stroke-dasharray="24 18"/><circle cx="${waypoint.x}" cy="${waypoint.z}" r="40" fill="none" stroke="#83ddf5" stroke-width="12"/></g>`
       );
   }
+  function selectMapPlace(place: (typeof mapPlaces)[number]) {
+    mapX = place.x;
+    mapZ = place.z;
+    mapSpan = 2000;
+    modal.querySelector('[data-map-selection]')!.innerHTML =
+      `<h3>${safe(place.name)}</h3><button data-follow-place="${safe(place.id)}">Seguir destino</button>`;
+    refreshCityMap();
+  }
   function cityMap() {
     modal.hidden = false;
     mapX = model.position.x;
@@ -634,6 +653,12 @@ export function mountWorldPlay(options: {
       .insertAdjacentHTML(
         'afterbegin',
         `<section class="world-navigation"><p>${waypoint ? 'Destino: ' + safe(waypoint.name) : 'Selecciona un lugar y pulsa Seguir destino.'} · Guía en línea recta, sin ruta por calles.</p>${waypoint ? '<button data-clear-waypoint>Quitar destino y volver a la aventura</button>' : ''}<div data-map-selection></div></section>`
+      );
+    modal
+      .querySelector('article')!
+      .insertAdjacentHTML(
+        'beforeend',
+        `<p><button data-map-place="camp-forge">Forja del campamento</button> · Fabricación de equipo</p>`
       );
     modal
       .querySelector('[data-city-map]')!
@@ -657,18 +682,37 @@ export function mountWorldPlay(options: {
   }
 
   function quests(ids?: string[]) {
+    journalScope = ids;
     modal.hidden = false;
-    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Misiones del mundo"><button data-close aria-label="Cerrar misiones">✕</button><h2>Misiones del mundo</h2>${Object.entries(
-      WORLD_QUESTS
+    const labels = {
+      all: 'Todas',
+      available: 'Disponibles',
+      active: 'En curso',
+      ready: 'Para cobrar',
+      completed: 'Completadas',
+    };
+    const entries = Object.entries(WORLD_QUESTS).filter(([id]) => !ids || ids.includes(id));
+    const visible = entries.filter(
+      ([id]) => journalFilter === 'all' || questStatus(progress, id) === journalFilter
+    );
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Misiones del mundo"><button data-close aria-label="Cerrar misiones">✕</button><h2>Misiones del mundo</h2>${ids ? '<p>Misiones de este personaje. <button data-all-quests>Ver todas las misiones</button></p>' : ''}<div class="world-journal-filters" role="group" aria-label="Filtrar misiones">${Object.entries(
+      labels
     )
-      .filter(([id]) => !ids || ids.includes(id))
-      .map(([id, q]) => {
-        const accepted = progress.acceptedQuests?.includes(id),
-          claimed = progress.claimedQuests?.includes(id),
-          value = questProgress(progress, id);
-        return `<section class="world-quest-card"><h3>${safe(q.name)}</h3><p>${safe(q.description)}</p><p>${value}/${q.target} · ${q.coins} monedas · ${q.xp} XP · 1 poción</p><button data-quest="${id}" data-quest-action="${accepted ? 'claim_quest' : 'accept_quest'}" ${claimed || (accepted && value < q.target) ? 'disabled' : ''}>${claimed ? 'Recompensa cobrada' : accepted ? 'Cobrar recompensa' : 'Aceptar misión'}</button></section>`;
-      })
-      .join('')}</article>`;
+      .map(
+        ([id, label]) =>
+          `<button data-quest-filter="${id}" aria-pressed="${journalFilter === id}">${label} (${id === 'all' ? entries.length : entries.filter(([key]) => questStatus(progress, key) === id).length})</button>`
+      )
+      .join('')}</div>${
+      visible
+        .map(([id, q]) => {
+          const accepted = progress.acceptedQuests?.includes(id),
+            claimed = progress.claimedQuests?.includes(id),
+            value = questProgress(progress, id);
+          const status = questStatus(progress, id);
+          return `<section class="world-quest-card"><small>${labels[status]}</small><h3>${safe(q.name)}</h3><p>${safe(q.description)}</p><progress max="${q.target}" value="${value}" aria-label="Progreso de ${safe(q.name)}"></progress><p>${value}/${q.target} · ${q.coins} monedas · ${q.xp} XP · 1 poción</p><button data-quest="${id}" data-quest-action="${accepted ? 'claim_quest' : 'accept_quest'}" ${claimed || (accepted && value < q.target) ? 'disabled' : ''}>${claimed ? 'Recompensa cobrada' : accepted ? 'Cobrar recompensa' : 'Aceptar misión'}</button>${status === 'active' ? `<button data-quest-location="${id}">Ver objetivo en mapa</button>` : ''}</section>`;
+        })
+        .join('') || '<p role="status">No hay misiones en esta categoría.</p>'
+    }</article>`;
   }
   function forge() {
     modal.hidden = false;
@@ -864,17 +908,35 @@ export function mountWorldPlay(options: {
           busy = false;
           if (!disposed) adventureDialog();
         }
+      } else if (button.dataset.questFilter) {
+        const filter = button.dataset.questFilter;
+        if (['all', 'available', 'active', 'ready', 'completed'].includes(filter)) {
+          journalFilter = filter as QuestStatus | 'all';
+          quests(journalScope);
+        }
+      } else if (button.hasAttribute('data-all-quests')) {
+        journalFilter = 'all';
+        quests();
+      } else if (button.dataset.questLocation) {
+        const id = button.dataset.questLocation;
+        if (!Object.hasOwn(WORLD_QUESTS, id) || questStatus(progress, id) !== 'active') return;
+        const place = nearestQuestPlace(
+          WORLD_QUESTS[id].metric,
+          model.position,
+          CITY_WORLD.nodes,
+          CITY_PARKS,
+          forgePlace
+        );
+        if (place) {
+          cityMap();
+          selectMapPlace(place);
+        }
       } else if (button.dataset.menu === 'navigation') cityMap();
       else if (button.hasAttribute('data-clear-waypoint')) {
         waypoint = null;
         cityMap();
       } else if (button.dataset.followPlace) {
-        const place = [
-          ...CITY_WORLD.landmarks,
-          ...CITY_VENUES,
-          ...CITY_PARKS,
-          ...CITY_WORLD.nodes,
-        ].find((p) => p.id === button.dataset.followPlace);
+        const place = mapPlaces.find((p) => p.id === button.dataset.followPlace);
         if (place) {
           waypoint = { id: place.id, name: place.name, x: place.x, z: place.z };
           modal.hidden = true;
@@ -911,18 +973,9 @@ export function mountWorldPlay(options: {
           mapZ = (northWest.z + southEast.z) / 2;
           mapSpan = Math.max(southEast.x - northWest.x, southEast.z - northWest.z) + 400;
         }
-        const place = [
-          ...CITY_WORLD.landmarks,
-          ...CITY_VENUES,
-          ...CITY_PARKS,
-          ...CITY_WORLD.nodes,
-        ].find((l) => l.id === button.dataset.mapPlace);
+        const place = mapPlaces.find((l) => l.id === button.dataset.mapPlace);
         if (place) {
-          mapX = place.x;
-          mapZ = place.z;
-          mapSpan = 2000;
-          modal.querySelector('[data-map-selection]')!.innerHTML =
-            `<h3>${safe(place.name)}</h3><button data-follow-place="${safe(place.id)}">Seguir destino</button>`;
+          selectMapPlace(place);
         }
         mapX = Math.max(-19000, Math.min(19000, mapX));
         mapZ = Math.max(-19000, Math.min(19000, mapZ));
@@ -945,7 +998,7 @@ export function mountWorldPlay(options: {
             forge();
             notify('Objeto fabricado. Equípalo desde Equipo.');
           } else if (button.dataset.quest) {
-            quests();
+            quests(journalScope);
             notify(data.reward ? 'Recompensa recibida.' : 'Misión aceptada.');
           } else {
             modal.hidden = true;

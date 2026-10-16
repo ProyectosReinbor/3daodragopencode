@@ -319,6 +319,51 @@ describe('full screen world controls', () => {
       node.name
     );
   }, 20000);
+  it('filters quest states and guides an active crafting mission to the forge', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    profile.world.acceptedQuests = ['supplies', 'artisan', 'patrol'];
+    profile.world.claimedQuests = ['patrol'];
+    profile.world.gathered = 6;
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ session: 'journal-qa', profile }) })
+    );
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    document.querySelector<HTMLButtonElement>('[data-menu="quests"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-quest-filter="ready"]')!.click();
+    expect(document.querySelectorAll('.world-quest-card')).toHaveLength(1);
+    expect(document.querySelector('.world-quest-card')!.textContent).toContain(
+      'Provisiones del camino'
+    );
+    expect(
+      document.querySelector('[data-quest="supplies"]')!.getAttribute('data-quest-action')
+    ).toBe('claim_quest');
+    document.querySelector<HTMLButtonElement>('[data-quest-filter="completed"]')!.click();
+    expect(document.querySelector('.world-quest-card')!.textContent).toContain(
+      'Recompensa cobrada'
+    );
+    expect(document.querySelector<HTMLButtonElement>('[data-quest="patrol"]')!.disabled).toBe(true);
+    document.querySelector<HTMLButtonElement>('[data-quest-filter="active"]')!.click();
+    expect(document.querySelectorAll('.world-quest-card')).toHaveLength(1);
+    document.querySelector<HTMLButtonElement>('[data-quest-location="artisan"]')!.click();
+    expect(document.querySelector('[data-map-selection]')!.textContent).toContain(
+      'Forja del campamento'
+    );
+    document.querySelector<HTMLButtonElement>('[data-follow-place="camp-forge"]')!.click();
+    tick();
+    // The camp forge is already within the arrival radius of the spawn.
+    expect(document.querySelector('.world-notice')!.textContent).toContain(
+      'Llegaste a Forja del campamento'
+    );
+    expect(document.querySelector('[aria-label="Ver primera aventura"]')).not.toBeNull();
+    expect(profile.world.claimedQuests).toEqual(['patrol']);
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);
