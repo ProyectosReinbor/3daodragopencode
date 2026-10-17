@@ -25,6 +25,14 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Memoria de luces en los locales — 17 de octubre de 2026
+
+Los negocios ficticios ofrecen un minijuego desde su panel interior. Se muestran tres luces durante unos segundos; después el jugador repite la secuencia usando botones con símbolos y nombres. La animación de selección respeta la preferencia de movimiento reducido. Cerrar el panel detiene el bucle visual y salir del mundo libera el controlador.
+
+El servidor emite un token y una secuencia, exige esperar al menos 3,5 segundos y limita el intento a un minuto. Al resolverlo comprueba sesión, token, proximidad declarada y secuencia; consume el intento, incluso si falla. Una victoria concede 10 monedas y 15 XP y guarda una recarga de 24 horas por local en `world.venueGameCooldowns`. Cambiar de sesión o repetir el token no vuelve a entregar el premio. Los fallos no descuentan recursos.
+
+Es un minijuego virtual de los locales del mundo, no una campaña real de un comercio. La posición y la entrada se reciben del cliente; validar tiempos, tokens y límites no acredita presencia física ni impide automatizar una secuencia visible. Las pruebas cubren repetición, ventanas de tiempo, sesión ajena, cantidades elegidas por el servidor y persistencia del límite, además de luces, bloqueo de entrada, errores de confirmación y liberación al cerrar. Reiniciar la API para cargar las acciones `venue_game_start` y `venue_game_finish`.
+
 ### Carga diferida del mundo — 17 de octubre de 2026
 
 La portada y el taller dejan de importar el mundo de forma estática. El acceso desde la cuenta y el campo de prueba comparten una carga diferida con pantalla de espera, cancelación y reintento. Salir durante la descarga descarta el resultado tardío y evita montar la escena o iniciar su sesión. La interfaz de fondo se bloquea durante la espera y recupera su estado al salir o al entregar el control al mundo.

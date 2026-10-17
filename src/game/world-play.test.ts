@@ -661,6 +661,53 @@ describe('full screen world controls', () => {
       CITY_VENUES[1].name
     );
   }, 20000);
+  it('opens a local memory game and requests its challenge from the current venue', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      return {
+        ok: true,
+        json: async () => ({
+          session: 'memory-qa',
+          profile: structuredClone(profile),
+          challenge:
+            body.action === 'venue_game_start'
+              ? {
+                  token: 'qa-memory',
+                  venue: body.venue,
+                  pattern: [0, 2, 1],
+                  issuedAt: Date.now(),
+                  readyAt: Date.now() + 3500,
+                  expiresAt: Date.now() + 60000,
+                }
+              : undefined,
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const settle = async () => {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    };
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    await settle();
+    roomControl.entrance = true;
+    key('f');
+    roomControl.entrance = false;
+    document.querySelector<HTMLButtonElement>('[data-menu="venue-game"]')!.click();
+    expect(document.querySelector('[aria-label="Memoria de luces"]')!.textContent).toContain(
+      '24 horas'
+    );
+    document.querySelector<HTMLButtonElement>('[data-venue-play]')!.click();
+    await settle();
+    const body = JSON.parse(fetchMock.mock.lastCall![1].body as string);
+    expect(body.action).toBe('venue_game_start');
+    expect(body.venue).toBe(CITY_VENUES[0].id);
+    expect(document.querySelectorAll('[data-memory-choice]')).toHaveLength(4);
+    expect(document.querySelector<HTMLButtonElement>('[data-memory-choice]')!.disabled).toBe(true);
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);

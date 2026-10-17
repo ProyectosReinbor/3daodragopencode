@@ -1,4 +1,5 @@
 export interface WorldProgress {
+  venueGameCooldowns?: Record<string, number>;
   visitedVenues?: string[];
   passportRewarded?: boolean;
   monsterKills?: Record<string, number>;

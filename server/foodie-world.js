@@ -7,6 +7,7 @@ import { applyPurchaseExperience } from './foodie-growth.js';
 import { startAdventure, advanceAdventure } from '../shared/world-adventure.js';
 import { activateCamp } from '../shared/world-camps.js';
 import { visitVenue } from '../shared/world-passport.js';
+import { beginVenueGame, finishVenueGame } from './venue-game.js';
 // Sessions own combat cooldowns and encounter health. Rewards never come from profile PUT.
 export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = () => Date.now() }) {
   const sessions = new Map();
@@ -31,7 +32,18 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
     const world = profile.world ||= initialWorldProgress();
     const { action, item, enemy, kind, slot } = req.body;
     let reward = null, damage = 0;
-    if(action === 'visit_venue') {
+    if(action === 'venue_game_start' || action === 'venue_game_finish') {
+      try {
+        if(action === 'venue_game_start') {
+          const challenge=beginVenueGame(session,world,req.body.venue,req.body.position,clock());
+          return res.json({challenge,profile,serverNow:clock()});
+        }
+        const result=finishVenueGame(session,world,req.body.token,req.body.answers,req.body.position,clock());
+        if(result.reward){world.coins+=result.reward.coins;applyPurchaseExperience(profile,result.reward.xp,pet.id);}
+        saveProfile(req.phone,profile);
+        return res.json({...result,profile,serverNow:clock()});
+      } catch(error){return res.status(400).json({error:error.message,serverNow:clock()});}
+    } else if(action === 'visit_venue') {
       try { reward=visitVenue(world,req.body.venue,req.body.position); }
       catch(error) { return res.status(400).json({error:error.message}); }
       if(reward) { world.coins+=reward.coins; applyPurchaseExperience(profile,reward.xp,pet.id); }

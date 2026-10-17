@@ -19,6 +19,7 @@ export function rewardEntry(
     claim_quest: 'Misión completada',
     adventure_advance: 'Primera aventura',
     visit_venue: 'Pasaporte urbano completado',
+    venue_game_finish: 'Memoria de luces',
   };
   if (!Object.hasOwn(labels, action)) return null;
   const lines: string[] = [];

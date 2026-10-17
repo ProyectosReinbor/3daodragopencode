@@ -11,6 +11,8 @@ import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
 import { resourceWait, nearbyResource } from './resource-status';
 import { WORLD_CAMPS, activeCamp } from '../../shared/world-camps.js';
 import { MONSTER_GUIDE, nearestMonster } from './bestiary';
+import { mountVenueMemory } from './venue-memory';
+import { VENUE_GAME_REWARD } from '../../shared/venue-game.js';
 import {
   PASSPORT_VENUES,
   PASSPORT_REWARD,
@@ -151,6 +153,21 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  let stopVenueGame: (() => void) | undefined;
+  function venueGameDialog() {
+    const venue = activeRoom?.venue;
+    if (!venue) return;
+    stopVenueGame?.();
+    stopVenueGame = undefined;
+    modal.hidden = false;
+    const hours = Math.max(
+      0,
+      Math.ceil(
+        ((progress.venueGameCooldowns?.[venue.id] || 0) - Date.now() - serverOffset) / 3600000
+      )
+    );
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Memoria de luces"><button data-close aria-label="Cerrar minijuego">✕</button><h2>Memoria de luces</h2><p>${safe(venue.name)} · Observa tres luces y repítelas en el mismo orden.</p><p>Premio: ${VENUE_GAME_REWARD.coins} monedas y ${VENUE_GAME_REWARD.xp} XP. Una victoria premiada por local cada 24 horas.</p><p>${hours ? 'Premio disponible en aproximadamente ' + hours + ' h.' : 'Tu próximo intento puede recibir el premio.'}</p><button data-venue-play ${hours || busy || !session ? 'disabled' : ''}>Comenzar partida</button></article>`;
+  }
   function passportDialog() {
     modal.hidden = false;
     const count = passportCount(progress);
@@ -394,6 +411,11 @@ export function mountWorldPlay(options: {
       buildingBar.insertAdjacentHTML(
         'beforeend',
         '<button data-menu="passport">Pasaporte urbano</button>'
+      );
+    if (activeRoom.venue && !activeRoom.terrace)
+      buildingBar.insertAdjacentHTML(
+        'beforeend',
+        '<button data-menu="venue-game">Minijuego</button>'
       );
     notify(
       activeRoom.terrace
@@ -1107,7 +1129,49 @@ export function mountWorldPlay(options: {
         return;
       }
       if (button.dataset.menu === 'exit') exit();
-      else if (button.dataset.menu === 'passport') passportDialog();
+      else if (button.dataset.menu === 'venue-game') venueGameDialog();
+      else if (button.hasAttribute('data-venue-play')) {
+        const venue = activeRoom?.venue;
+        if (!venue || busy || !session) return;
+        busy = true;
+        button.disabled = true;
+        try {
+          const data = await request({ action: 'venue_game_start', venue: venue.id });
+          if (disposed || modal.hidden || activeRoom?.venue?.id !== venue.id) return;
+          stopVenueGame?.();
+          modal.innerHTML =
+            '<article role="dialog" aria-modal="true" aria-label="Memoria de luces"><button data-close aria-label="Cerrar minijuego">✕</button><h2>Memoria de luces</h2><div data-memory-root></div></article>';
+          stopVenueGame = mountVenueMemory(
+            modal.querySelector('[data-memory-root]')!,
+            data.challenge,
+            () => Date.now() + serverOffset,
+            async (answers) => {
+              busy = true;
+              try {
+                const result = await request({
+                  action: 'venue_game_finish',
+                  token: data.challenge.token,
+                  answers,
+                });
+                return {
+                  won: result.won,
+                  message: result.won
+                    ? `¡Secuencia correcta! +${VENUE_GAME_REWARD.coins} monedas y +${VENUE_GAME_REWARD.xp} XP.`
+                    : 'La secuencia no coincide. Puedes volver a intentarlo.',
+                };
+              } finally {
+                busy = false;
+              }
+            }
+          );
+        } catch (error) {
+          notify((error as Error).message);
+          busy = false;
+          if (!disposed && !modal.hidden) venueGameDialog();
+        } finally {
+          busy = false;
+        }
+      } else if (button.dataset.menu === 'passport') passportDialog();
       else if (button.dataset.findVenue) {
         const venue = PASSPORT_VENUES.find((value) => value.id === button.dataset.findVenue);
         if (venue) {
@@ -1835,6 +1899,7 @@ export function mountWorldPlay(options: {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    stopVenueGame?.();
     events.abort();
     cancelAnimationFrame(frame);
     observer.disconnect();
