@@ -25,6 +25,12 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Señales de recolección — 16 de octubre de 2026
+
+Al acercarse a un recurso aparece su nombre, material, cantidad y disponibilidad. Los recursos en recuperación muestran segundos restantes; el botón distingue recoger hallazgos de extraer y se deshabilita durante la recarga cuando no hay otra interacción prioritaria. La tecla F también comprueba la recarga conocida antes de enviar una solicitud. Edificios, NPC, forja y puestos de misiones conservan su prioridad, con el texto del botón alineado a la acción real.
+
+El mapa muestra la disponibilidad de cada fuente y actualiza los contadores mientras está abierto. Los plazos usan la hora del servidor y no desbloquean anticipadamente por redondeo; la validación definitiva sigue en la API. La búsqueda cercana elige el recurso más próximo en vez del primero del catálogo. Las referencias visuales se guardan al crear el mundo, evitando recorrer toda la escena por cada recurso en cada fotograma. Las pruebas cubren límites del temporizador, elección por distancia y actualizaciones del mapa sin peticiones adicionales.
+
 ### Historial de recompensas — 16 de octubre de 2026
 
 El botón Botín abre las veinte entradas más recientes recibidas durante la sesión del mundo. Incluye monedas, XP, consumibles, piezas y materiales indicados en respuestas satisfactorias de combate, recolección, fabricación y cobro de misiones. Las peticiones rechazadas y las recetas ya fabricadas no generan premios ficticios. Consultar el historial no vuelve a cobrar ni cambia el inventario.

@@ -497,6 +497,40 @@ describe('full screen world controls', () => {
     expect(document.querySelector('.world-reward-entry')!.textContent).toContain('+35 monedas');
     expect(document.querySelector('.world-reward-entry')!.textContent).toContain('+30 XP');
   }, 20000);
+  it('updates resource cooldown labels in the open map without sending requests', async () => {
+    stop();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1000000);
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    profile.world.resourceCooldowns = { 'starter-wood': 1060000 };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ session: 'resources-qa', profile }) });
+    vi.stubGlobal('fetch', fetchMock);
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    document.querySelector<HTMLButtonElement>('[data-minimap]')!.click();
+    tick();
+    expect(document.querySelector('[data-resource-status="starter-wood"]')!.textContent).toBe(
+      'Reaparece en 60 s'
+    );
+    expect(document.querySelector('[data-resource-status="starter-ore"]')!.textContent).toBe(
+      'Disponible'
+    );
+    const requests = fetchMock.mock.calls.length;
+    clock.mockReturnValue(1060000);
+    for (let i = 0; i < 6; i++) tick();
+    expect(document.querySelector('[data-resource-status="starter-wood"]')!.textContent).toBe(
+      'Disponible'
+    );
+    expect(fetchMock.mock.calls.length).toBe(requests);
+    document.querySelector<HTMLButtonElement>('[data-close]')!.click();
+    key('ArrowDown');
+    tick();
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowDown' }));
+    expect(document.querySelector('.world-interact')!.textContent).toContain('Craftear');
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);

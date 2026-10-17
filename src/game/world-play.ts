@@ -8,6 +8,7 @@ import { questStatus, nearestQuestPlace, type QuestStatus } from './quest-journa
 import { equipmentStats, previewEquipment, type EquipmentStats } from './equipment-preview';
 import { planRecipe, nearestMaterialSource } from './forge-planner';
 import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
+import { resourceWait, nearbyResource } from './resource-status';
 import {
   adventureObjective,
   ADVENTURE_GUIDE,
@@ -141,6 +142,10 @@ export function mountWorldPlay(options: {
       .insertAdjacentHTML('beforeend', '<button data-menu="rewards">Botín · 0</button>');
   root.insertAdjacentHTML('beforeend', '<p class="world-level-up" role="status" hidden></p>');
   const levelNotice = root.querySelector<HTMLElement>('.world-level-up')!;
+  const resourceHint = document.createElement('p');
+  resourceHint.className = 'world-resource-hint';
+  resourceHint.hidden = true;
+  root.append(resourceHint);
   function rewardsDialog() {
     modal.hidden = false;
     modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Historial de botín"><button data-close aria-label="Cerrar botín">✕</button><h2>Botín de esta sesión</h2><p>Últimas 20 recompensas confirmadas. Los objetos y recursos ya están añadidos a tu cuenta; este historial se vacía al salir del mundo.</p>${rewardEntries.length ? rewardEntries.map((entry) => `<section class="world-reward-entry"><h3>${safe(entry.source)}</h3>${entry.level ? `<p>¡Nivel ${entry.level} alcanzado!</p>` : ''}<ul>${entry.lines.map((line) => `<li>${safe(line)}</li>`).join('')}</ul></section>`).join('') : '<p>Aún no has recibido botín en esta sesión. Explora, recoge materiales o completa misiones.</p>'}<button data-menu="equipment">Abrir Equipo</button></article>`;
@@ -390,6 +395,10 @@ export function mountWorldPlay(options: {
     presentation = createWorldPresentation(scene, renderer, zone, training);
   }
   prepare();
+  const resourceObjects = new Map(
+    CITY_WORLD.nodes.map((node) => [node.id, scene.getObjectByName('resource-' + node.id)])
+  );
+  let resourceStatusAt = 0;
   const minimap = root.querySelector<SVGSVGElement>('.world-minimap svg');
   if (minimap) {
     const credit = document.createElement('a');
@@ -702,7 +711,7 @@ export function mountWorldPlay(options: {
     mapX = model.position.x;
     mapZ = model.position.z;
     mapSpan = 6000;
-    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Calles reales</h2><p>Geografía de OpenStreetMap · 1 unidad = 1 metro. Biomas y edificios de fantasía.</p><div class="world-map-controls"><button data-map-control="in" aria-label="Acercar mapa">＋</button><button data-map-control="out" aria-label="Alejar mapa">−</button><button data-map-control="north" aria-label="Mover mapa al norte">↑</button><button data-map-control="south" aria-label="Mover mapa al sur">↓</button><button data-map-control="west" aria-label="Mover mapa al oeste">←</button><button data-map-control="east" aria-label="Mover mapa al este">→</button><button data-map-control="player">Mi pet</button><button data-map-control="all">Ciudad</button></div><p data-map-scale></p><svg data-city-map style="width:100%;height:360px;background:#07151d" role="img" aria-label="Calles y lugares reales de Villavicencio">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}<g data-map-roads></g>${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="35" fill="#83ddc4"><title>${safe(l.name)}</title></circle><text x="${l.x + 45}" y="${l.z}" font-size="50" fill="#fff" stroke="#07151d" stroke-width="8" paint-order="stroke">${safe(l.name)}</text>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="45" fill="white"/></svg><p><a href="${CITY_WORLD.sourceUrl}" target="_blank" rel="noopener noreferrer">${safe(CITY_WORLD.attribution)}</a> · ODbL · Datos importados: ${CITY_WORLD.importedAt.slice(0, 10)}</p><h3>Lugares</h3>${CITY_WORLD.landmarks.map((l) => `<p><button data-map-place="${l.id}">${safe(l.name)}</button> · ${Math.round(Math.hypot(model.position.x - l.x, model.position.z - l.z))} m en línea recta</p>`).join('')}<p>Cooperativa Chorillano: sede pendiente de confirmar.</p><h3>Materiales y hallazgos</h3>${CITY_WORLD.nodes.map((n) => `<p><button data-map-place="${n.id}">${safe(n.name)}</button> · ${WORLD_MATERIALS[n.material]} · ${Math.round(Math.hypot(model.position.x - n.x, model.position.z - n.z))} m</p>`).join('')}</article>`;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Calles reales</h2><p>Geografía de OpenStreetMap · 1 unidad = 1 metro. Biomas y edificios de fantasía.</p><div class="world-map-controls"><button data-map-control="in" aria-label="Acercar mapa">＋</button><button data-map-control="out" aria-label="Alejar mapa">−</button><button data-map-control="north" aria-label="Mover mapa al norte">↑</button><button data-map-control="south" aria-label="Mover mapa al sur">↓</button><button data-map-control="west" aria-label="Mover mapa al oeste">←</button><button data-map-control="east" aria-label="Mover mapa al este">→</button><button data-map-control="player">Mi pet</button><button data-map-control="all">Ciudad</button></div><p data-map-scale></p><svg data-city-map style="width:100%;height:360px;background:#07151d" role="img" aria-label="Calles y lugares reales de Villavicencio">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}<g data-map-roads></g>${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="35" fill="#83ddc4"><title>${safe(l.name)}</title></circle><text x="${l.x + 45}" y="${l.z}" font-size="50" fill="#fff" stroke="#07151d" stroke-width="8" paint-order="stroke">${safe(l.name)}</text>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="45" fill="white"/></svg><p><a href="${CITY_WORLD.sourceUrl}" target="_blank" rel="noopener noreferrer">${safe(CITY_WORLD.attribution)}</a> · ODbL · Datos importados: ${CITY_WORLD.importedAt.slice(0, 10)}</p><h3>Lugares</h3>${CITY_WORLD.landmarks.map((l) => `<p><button data-map-place="${l.id}">${safe(l.name)}</button> · ${Math.round(Math.hypot(model.position.x - l.x, model.position.z - l.z))} m en línea recta</p>`).join('')}<p>Cooperativa Chorillano: sede pendiente de confirmar.</p><h3>Materiales y hallazgos</h3>${CITY_WORLD.nodes.map((n) => `<p><button data-map-place="${n.id}">${safe(n.name)}</button> · ${WORLD_MATERIALS[n.material]} · <span data-resource-status="${n.id}"></span> · ${Math.round(Math.hypot(model.position.x - n.x, model.position.z - n.z))} m</p>`).join('')}</article>`;
     refreshCityMap();
     modal
       .querySelector('article')!
@@ -798,6 +807,11 @@ export function mountWorldPlay(options: {
   }
   async function gather(node: (typeof CITY_WORLD.nodes)[number]) {
     if (busy || !session) return;
+    const wait = resourceWait(node.id, progress.resourceCooldowns || {}, Date.now() + serverOffset);
+    if (wait) {
+      notify(`${node.name} se recupera en ${wait} s.`);
+      return;
+    }
     busy = true;
     try {
       if (node.pickup) {
@@ -877,9 +891,7 @@ export function mountWorldPlay(options: {
       quests();
       return;
     }
-    const resource = CITY_WORLD.nodes.find(
-      (n) => Math.hypot(model.position.x - n.x, model.position.z - n.z) < 4
-    );
+    const resource = nearbyResource(model.position, CITY_WORLD.nodes, 4);
     if (resource) {
       void gather(resource);
       return;
@@ -1529,10 +1541,25 @@ export function mountWorldPlay(options: {
           '/' +
           WORLD_QUESTS[active].target
         : '';
-      const node = CITY_WORLD.nodes.find(
-        (n) => Math.hypot(model.position.x - n.x, model.position.z - n.z) < 4
+      const node = nearbyResource(model.position, CITY_WORLD.nodes, 4);
+      const wait = node
+        ? resourceWait(node.id, progress.resourceCooldowns || {}, Date.now() + serverOffset)
+        : 0;
+      const forgeNearby =
+        Math.hypot(model.position.x - CITY_WORLD.forge.x, model.position.z - CITY_WORLD.forge.z) <
+        4;
+      const postNearby = QUEST_POSTS.some(
+        (p) => Math.hypot(model.position.x - p.x, model.position.z - p.z) < 4
       );
-      root.querySelector('.world-interact')!.innerHTML =
+      const otherInteraction =
+        !!activeRoom ||
+        !!nearbyCityEntrance(model.position) ||
+        CITY_CITIZENS.some((n) => Math.hypot(n.x - model.position.x, n.z - model.position.z) < 4) ||
+        forgeNearby ||
+        postNearby;
+      const interactButton = root.querySelector<HTMLButtonElement>('.world-interact')!;
+      interactButton.disabled = !otherInteraction && !!node && wait > 0;
+      interactButton.innerHTML =
         (activeRoom
           ? 'Ascensor'
           : nearbyCityEntrance(model.position)
@@ -1541,22 +1568,43 @@ export function mountWorldPlay(options: {
                   (n) => Math.hypot(n.x - model.position.x, n.z - model.position.z) < 4
                 )
               ? 'Hablar'
-              : node
-                ? 'Recoger'
-                : Math.hypot(
-                      model.position.x - CITY_WORLD.forge.x,
-                      model.position.z - CITY_WORLD.forge.z
-                    ) < 4
-                  ? 'Craftear'
-                  : QUEST_POSTS.some(
-                        (p) => Math.hypot(model.position.x - p.x, model.position.z - p.z) < 4
-                      )
-                    ? 'Misiones'
+              : forgeNearby
+                ? 'Craftear'
+                : postNearby
+                  ? 'Misiones'
+                  : node
+                    ? wait
+                      ? `Reaparece · ${wait} s`
+                      : node.pickup
+                        ? 'Recoger'
+                        : 'Extraer'
                     : 'Explorar') + ' <kbd>F</kbd>';
+      const nearby = !activeRoom ? nearbyResource(model.position, CITY_WORLD.nodes, 8) : null;
+      resourceHint.hidden = !nearby;
+      if (nearby) {
+        const seconds = resourceWait(
+          nearby.id,
+          progress.resourceCooldowns || {},
+          Date.now() + serverOffset
+        );
+        resourceHint.textContent = `${nearby.name} · ${WORLD_MATERIALS[nearby.material]} ×${nearby.amount} · ${seconds ? 'Reaparece en ' + seconds + ' s' : nearby.pickup ? 'Disponible para recoger' : 'Disponible para extraer'}`;
+      }
       for (const n of CITY_WORLD.nodes) {
-        const object = scene.getObjectByName('resource-' + n.id);
+        const object = resourceObjects.get(n.id);
         if (object)
-          object.visible = (progress.resourceCooldowns?.[n.id] || 0) <= Date.now() + serverOffset;
+          object.visible =
+            resourceWait(n.id, progress.resourceCooldowns || {}, Date.now() + serverOffset) === 0;
+      }
+      if (now >= resourceStatusAt && !modal.hidden) {
+        modal.querySelectorAll<HTMLElement>('[data-resource-status]').forEach((label) => {
+          const seconds = resourceWait(
+            label.dataset.resourceStatus!,
+            progress.resourceCooldowns || {},
+            Date.now() + serverOffset
+          );
+          label.textContent = seconds ? `Reaparece en ${seconds} s` : 'Disponible';
+        });
+        resourceStatusAt = now + 250;
       }
     }
     const enemy = target(12);

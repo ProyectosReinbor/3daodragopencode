@@ -712,6 +712,9 @@
 .world-reward-entry li { margin: 5px 0; }
 .world-level-up { position: absolute; top: 105px; left: 50%; transform: translateX(-50%); max-width: 50%; padding: 10px 16px; border: 1px solid #f1d48b; border-radius: 12px; background: #142a32f2; color: #ffe6a6; text-align: center; pointer-events: none; }
 .world-level-up[hidden] { display: none; }
+.world-resource-hint { position: absolute; right: max(16px, env(safe-area-inset-right)); top: 290px; max-width: 180px; padding: 10px; border: 1px solid #83ddc455; border-radius: 12px; background: #10232ded; color: #d9f6eb; font-size: 12px; pointer-events: none; }
+.world-resource-hint[hidden], .world-room-active .world-resource-hint { display: none; }
+@media(max-height:500px) { .world-resource-hint { top: 205px; max-width: 145px; font-size: 10px; padding: 7px; } }
 .world-adventure-tracker[hidden], .world-room-active .world-adventure-tracker,
 .world-guided-adventure .world-quest-tracker { display: none; }
 @media(max-height:520px) { .world-adventure-tracker { top: 105px; width: 215px; padding: 9px; } }
