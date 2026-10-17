@@ -25,6 +25,14 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Carga diferida del mundo — 17 de octubre de 2026
+
+La portada y el taller dejan de importar el mundo de forma estática. El acceso desde la cuenta y el campo de prueba comparten una carga diferida con pantalla de espera, cancelación y reintento. Salir durante la descarga descarta el resultado tardío y evita montar la escena o iniciar su sesión. La interfaz de fondo se bloquea durante la espera y recupera su estado al salir o al entregar el control al mundo.
+
+La compilación de esta entrega separa el JavaScript principal: de 4.948,85 kB a 173,05 kB sin compresión (58,54 kB gzip). El mundo queda en un archivo diferido de 4.778,35 kB (1.011,17 kB gzip), con su CSS también separado. Three.js sigue siendo un archivo compartido de 524,70 kB y puede cargarse con los previews de la portada. No se reduce la cartografía ni se promete un tiempo de carga concreto; se pospone su descarga hasta entrar. La prueba del personaje usa por ahora el mismo módulo del mundo y también descarga ese archivo al abrirse.
+
+Las pruebas cubren cancelar una descarga pendiente, reintentar un fallo, liberar una escena montada una sola vez y conservar el bloqueo previo del fondo. Se mantienen las pruebas de controles y progresión del mundo. En despliegue, conservar los archivos con hash de versiones previas mientras puedan existir pestañas abiertas que los soliciten.
+
 ### Pasaporte urbano — 17 de octubre de 2026
 
 Desde Misiones y los locales se puede abrir un pasaporte de seis negocios ficticios existentes. Muestra sellos, progreso, distancias y el siguiente lugar cercano pendiente. Cada destino se conecta al mapa y a la guía de exploración. El sello se registra mediante una acción explícita cerca de la entrada o del centro interior del edificio, sin compras ni permisos de ubicación real.

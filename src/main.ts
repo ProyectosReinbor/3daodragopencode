@@ -3,7 +3,7 @@ import './foodie.css';
 import './aodase.css';
 import { mountGuardian } from './game/guardian-ui';
 let stopGuardian: (() => void) | undefined;
-import { mountWorldPlay } from './game/world-play';
+import { mountLazyWorld } from './game/lazy-world';
 let stopWorld: (() => void) | undefined;
 import { migrateProfile, type PlayerProfile } from './game/profile';
 import { initFoodieLanding } from './game/landing-ui';
@@ -166,7 +166,7 @@ function startGameWithProfile(profile: PlayerProfile) {
       profile.characters.characters[0];
     if (active) {
       stopWorld?.();
-      stopWorld = mountWorldPlay({
+      stopWorld = mountLazyWorld({
         pet: active,
         profile,
         onExit: (updated) => {
