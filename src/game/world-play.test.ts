@@ -8,7 +8,7 @@ import { CITY_BUILDINGS, CITY_VENUES } from '../../shared/city-life.js';
 import { CITY_WORLD } from '../../shared/city-world.js';
 import type { Enemy } from './world';
 
-const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false }));
+const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false, pixelRatio: 1 }));
 const roomControl = vi.hoisted(() => ({ entrance: false }));
 const battleControl = vi.hoisted(() => ({ enemy: null as Enemy | null }));
 vi.mock('./world', async () => {
@@ -37,7 +37,9 @@ vi.mock('three', async () => {
   return {
     ...actual,
     WebGLRenderer: class {
-      setPixelRatio() {}
+      setPixelRatio(value: number) {
+        rendered.pixelRatio = value;
+      }
       setSize() {}
       render(_scene: unknown, camera: { position: { x: number; y: number; z: number } }) {
         rendered.x = camera.position.x;
@@ -84,6 +86,7 @@ describe('full screen world controls', () => {
     stop();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    localStorage.removeItem('reinos-ancestrales-quality-v1');
   });
   function tick() {
     now += 50;
@@ -531,6 +534,25 @@ describe('full screen world controls', () => {
     window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowDown' }));
     expect(document.querySelector('.world-interact')!.textContent).toContain('Craftear');
   }, 20000);
+  it('applies graphics presets immediately and restores the chosen mode on the next visit', () => {
+    vi.stubGlobal('devicePixelRatio', 2);
+    document.querySelector<HTMLButtonElement>('[data-menu="graphics"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-graphics="low"]')!.click();
+    expect(rendered.pixelRatio).toBe(0.8);
+    expect(document.querySelector('[data-graphics="low"]')!.getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    document.querySelector<HTMLButtonElement>('[data-close]')!.click();
+    stop();
+    stop = mountWorldPlay({ pet: createStarterCharacter(), onExit: vi.fn() });
+    expect(rendered.pixelRatio).toBe(0.8);
+    document.querySelector<HTMLButtonElement>('[data-menu="graphics"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-graphics="high"]')!.click();
+    expect(rendered.pixelRatio).toBe(1.35);
+    expect(document.querySelector('[data-graphics="high"]')!.getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+  });
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);

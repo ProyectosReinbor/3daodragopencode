@@ -25,6 +25,12 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Ajustes gráficos del mundo — 16 de octubre de 2026
+
+El botón de engranaje abre Ahorro, Equilibrado y Alto. Se reutiliza la preferencia gráfica existente: límites de resolución de 0,8 / 1 / 1,35 píxeles por píxel CSS y límites de dibujo de 30 / 45 / 60 FPS. Son límites solicitados, no una garantía de FPS. La simulación, controles, colisiones y tiempos de combate continúan en el bucle habitual; solo se limita el envío de fotogramas al renderizador.
+
+La decoración de la capa de presentación cambia de densidad sin reconstruir la ciudad y Ahorro oculta las partículas ambientales. Las advertencias de ataques y elementos interactivos se conservan. La preferencia se aplica al volver al mundo y se intenta guardar en este navegador; si el almacenamiento está bloqueado se informa y el modo sigue funcionando durante la sesión. Esta entrega no reduce los datos cartográficos, edificios ni el tamaño inicial del paquete, y requiere medir rendimiento en dispositivos físicos. Las pruebas verifican persistencia, almacenamiento bloqueado y restauración de densidad al volver a Alto.
+
 ### Señales de recolección — 16 de octubre de 2026
 
 Al acercarse a un recurso aparece su nombre, material, cantidad y disponibilidad. Los recursos en recuperación muestran segundos restantes; el botón distingue recoger hallazgos de extraer y se deshabilita durante la recarga cuando no hay otra interacción prioritaria. La tecla F también comprueba la recarga conocida antes de enviar una solicitud. Edificios, NPC, forja y puestos de misiones conservan su prioridad, con el texto del botón alineado a la acción real.

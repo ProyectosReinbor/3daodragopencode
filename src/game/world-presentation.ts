@@ -31,8 +31,10 @@ import {
 } from 'three';
 import type { ZoneId } from './profile';
 import { zoneConfig } from './zones';
+import type { QualityLevel } from './quality';
 
 export interface WorldPresentation {
+  setQuality(level: QualityLevel): void;
   /** Both time arguments use seconds. The optional position anchors the ground shadow. */
   update(delta: number, time: number, playerPosition?: Vector3): void;
   /** Call before disposing or clearing the owning scene. Safe to call more than once. */
@@ -174,7 +176,8 @@ export function createWorldPresentation(
   scene: Scene,
   renderer: WebGLRenderer,
   zone: ZoneId,
-  training: boolean
+  training: boolean,
+  quality: QualityLevel = 'high'
 ): WorldPresentation {
   const palette = PALETTES[zone];
   const cfg = zoneConfig(zone);
@@ -392,7 +395,26 @@ export function createWorldPresentation(
   }
   scene.add(layer);
 
+  const decorationCounts = new Map<InstancedMesh, number>();
+  const particles: Points[] = [];
+  layer.traverse((object) => {
+    if (object instanceof InstancedMesh) decorationCounts.set(object, object.count);
+    if (object instanceof Points) particles.push(object);
+  });
+  function setQuality(level: QualityLevel) {
+    const factor = { low: 0.35, medium: 0.65, high: 1 }[level];
+    decorationCounts.forEach((count, mesh) => {
+      mesh.count = Math.ceil(count * factor);
+    });
+    particles.forEach((object) => {
+      object.visible = level !== 'low';
+    });
+    layer.userData.graphicsQuality = level;
+  }
+  setQuality(quality);
+
   return {
+    setQuality,
     update(_delta, time, playerPosition) {
       if (disposed) return;
       uniformTime.value = reduceMotion || !Number.isFinite(time) ? 0 : time;

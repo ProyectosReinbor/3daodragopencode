@@ -10,6 +10,13 @@ import { planRecipe, nearestMaterialSource } from './forge-planner';
 import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
 import { resourceWait, nearbyResource } from './resource-status';
 import {
+  getQuality,
+  saveQuality,
+  pixelRatioFor,
+  frameIntervalFor,
+  type QualityLevel,
+} from './quality';
+import {
   adventureObjective,
   ADVENTURE_GUIDE,
   ADVENTURE_REWARD,
@@ -101,7 +108,9 @@ export function mountWorldPlay(options: {
     options.onExit(profile);
     return () => {};
   }
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  let graphicsQuality = getQuality();
+  let lastRenderAt = -Infinity;
+  renderer.setPixelRatio(pixelRatioFor(graphicsQuality));
   const model = buildNftModel({ ...pet, phoneId: '' });
   let world = training ? createWorld(scene, zone) : createCityWorld(scene);
   let presentation: WorldPresentation | undefined;
@@ -134,6 +143,27 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  let graphicsSaved: boolean | null = null;
+  root
+    .querySelector('nav')!
+    .insertAdjacentHTML(
+      'beforeend',
+      '<button data-menu="graphics" aria-label="Ajustes gráficos">⚙</button>'
+    );
+  function graphicsDialog() {
+    modal.hidden = false;
+    const labels = { low: 'Ahorro', medium: 'Equilibrado', high: 'Alto' };
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Ajustes gráficos"><button data-close aria-label="Cerrar ajustes">✕</button><h2>Calidad gráfica</h2><p>Elige Ahorro si notas lentitud o quieres reducir el trabajo de dibujo. Los cambios se aplican al instante.</p><div class="world-journal-filters" role="group" aria-label="Calidad gráfica">${Object.entries(
+      labels
+    )
+      .map(
+        ([id, label]) =>
+          `<button data-graphics="${id}" aria-pressed="${graphicsQuality === id}">${label}</button>`
+      )
+      .join(
+        ''
+      )}</div><p>Modo actual: ${labels[graphicsQuality]}. Objetivo de dibujo: ${Math.round(1000 / frameIntervalFor(graphicsQuality))} FPS, sujeto al rendimiento del equipo.</p><p>Ahorro reduce resolución y decoración y oculta las partículas ambientales. El combate, los controles y las advertencias de ataques se conservan.</p><p role="status">${graphicsSaved === null ? 'Al elegir un modo se intentará guardar la preferencia en este navegador.' : graphicsSaved ? 'La preferencia se conserva en este navegador.' : 'El navegador impide guardar preferencias. El cambio se mantiene durante esta sesión.'}</p></article>`;
+  }
   let rewardEntries: RewardEntry[] = [];
   let levelNoticeUntil = 0;
   if (!training)
@@ -392,7 +422,7 @@ export function mountWorldPlay(options: {
     root.querySelector('.world-zone')!.textContent = training
       ? 'Un rival sencillo · Sin riesgo'
       : zone[0].toUpperCase() + zone.slice(1);
-    presentation = createWorldPresentation(scene, renderer, zone, training);
+    presentation = createWorldPresentation(scene, renderer, zone, training, graphicsQuality);
   }
   prepare();
   const resourceObjects = new Map(
@@ -962,7 +992,19 @@ export function mountWorldPlay(options: {
         return;
       }
       if (button.dataset.menu === 'exit') exit();
-      else if (button.dataset.menu === 'rewards') rewardsDialog();
+      else if (button.dataset.menu === 'graphics') graphicsDialog();
+      else if (
+        button.dataset.graphics &&
+        ['low', 'medium', 'high'].includes(button.dataset.graphics)
+      ) {
+        graphicsQuality = button.dataset.graphics as QualityLevel;
+        renderer.setPixelRatio(pixelRatioFor(graphicsQuality));
+        presentation?.setQuality(graphicsQuality);
+        resize();
+        lastRenderAt = -Infinity;
+        graphicsSaved = saveQuality(graphicsQuality);
+        graphicsDialog();
+      } else if (button.dataset.menu === 'rewards') rewardsDialog();
       else if (button.dataset.menu === 'adventure') adventureDialog();
       else if (button.dataset.adventure) {
         if (busy || !session) return;
@@ -1498,7 +1540,10 @@ export function mountWorldPlay(options: {
     if (!training) scene.userData.animateCityUrban?.(now / 1000);
     if (!training) scene.userData.animateCityLife?.(now / 1000, model.position);
     presentation?.update(dt, now / 1000, model.position);
-    renderer.render(scene, camera);
+    if (now - lastRenderAt >= frameIntervalFor(graphicsQuality) - 0.5) {
+      renderer.render(scene, camera);
+      lastRenderAt = now;
+    }
     for (const [selector, value, max, label] of [
       ['.world-health', health, maxHealth(), 'Vida'],
       ['.world-mana', mana, 100, 'Maná'],

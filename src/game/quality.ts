@@ -4,7 +4,12 @@ const STORAGE_KEY = 'reinos-ancestrales-quality-v1';
 type NavigatorWithHardware = Navigator & { deviceMemory?: number };
 
 export function getQuality(): QualityLevel {
-  const stored = localStorage.getItem(STORAGE_KEY) as QualityLevel | null;
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    /* Use the device default when storage is blocked. */
+  }
   if (stored === 'low' || stored === 'medium' || stored === 'high') return stored;
   const navigatorInfo = navigator as NavigatorWithHardware;
   if (
@@ -17,7 +22,12 @@ export function getQuality(): QualityLevel {
 }
 
 export function saveQuality(level: QualityLevel) {
-  localStorage.setItem(STORAGE_KEY, level);
+  try {
+    localStorage.setItem(STORAGE_KEY, level);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function pixelRatioFor(level: QualityLevel) {

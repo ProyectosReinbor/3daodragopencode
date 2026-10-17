@@ -32,6 +32,30 @@ function rendererStub() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('world presentation ownership', () => {
+  it('changes decorative density without rebuilding the world and restores full detail', () => {
+    const scene = new Scene();
+    const presentation = createWorldPresentation(scene, rendererStub(), 'aldea', true);
+    const layer = scene.getObjectByName('world-presentation') as Group;
+    const counts = new Map<InstancedMesh, number>();
+    const particles: Points[] = [];
+    layer.traverse((object) => {
+      if (object instanceof InstancedMesh) counts.set(object, object.count);
+      if (object instanceof Points) particles.push(object);
+    });
+    const children = layer.children.length;
+    expect(counts.size).toBeGreaterThan(0);
+    expect(particles.length).toBeGreaterThan(0);
+    presentation.setQuality('low');
+    counts.forEach((count, mesh) => expect(mesh.count).toBe(Math.ceil(count * 0.35)));
+    particles.forEach((object) => expect(object.visible).toBe(false));
+    presentation.setQuality('medium');
+    counts.forEach((count, mesh) => expect(mesh.count).toBe(Math.ceil(count * 0.65)));
+    presentation.setQuality('high');
+    counts.forEach((count, mesh) => expect(mesh.count).toBe(count));
+    particles.forEach((object) => expect(object.visible).toBe(true));
+    expect(layer.children.length).toBe(children);
+    presentation.dispose();
+  });
   it('releases its GPU resources and restores renderer/light state without disposing world assets', () => {
     const scene = new Scene();
     scene.fog = new Fog(0x9ebfce, 18, 54);
