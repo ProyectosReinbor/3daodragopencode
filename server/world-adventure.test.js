@@ -45,11 +45,16 @@ test('world resources, timed mining, crafting and quest rewards persist without 
     assert.equal((await request({action:'attack',slot:3,enemy:'city:999999',kind:'wolf'})).status,400);
     assert.equal((await request({action:'attack',slot:3,enemy:'city:0',kind:'wolf'})).status,200);
     assert.equal(profile.world.kills,1);
+    assert.equal(profile.world.monsterKills.wolf,1);
     const parkIndex=CITY_ENCOUNTERS.findIndex(e=>e.park);
     await request({action:'accept_quest',quest:'park_patrol'});
     assert.equal((await request({action:'claim_quest',quest:'park_patrol'})).status,400);
     for(let i=0;i<8;i++){now+=25000;assert.equal((await request({action:'attack',slot:3,enemy:'city:'+parkIndex,kind:CITY_ENCOUNTERS[parkIndex].kind})).status,200);}
     assert.equal(profile.world.parkKills,8);
+    assert.equal(profile.world.monsterKills[CITY_ENCOUNTERS[parkIndex].kind],9);
+    now+=1000;
+    assert.equal((await request({action:'attack',slot:-1,enemy:'city:'+parkIndex,kind:CITY_ENCOUNTERS[parkIndex].kind})).status,400);
+    assert.equal(profile.world.monsterKills[CITY_ENCOUNTERS[parkIndex].kind],9);
     assert.equal((await request({action:'claim_quest',quest:'park_patrol'})).status,200);
     const parkCoins=profile.world.coins;
     assert.equal((await request({action:'claim_quest',quest:'park_patrol'})).status,400);

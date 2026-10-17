@@ -25,6 +25,14 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Guía de monstruos — 16 de octubre de 2026
+
+El libro del menú abre una guía de lobos, guardianes esqueleto, espíritus y gólems. Muestra vida, monedas, XP, material obtenido, piezas posibles y consejos sobre la preparación del ataque. Las piezas y consumibles aleatorios se presentan como posibilidades, no como premios garantizados. Los datos de recompensas y materiales proceden de los catálogos existentes.
+
+«Localizar» selecciona el encuentro de esa especie más próximo dentro del catálogo real del mundo. Puede marcarse como destino; la guía no teletransporta, no entrega recompensas y no garantiza que el enemigo esté vivo en ese momento. El mapa señala el punto seleccionado con un anillo.
+
+El servidor guarda `world.monsterKills` por especie solo al confirmar una derrota. Los ataques rechazados o repetidos sobre un enemigo derrotado no incrementan el contador. Las cuentas anteriores empiezan sin historial por especie; se conservan sus derrotas totales sin inventar una distribución retrospectiva. Las pruebas cubren conteo, repetición, cercanía de encuentros y navegación sin peticiones adicionales. Reiniciar la API para cargar el nuevo contador.
+
 ### Balizas de regreso — 16 de octubre de 2026
 
 Cuatro balizas ficticias ofrecen puntos de regreso: Parque Central y sectores Viva, Primavera y Unillanos. Las tres balizas de sectores se ubican en vértices de calles importadas cercanos al lugar de referencia; no representan entradas de negocios reales. Se muestran como anillos luminosos y aparecen en el mapa y minimapa. Se pueden marcar como destinos y activar con F al llegar.

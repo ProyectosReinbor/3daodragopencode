@@ -578,6 +578,35 @@ describe('full screen world controls', () => {
       document.querySelector<HTMLButtonElement>('[data-follow-place]')!.dataset.followPlace
     ).toBe(camp.id);
   }, 20000);
+  it('shows confirmed species counts and locates a real monster encounter without granting rewards', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    profile.world.monsterKills = { wolf: 3 };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ session: 'bestiary-qa', profile }) });
+    vi.stubGlobal('fetch', fetchMock);
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    document.querySelector<HTMLButtonElement>('[data-menu="bestiary"]')!.click();
+    expect(document.querySelectorAll('.world-monster-guide')).toHaveLength(4);
+    expect(document.querySelector('.world-monster-guide')!.textContent).toContain(
+      'Derrotas registradas: 3'
+    );
+    const requests = fetchMock.mock.calls.length;
+    document.querySelector<HTMLButtonElement>('[data-find-monster="golem"]')!.click();
+    expect(document.querySelector('[data-map-selection]')!.textContent).toContain('Gólem');
+    expect(document.querySelector('[data-selected-place]')).not.toBeNull();
+    document.querySelector<HTMLButtonElement>('[data-follow-place="monster-golem"]')!.click();
+    tick();
+    expect(document.querySelector('[aria-label="Ver destino en el mapa"]')!.textContent).toContain(
+      'Gólem'
+    );
+    expect(fetchMock.mock.calls.length).toBe(requests);
+    expect(profile.world.monsterKills.wolf).toBe(3);
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);

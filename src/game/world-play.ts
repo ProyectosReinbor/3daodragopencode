@@ -2,7 +2,7 @@ import { cityRoadMarkup } from './city-map';
 import { openCityRoom, closeCityRoom, nearbyCityEntrance, type CityRoom } from './city-life';
 import { CITY_CITIZENS, CITY_VENUES, CITY_PARKS } from '../../shared/city-life.js';
 import { geographicWorldPosition } from '../../shared/city-world.js';
-import { WORLD_MATERIALS, WORLD_RECIPES } from '../../shared/world-crafting.js';
+import { WORLD_MATERIALS, WORLD_RECIPES, MONSTER_MATERIALS } from '../../shared/world-crafting.js';
 import { WORLD_QUESTS, QUEST_POSTS, questProgress } from '../../shared/world-quests.js';
 import { questStatus, nearestQuestPlace, type QuestStatus } from './quest-journal';
 import { equipmentStats, previewEquipment, type EquipmentStats } from './equipment-preview';
@@ -10,6 +10,7 @@ import { planRecipe, nearestMaterialSource } from './forge-planner';
 import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
 import { resourceWait, nearbyResource } from './resource-status';
 import { WORLD_CAMPS, activeCamp } from '../../shared/world-camps.js';
+import { MONSTER_GUIDE, nearestMonster } from './bestiary';
 import {
   getQuality,
   saveQuality,
@@ -144,6 +145,25 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  if (!training)
+    root
+      .querySelector('nav')!
+      .insertAdjacentHTML(
+        'beforeend',
+        '<button data-menu="bestiary" aria-label="Guía de monstruos">📖</button>'
+      );
+  function bestiaryDialog() {
+    modal.hidden = false;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Guía de monstruos"><button data-close aria-label="Cerrar guía">✕</button><h2>Guía de monstruos</h2><p>Consulta sus materiales y marca una zona de encuentro. Los enemigos pueden estar derrotados y necesitar tiempo para reaparecer.</p><p>Las derrotas por especie se registran desde esta actualización; no se reconstruyen las anteriores.</p>${Object.entries(
+      MONSTER_GUIDE
+    )
+      .map(([kind, guide]) => {
+        const reward = MONSTER_REWARDS[kind],
+          drop = MONSTER_MATERIALS[kind];
+        return `<section class="world-monster-guide"><h3>${guide.name}</h3><p>${guide.tip}</p><p>Vida: ${reward.health} · Recompensa: ${reward.coins} monedas y ${reward.xp} XP</p><p>Material: ${drop.amount} ${WORLD_MATERIALS[drop.material]}</p><p>Equipo posible: ${reward.items.map((id) => WORLD_ITEMS[id].name).join(' · ')}. También puede dejar pociones o maná; estos objetos no están garantizados.</p><p>Derrotas registradas: ${progress.monsterKills?.[kind] || 0}</p><button data-find-monster="${kind}">Localizar ${guide.name}</button></section>`;
+      })
+      .join('')}</article>`;
+  }
   let graphicsSaved: boolean | null = null;
   root
     .querySelector('nav')!
@@ -762,6 +782,12 @@ export function mountWorldPlay(options: {
     modal.querySelector('[data-map-selection]')!.innerHTML =
       `<h3>${safe(place.name)}</h3><button data-follow-place="${safe(place.id)}">Seguir destino</button>`;
     refreshCityMap();
+    const svg = modal.querySelector('[data-city-map]')!;
+    svg.querySelector('[data-selected-place]')?.remove();
+    svg.insertAdjacentHTML(
+      'beforeend',
+      `<circle data-selected-place cx="${place.x}" cy="${place.z}" r="45" fill="none" stroke="#ffe2a1" stroke-width="12"/>`
+    );
   }
   function campDialog(camp: (typeof WORLD_CAMPS)[number]) {
     modal.hidden = false;
@@ -1046,7 +1072,14 @@ export function mountWorldPlay(options: {
         return;
       }
       if (button.dataset.menu === 'exit') exit();
-      else if (button.dataset.activateCamp) {
+      else if (button.dataset.menu === 'bestiary') bestiaryDialog();
+      else if (button.dataset.findMonster) {
+        const place = nearestMonster(button.dataset.findMonster, model.position);
+        if (place) {
+          cityMap();
+          selectMapPlace(place);
+        }
+      } else if (button.dataset.activateCamp) {
         if (busy || !session) return;
         const camp = WORLD_CAMPS.find((value) => value.id === button.dataset.activateCamp);
         if (!camp) return;
@@ -1152,7 +1185,11 @@ export function mountWorldPlay(options: {
         waypoint = null;
         cityMap();
       } else if (button.dataset.followPlace) {
-        const place = mapPlaces.find((p) => p.id === button.dataset.followPlace);
+        const place =
+          mapPlaces.find((p) => p.id === button.dataset.followPlace) ||
+          (button.dataset.followPlace.startsWith('monster-')
+            ? nearestMonster(button.dataset.followPlace.slice(8), model.position)
+            : null);
         if (place) {
           waypoint = { id: place.id, name: place.name, x: place.x, z: place.z };
           modal.hidden = true;
