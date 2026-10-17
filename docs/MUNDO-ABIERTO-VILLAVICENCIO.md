@@ -25,6 +25,14 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Balizas de regreso — 16 de octubre de 2026
+
+Cuatro balizas ficticias ofrecen puntos de regreso: Parque Central y sectores Viva, Primavera y Unillanos. Las tres balizas de sectores se ubican en vértices de calles importadas cercanos al lugar de referencia; no representan entradas de negocios reales. Se muestran como anillos luminosos y aparecen en el mapa y minimapa. Se pueden marcar como destinos y activar con F al llegar.
+
+La API exige sesión del propietario, ID de baliza conocido y posición declarada a un máximo de seis metros; guarda `world.campId` sin conceder monedas, XP, objetos ni curación. Activar repetidamente no da premios. Al entrar de nuevo o recuperarse de una derrota se usa la baliza guardada; perfiles anteriores conservan el punto inicial. La recuperación tras derrota mantiene las reglas existentes de vida, maná y cuatro segundos de protección. La posición sigue siendo declarada por el cliente: esta validación no sustituye movimiento autoritativo del servidor.
+
+Las pruebas HTTP usan perfiles aislados y verifican proximidad, propiedad de sesión, persistencia y ausencia de premios. La prueba de interfaz comprueba el inicio en la baliza guardada y su selección independiente de los lugares reales. Reiniciar la API después de actualizar para cargar la acción `activate_camp`.
+
 ### Ajustes gráficos del mundo — 16 de octubre de 2026
 
 El botón de engranaje abre Ahorro, Equilibrado y Alto. Se reutiliza la preferencia gráfica existente: límites de resolución de 0,8 / 1 / 1,35 píxeles por píxel CSS y límites de dibujo de 30 / 45 / 60 FPS. Son límites solicitados, no una garantía de FPS. La simulación, controles, colisiones y tiempos de combate continúan en el bucle habitual; solo se limita el envío de fotogramas al renderizador.

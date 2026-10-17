@@ -1,4 +1,5 @@
 export interface WorldProgress {
+  campId?: string;
   adventure?: import('./world-adventure.js').AdventureState;
   parkKills?: number;
   gathered?: number;

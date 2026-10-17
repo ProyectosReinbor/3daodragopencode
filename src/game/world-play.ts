@@ -9,6 +9,7 @@ import { equipmentStats, previewEquipment, type EquipmentStats } from './equipme
 import { planRecipe, nearestMaterialSource } from './forge-planner';
 import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
 import { resourceWait, nearbyResource } from './resource-status';
+import { WORLD_CAMPS, activeCamp } from '../../shared/world-camps.js';
 import {
   getQuality,
   saveQuality,
@@ -217,7 +218,7 @@ export function mountWorldPlay(options: {
     damageFeedbackUntil = 0;
     damageFeedback.hidden = true;
     hitFlash.hidden = true;
-    const start = zoneConfig(zone).playerStart;
+    const start = (!training && activeCamp(progress)) || zoneConfig(zone).playerStart;
     model.position.set(start.x, 0, start.z);
     world.enemies.forEach((e) => e.mesh.position.copy(e.spawnPosition));
     clearThreats(performance.now());
@@ -296,6 +297,7 @@ export function mountWorldPlay(options: {
     ...CITY_VENUES,
     ...CITY_PARKS,
     ...CITY_WORLD.nodes,
+    ...WORLD_CAMPS,
     forgePlace,
   ];
   let journalFilter: QuestStatus | 'all' = 'all';
@@ -416,7 +418,7 @@ export function mountWorldPlay(options: {
       e.spawnPosition.copy(e.mesh.position);
       world.npcs.forEach((n) => scene.remove(n.mesh));
     }
-    const start = zoneConfig(zone).playerStart;
+    const start = (!training && activeCamp(progress)) || zoneConfig(zone).playerStart;
     model.position.set(start.x, 0, start.z);
     scene.add(model);
     root.querySelector('.world-zone')!.textContent = training
@@ -425,6 +427,21 @@ export function mountWorldPlay(options: {
     presentation = createWorldPresentation(scene, renderer, zone, training, graphicsQuality);
   }
   prepare();
+  if (!training)
+    for (const camp of WORLD_CAMPS) {
+      const marker = new Mesh(
+        new TorusGeometry(1.6, 0.18, 6, 32),
+        new MeshLambertMaterial({ color: 0x83ddf5, emissive: 0x194856 })
+      );
+      marker.name = 'camp-' + camp.id;
+      marker.rotation.x = -Math.PI / 2;
+      marker.position.set(
+        camp.x,
+        (scene.userData.citySurfaceHeight?.(camp.x, camp.z) || 0) + 0.2,
+        camp.z
+      );
+      scene.add(marker);
+    }
   const resourceObjects = new Map(
     CITY_WORLD.nodes.map((node) => [node.id, scene.getObjectByName('resource-' + node.id)])
   );
@@ -485,6 +502,13 @@ export function mountWorldPlay(options: {
     '<circle data-adventure-pin r="30" fill="none" stroke="#ffd98a" stroke-width="12"/>'
   );
   const adventurePin = minimap?.querySelector('[data-adventure-pin]');
+  minimap?.insertAdjacentHTML(
+    'beforeend',
+    WORLD_CAMPS.map(
+      (camp) =>
+        `<circle cx="${camp.x}" cy="${camp.z}" r="24" fill="#83ddf5"><title>${safe(camp.name)}</title></circle>`
+    ).join('')
+  );
   const resize = () => {
     const box = root.getBoundingClientRect();
     renderer.setSize(box.width, box.height, false);
@@ -543,6 +567,9 @@ export function mountWorldPlay(options: {
         if (data.serverNow) serverOffset = data.serverNow - Date.now();
         profile = data.profile;
         progress = profile!.world!;
+        const camp = activeCamp(progress);
+        const start = camp || zoneConfig(zone).playerStart;
+        model.position.set(start.x, 0, start.z);
         if (modal.querySelector('[data-adventure]')) adventureDialog();
         notify('Habla con el guía junto al inicio. Recoge materiales con F y fabrica en la forja.');
       })
@@ -736,6 +763,11 @@ export function mountWorldPlay(options: {
       `<h3>${safe(place.name)}</h3><button data-follow-place="${safe(place.id)}">Seguir destino</button>`;
     refreshCityMap();
   }
+  function campDialog(camp: (typeof WORLD_CAMPS)[number]) {
+    modal.hidden = false;
+    const selected = activeCamp(progress)?.id === camp.id;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Punto de regreso"><button data-close aria-label="Cerrar baliza">✕</button><h2>${safe(camp.name)}</h2><p>Al ser derrotado o volver al mundo aparecerás en la baliza activa. Activarla no restaura vida ni maná.</p><p>Actual: ${safe(activeCamp(progress)?.name || 'Punto inicial')}</p><button data-activate-camp="${camp.id}" ${selected || busy || !session ? 'disabled' : ''}>${selected ? 'Punto de regreso activo' : 'Activar punto de regreso'}</button></article>`;
+  }
   function cityMap() {
     modal.hidden = false;
     mapX = model.position.x;
@@ -743,6 +775,21 @@ export function mountWorldPlay(options: {
     mapSpan = 6000;
     modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Mapa de Villavicencio"><button data-close aria-label="Cerrar mapa">✕</button><h2>Villavicencio · Calles reales</h2><p>Geografía de OpenStreetMap · 1 unidad = 1 metro. Biomas y edificios de fantasía.</p><div class="world-map-controls"><button data-map-control="in" aria-label="Acercar mapa">＋</button><button data-map-control="out" aria-label="Alejar mapa">−</button><button data-map-control="north" aria-label="Mover mapa al norte">↑</button><button data-map-control="south" aria-label="Mover mapa al sur">↓</button><button data-map-control="west" aria-label="Mover mapa al oeste">←</button><button data-map-control="east" aria-label="Mover mapa al este">→</button><button data-map-control="player">Mi pet</button><button data-map-control="all">Ciudad</button></div><p data-map-scale></p><svg data-city-map style="width:100%;height:360px;background:#07151d" role="img" aria-label="Calles y lugares reales de Villavicencio">${CITY_WORLD.biomes.map((b) => `<circle cx="${b.x}" cy="${b.z}" r="${b.radius}" fill="#${b.color.toString(16).padStart(6, '0')}"/>`).join('')}<g data-map-roads></g>${CITY_WORLD.landmarks.map((l) => `<circle cx="${l.x}" cy="${l.z}" r="35" fill="#83ddc4"><title>${safe(l.name)}</title></circle><text x="${l.x + 45}" y="${l.z}" font-size="50" fill="#fff" stroke="#07151d" stroke-width="8" paint-order="stroke">${safe(l.name)}</text>`).join('')}<circle cx="${model.position.x}" cy="${model.position.z}" r="45" fill="white"/></svg><p><a href="${CITY_WORLD.sourceUrl}" target="_blank" rel="noopener noreferrer">${safe(CITY_WORLD.attribution)}</a> · ODbL · Datos importados: ${CITY_WORLD.importedAt.slice(0, 10)}</p><h3>Lugares</h3>${CITY_WORLD.landmarks.map((l) => `<p><button data-map-place="${l.id}">${safe(l.name)}</button> · ${Math.round(Math.hypot(model.position.x - l.x, model.position.z - l.z))} m en línea recta</p>`).join('')}<p>Cooperativa Chorillano: sede pendiente de confirmar.</p><h3>Materiales y hallazgos</h3>${CITY_WORLD.nodes.map((n) => `<p><button data-map-place="${n.id}">${safe(n.name)}</button> · ${WORLD_MATERIALS[n.material]} · <span data-resource-status="${n.id}"></span> · ${Math.round(Math.hypot(model.position.x - n.x, model.position.z - n.z))} m</p>`).join('')}</article>`;
     refreshCityMap();
+    modal
+      .querySelector('article')!
+      .insertAdjacentHTML(
+        'beforeend',
+        `<h3>Puntos de regreso</h3>${WORLD_CAMPS.map((camp) => `<p><button data-map-place="${camp.id}">${safe(camp.name)}</button>${activeCamp(progress)?.id === camp.id ? ' · Activo' : ''}</p>`).join('')}`
+      );
+    modal
+      .querySelector('[data-city-map]')!
+      .insertAdjacentHTML(
+        'beforeend',
+        WORLD_CAMPS.map(
+          (camp) =>
+            `<circle cx="${camp.x}" cy="${camp.z}" r="32" fill="#83ddf5"><title>${safe(camp.name)}</title></circle>`
+        ).join('')
+      );
     modal
       .querySelector('article')!
       .insertAdjacentHTML(
@@ -911,6 +958,13 @@ export function mountWorldPlay(options: {
       notify(citizen.name + ' tiene una misión para ti.');
       return;
     }
+    const camp = WORLD_CAMPS.find(
+      (value) => Math.hypot(value.x - model.position.x, value.z - model.position.z) < 4
+    );
+    if (camp) {
+      campDialog(camp);
+      return;
+    }
     if (
       Math.hypot(model.position.x - CITY_WORLD.forge.x, model.position.z - CITY_WORLD.forge.z) < 4
     ) {
@@ -992,7 +1046,23 @@ export function mountWorldPlay(options: {
         return;
       }
       if (button.dataset.menu === 'exit') exit();
-      else if (button.dataset.menu === 'graphics') graphicsDialog();
+      else if (button.dataset.activateCamp) {
+        if (busy || !session) return;
+        const camp = WORLD_CAMPS.find((value) => value.id === button.dataset.activateCamp);
+        if (!camp) return;
+        busy = true;
+        button.disabled = true;
+        try {
+          await request({ action: 'activate_camp', camp: camp.id });
+          notify('Punto de regreso guardado: ' + camp.name);
+        } catch (error) {
+          notify((error as Error).message);
+        } finally {
+          busy = false;
+          if (!disposed && !modal.hidden && modal.querySelector('[aria-label="Punto de regreso"]'))
+            campDialog(camp);
+        }
+      } else if (button.dataset.menu === 'graphics') graphicsDialog();
       else if (
         button.dataset.graphics &&
         ['low', 'medium', 'high'].includes(button.dataset.graphics)
@@ -1596,10 +1666,14 @@ export function mountWorldPlay(options: {
       const postNearby = QUEST_POSTS.some(
         (p) => Math.hypot(model.position.x - p.x, model.position.z - p.z) < 4
       );
+      const campNearby = WORLD_CAMPS.some(
+        (camp) => Math.hypot(camp.x - model.position.x, camp.z - model.position.z) < 4
+      );
       const otherInteraction =
         !!activeRoom ||
         !!nearbyCityEntrance(model.position) ||
         CITY_CITIZENS.some((n) => Math.hypot(n.x - model.position.x, n.z - model.position.z) < 4) ||
+        campNearby ||
         forgeNearby ||
         postNearby;
       const interactButton = root.querySelector<HTMLButtonElement>('.world-interact')!;
@@ -1613,17 +1687,19 @@ export function mountWorldPlay(options: {
                   (n) => Math.hypot(n.x - model.position.x, n.z - model.position.z) < 4
                 )
               ? 'Hablar'
-              : forgeNearby
-                ? 'Craftear'
-                : postNearby
-                  ? 'Misiones'
-                  : node
-                    ? wait
-                      ? `Reaparece · ${wait} s`
-                      : node.pickup
-                        ? 'Recoger'
-                        : 'Extraer'
-                    : 'Explorar') + ' <kbd>F</kbd>';
+              : campNearby
+                ? 'Activar baliza'
+                : forgeNearby
+                  ? 'Craftear'
+                  : postNearby
+                    ? 'Misiones'
+                    : node
+                      ? wait
+                        ? `Reaparece · ${wait} s`
+                        : node.pickup
+                          ? 'Recoger'
+                          : 'Extraer'
+                      : 'Explorar') + ' <kbd>F</kbd>';
       const nearby = !activeRoom ? nearbyResource(model.position, CITY_WORLD.nodes, 8) : null;
       resourceHint.hidden = !nearby;
       if (nearby) {

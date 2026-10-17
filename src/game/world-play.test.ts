@@ -6,6 +6,7 @@ import { initialWorldProgress } from '../../shared/world-items.js';
 import { startAdventure } from '../../shared/world-adventure.js';
 import { CITY_BUILDINGS, CITY_VENUES } from '../../shared/city-life.js';
 import { CITY_WORLD } from '../../shared/city-world.js';
+import { WORLD_CAMPS } from '../../shared/world-camps.js';
 import type { Enemy } from './world';
 
 const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false, pixelRatio: 1 }));
@@ -553,6 +554,30 @@ describe('full screen world controls', () => {
       'true'
     );
   });
+  it('starts at the server-saved beacon and distinguishes it from real map landmarks', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet),
+      camp = WORLD_CAMPS[0];
+    profile.world = initialWorldProgress();
+    profile.world.campId = camp.id;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ session: 'camp-qa', profile }) })
+    );
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    tick();
+    expect(rendered.x).toBeCloseTo(camp.x);
+    document.querySelector<HTMLButtonElement>('[data-minimap]')!.click();
+    const button = document.querySelector<HTMLButtonElement>(`[data-map-place="${camp.id}"]`)!;
+    expect(button.parentElement!.textContent).toContain('Activo');
+    button.click();
+    expect(document.querySelector('[data-map-selection]')!.textContent).toContain(camp.name);
+    expect(
+      document.querySelector<HTMLButtonElement>('[data-follow-place]')!.dataset.followPlace
+    ).toBe(camp.id);
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);
