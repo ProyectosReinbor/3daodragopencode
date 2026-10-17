@@ -716,6 +716,8 @@
 .world-resource-hint[hidden], .world-room-active .world-resource-hint { display: none; }
 .world-monster-guide { border: 1px solid #83ddc444; border-radius: 14px; padding: 14px; margin: 14px 0; background: #10232db3; }
 .world-monster-guide button { min-height: 44px; }
+.world-passport-venue { padding: 14px; margin: 14px 0; border: 1px solid #83ddc444; border-radius: 14px; background: #10232db3; }
+.world-passport-venue button { min-height: 44px; margin: 4px; }
 @media(max-height:500px) { .world-resource-hint { top: 205px; max-width: 145px; font-size: 10px; padding: 7px; } }
 .world-adventure-tracker[hidden], .world-room-active .world-adventure-tracker,
 .world-guided-adventure .world-quest-tracker { display: none; }

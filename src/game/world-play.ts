@@ -12,6 +12,12 @@ import { resourceWait, nearbyResource } from './resource-status';
 import { WORLD_CAMPS, activeCamp } from '../../shared/world-camps.js';
 import { MONSTER_GUIDE, nearestMonster } from './bestiary';
 import {
+  PASSPORT_VENUES,
+  PASSPORT_REWARD,
+  passportCount,
+  canVisitVenue,
+} from '../../shared/world-passport.js';
+import {
   getQuality,
   saveQuality,
   pixelRatioFor,
@@ -145,6 +151,24 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  function passportDialog() {
+    modal.hidden = false;
+    const count = passportCount(progress);
+    const next = PASSPORT_VENUES.filter(
+      (venue) => !progress.visitedVenues?.includes(venue.id)
+    ).sort(
+      (a, b) =>
+        Math.hypot(a.x - model.position.x, a.z - model.position.z) -
+        Math.hypot(b.x - model.position.x, b.z - model.position.z)
+    )[0];
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Pasaporte urbano"><button data-close aria-label="Cerrar pasaporte">✕</button><h2>Pasaporte urbano</h2><p>Visita los seis negocios ficticios del mundo y registra tu sello desde la entrada o dentro del local. Son visitas virtuales; no requieren compras ni ubicación real.</p><progress max="${PASSPORT_VENUES.length}" value="${count}" aria-label="Sellos del pasaporte"></progress><p>${count}/${PASSPORT_VENUES.length} sellos · ${progress.passportRewarded ? 'Recompensa recibida' : 'Recompensa única: ' + PASSPORT_REWARD.coins + ' monedas y ' + PASSPORT_REWARD.xp + ' XP'}</p>${next ? `<button data-find-venue="${next.id}">Siguiente lugar cercano: ${safe(next.name)}</button>` : ''}${PASSPORT_VENUES.map(
+      (venue) => {
+        const visited = progress.visitedVenues?.includes(venue.id);
+        const nearby = canVisitVenue(venue.id, model.position);
+        return `<section class="world-passport-venue"><h3>${safe(venue.name)}</h3><p>${visited ? 'Sello registrado' : nearby ? 'Estás cerca: puedes registrar tu visita' : 'Por descubrir'} · ${Math.round(Math.hypot(venue.x - model.position.x, venue.z - model.position.z))} m en línea recta</p><button data-visit-venue="${venue.id}" ${visited || !nearby || busy || !session ? 'disabled' : ''}>${visited ? 'Visitado' : 'Registrar visita'}</button><button data-find-venue="${venue.id}">Ver en mapa</button></section>`;
+      }
+    ).join('')}</article>`;
+  }
   if (!training)
     root
       .querySelector('nav')!
@@ -366,6 +390,11 @@ export function mountWorldPlay(options: {
     buildingBar.hidden = false;
     root.classList.add('world-room-active');
     buildingBar.innerHTML = `<strong>${safe(activeRoom.name)} · ${activeRoom.terrace ? 'Terraza' : 'Piso ' + (activeRoom.floor + 1)}</strong><button data-room-action="floors">Ascensor</button>${activeRoom.venue && !activeRoom.terrace ? '<button data-room-action="shop">Negocio</button><button data-room-action="quests">Hablar con NPC</button>' : ''}<button data-room-action="exit">Salir del edificio</button>`;
+    if (activeRoom.venue)
+      buildingBar.insertAdjacentHTML(
+        'beforeend',
+        '<button data-menu="passport">Pasaporte urbano</button>'
+      );
     notify(
       activeRoom.terrace
         ? 'Explora la terraza y contempla la ciudad.'
@@ -881,6 +910,12 @@ export function mountWorldPlay(options: {
         })
         .join('') || '<p role="status">No hay misiones en esta categoría.</p>'
     }</article>`;
+    modal
+      .querySelector('article')!
+      .insertAdjacentHTML(
+        'afterbegin',
+        '<button data-menu="passport">Pasaporte urbano · Visita los negocios</button>'
+      );
   }
   function forge() {
     modal.hidden = false;
@@ -1072,7 +1107,32 @@ export function mountWorldPlay(options: {
         return;
       }
       if (button.dataset.menu === 'exit') exit();
-      else if (button.dataset.menu === 'bestiary') bestiaryDialog();
+      else if (button.dataset.menu === 'passport') passportDialog();
+      else if (button.dataset.findVenue) {
+        const venue = PASSPORT_VENUES.find((value) => value.id === button.dataset.findVenue);
+        if (venue) {
+          cityMap();
+          selectMapPlace(venue);
+        }
+      } else if (button.dataset.visitVenue) {
+        if (busy || !session) return;
+        busy = true;
+        button.disabled = true;
+        try {
+          const data = await request({ action: 'visit_venue', venue: button.dataset.visitVenue });
+          notify(
+            data.reward
+              ? '¡Pasaporte completo! Recibiste tus monedas y experiencia.'
+              : 'Sello de visita registrado.'
+          );
+        } catch (error) {
+          notify((error as Error).message);
+        } finally {
+          busy = false;
+          if (!disposed && !modal.hidden && modal.querySelector('[aria-label="Pasaporte urbano"]'))
+            passportDialog();
+        }
+      } else if (button.dataset.menu === 'bestiary') bestiaryDialog();
       else if (button.dataset.findMonster) {
         const place = nearestMonster(button.dataset.findMonster, model.position);
         if (place) {

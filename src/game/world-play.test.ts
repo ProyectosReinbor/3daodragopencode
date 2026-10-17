@@ -7,6 +7,7 @@ import { startAdventure } from '../../shared/world-adventure.js';
 import { CITY_BUILDINGS, CITY_VENUES } from '../../shared/city-life.js';
 import { CITY_WORLD } from '../../shared/city-world.js';
 import { WORLD_CAMPS } from '../../shared/world-camps.js';
+import { visitVenue } from '../../shared/world-passport.js';
 import type { Enemy } from './world';
 
 const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false, pixelRatio: 1 }));
@@ -606,6 +607,59 @@ describe('full screen world controls', () => {
     );
     expect(fetchMock.mock.calls.length).toBe(requests);
     expect(profile.world.monsterKills.wolf).toBe(3);
+  }, 20000);
+  it('registers a passport stamp from inside a venue and restores it on a later visit', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      const reward =
+        body.action === 'visit_venue'
+          ? visitVenue(profile.world!, body.venue, body.position)
+          : null;
+      return {
+        ok: true,
+        json: async () => ({ session: 'passport-qa', profile: structuredClone(profile), reward }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const settle = async () => {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    };
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    await settle();
+    roomControl.entrance = true;
+    key('f');
+    roomControl.entrance = false;
+    document.querySelector<HTMLButtonElement>('[data-menu="passport"]')!.click();
+    expect(document.querySelectorAll('.world-passport-venue')).toHaveLength(6);
+    const venue = CITY_VENUES[0];
+    expect(
+      document.querySelector<HTMLButtonElement>(`[data-visit-venue="${venue.id}"]`)!.disabled
+    ).toBe(false);
+    document.querySelector<HTMLButtonElement>(`[data-visit-venue="${venue.id}"]`)!.click();
+    await settle();
+    expect(profile.world.visitedVenues).toEqual([venue.id]);
+    expect(
+      document.querySelector<HTMLButtonElement>(`[data-visit-venue="${venue.id}"]`)!.disabled
+    ).toBe(true);
+    expect(
+      document.querySelector<HTMLProgressElement>('[aria-label="Sellos del pasaporte"]')!.value
+    ).toBe(1);
+    stop();
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    await settle();
+    document.querySelector<HTMLButtonElement>('[data-menu="quests"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-menu="passport"]')!.click();
+    expect(
+      document.querySelector<HTMLProgressElement>('[aria-label="Sellos del pasaporte"]')!.value
+    ).toBe(1);
+    document.querySelector<HTMLButtonElement>(`[data-find-venue="${CITY_VENUES[1].id}"]`)!.click();
+    expect(document.querySelector('[data-map-selection]')!.textContent).toContain(
+      CITY_VENUES[1].name
+    );
   }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;

@@ -18,6 +18,7 @@ export function rewardEntry(
     craft: 'Fabricación',
     claim_quest: 'Misión completada',
     adventure_advance: 'Primera aventura',
+    visit_venue: 'Pasaporte urbano completado',
   };
   if (!Object.hasOwn(labels, action)) return null;
   const lines: string[] = [];

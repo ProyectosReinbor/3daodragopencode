@@ -6,6 +6,7 @@ import { craftWorldItem, WORLD_RECIPES, MONSTER_MATERIALS, normalizeMaterials } 
 import { applyPurchaseExperience } from './foodie-growth.js';
 import { startAdventure, advanceAdventure } from '../shared/world-adventure.js';
 import { activateCamp } from '../shared/world-camps.js';
+import { visitVenue } from '../shared/world-passport.js';
 // Sessions own combat cooldowns and encounter health. Rewards never come from profile PUT.
 export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = () => Date.now() }) {
   const sessions = new Map();
@@ -30,7 +31,11 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
     const world = profile.world ||= initialWorldProgress();
     const { action, item, enemy, kind, slot } = req.body;
     let reward = null, damage = 0;
-    if(action === 'activate_camp') {
+    if(action === 'visit_venue') {
+      try { reward=visitVenue(world,req.body.venue,req.body.position); }
+      catch(error) { return res.status(400).json({error:error.message}); }
+      if(reward) { world.coins+=reward.coins; applyPurchaseExperience(profile,reward.xp,pet.id); }
+    } else if(action === 'activate_camp') {
       try { activateCamp(world, req.body.camp, req.body.position); }
       catch(error) { return res.status(400).json({error:error.message}); }
     } else if(action==='adventure_start'||action==='adventure_advance') {

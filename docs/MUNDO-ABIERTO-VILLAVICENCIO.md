@@ -25,6 +25,14 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Pasaporte urbano — 17 de octubre de 2026
+
+Desde Misiones y los locales se puede abrir un pasaporte de seis negocios ficticios existentes. Muestra sellos, progreso, distancias y el siguiente lugar cercano pendiente. Cada destino se conecta al mapa y a la guía de exploración. El sello se registra mediante una acción explícita cerca de la entrada o del centro interior del edificio, sin compras ni permisos de ubicación real.
+
+La API valida sesión y proximidad declarada, guarda `world.visitedVenues` y concede una sola recompensa de 50 monedas y 75 XP al completar el catálogo. `world.passportRewarded` evita volver a premiar visitas repetidas o nuevas sesiones. Las visitas parciales no conceden premios. La posición sigue siendo declarada por el cliente; los sellos acreditan progreso virtual, no visitas físicas verificadas ni campañas comerciales. Perfiles antiguos comienzan sin sellos y conservan el resto de su progreso.
+
+Las pruebas de servidor cubren entradas, interiores, rechazo por distancia o sesión ajena y premio único persistente. La interfaz verifica registro interior, bloqueo del sello repetido, restauración al reentrar y selección del siguiente negocio en el mapa. Reiniciar la API para cargar la acción `visit_venue`.
+
 ### Guía de monstruos — 16 de octubre de 2026
 
 El libro del menú abre una guía de lobos, guardianes esqueleto, espíritus y gólems. Muestra vida, monedas, XP, material obtenido, piezas posibles y consejos sobre la preparación del ataque. Las piezas y consumibles aleatorios se presentan como posibilidades, no como premios garantizados. Los datos de recompensas y materiales proceden de los catálogos existentes.

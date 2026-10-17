@@ -1,4 +1,6 @@
 export interface WorldProgress {
+  visitedVenues?: string[];
+  passportRewarded?: boolean;
   monsterKills?: Record<string, number>;
   campId?: string;
   adventure?: import('./world-adventure.js').AdventureState;
