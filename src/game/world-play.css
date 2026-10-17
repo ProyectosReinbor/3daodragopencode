@@ -189,6 +189,8 @@
 }
 .foodie-world nav {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
 }
 .world-target {
@@ -706,6 +708,10 @@
 .world-forge-recipe { padding: 14px; margin: 14px 0; border: 1px solid #83ddc444; border-radius: 14px; background: #10232db3; }
 .world-forge-recipe li { margin: 8px 0; }
 .world-forge-recipe button { min-height: 44px; margin: 4px; }
+.world-reward-entry { padding: 12px; margin: 12px 0; border: 1px solid #83ddc444; border-radius: 12px; background: #10232db3; }
+.world-reward-entry li { margin: 5px 0; }
+.world-level-up { position: absolute; top: 105px; left: 50%; transform: translateX(-50%); max-width: 50%; padding: 10px 16px; border: 1px solid #f1d48b; border-radius: 12px; background: #142a32f2; color: #ffe6a6; text-align: center; pointer-events: none; }
+.world-level-up[hidden] { display: none; }
 .world-adventure-tracker[hidden], .world-room-active .world-adventure-tracker,
 .world-guided-adventure .world-quest-tracker { display: none; }
 @media(max-height:520px) { .world-adventure-tracker { top: 105px; width: 215px; padding: 9px; } }

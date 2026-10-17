@@ -25,6 +25,12 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Historial de recompensas — 16 de octubre de 2026
+
+El botón Botín abre las veinte entradas más recientes recibidas durante la sesión del mundo. Incluye monedas, XP, consumibles, piezas y materiales indicados en respuestas satisfactorias de combate, recolección, fabricación y cobro de misiones. Las peticiones rechazadas y las recetas ya fabricadas no generan premios ficticios. Consultar el historial no vuelve a cobrar ni cambia el inventario.
+
+Una subida de nivel confirmada en el perfil del servidor muestra un aviso temporal y queda anotada en la entrada. El historial es informativo y temporal: se vacía al salir del mundo, mientras la cuenta conserva las recompensas mediante su persistencia existente. Las pruebas verifican campos válidos, límite de veinte entradas, rechazo de solicitudes y nivel confirmado.
+
 ### Forja y búsqueda de materiales — 16 de octubre de 2026
 
 Cada receta muestra sus cantidades disponibles, requisitos y faltantes, además de la variación de estadísticas frente a la pieza equipada. Fabricar conserva la validación del servidor; los botones se bloquean mientras se procesa la petición y las piezas ya poseídas ofrecen acceso a Equipo. Consultar recetas o buscar materiales no consume recursos.

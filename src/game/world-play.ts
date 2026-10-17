@@ -7,6 +7,7 @@ import { WORLD_QUESTS, QUEST_POSTS, questProgress } from '../../shared/world-que
 import { questStatus, nearestQuestPlace, type QuestStatus } from './quest-journal';
 import { equipmentStats, previewEquipment, type EquipmentStats } from './equipment-preview';
 import { planRecipe, nearestMaterialSource } from './forge-planner';
+import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
 import {
   adventureObjective,
   ADVENTURE_GUIDE,
@@ -132,6 +133,18 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  let rewardEntries: RewardEntry[] = [];
+  let levelNoticeUntil = 0;
+  if (!training)
+    root
+      .querySelector('nav')!
+      .insertAdjacentHTML('beforeend', '<button data-menu="rewards">Botín · 0</button>');
+  root.insertAdjacentHTML('beforeend', '<p class="world-level-up" role="status" hidden></p>');
+  const levelNotice = root.querySelector<HTMLElement>('.world-level-up')!;
+  function rewardsDialog() {
+    modal.hidden = false;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Historial de botín"><button data-close aria-label="Cerrar botín">✕</button><h2>Botín de esta sesión</h2><p>Últimas 20 recompensas confirmadas. Los objetos y recursos ya están añadidos a tu cuenta; este historial se vacía al salir del mundo.</p>${rewardEntries.length ? rewardEntries.map((entry) => `<section class="world-reward-entry"><h3>${safe(entry.source)}</h3>${entry.level ? `<p>¡Nivel ${entry.level} alcanzado!</p>` : ''}<ul>${entry.lines.map((line) => `<li>${safe(line)}</li>`).join('')}</ul></section>`).join('') : '<p>Aún no has recibido botín en esta sesión. Explora, recoge materiales o completa misiones.</p>'}<button data-menu="equipment">Abrir Equipo</button></article>`;
+  }
   root.insertAdjacentHTML(
     'beforeend',
     '<p class="world-danger" role="status" hidden></p><p class="world-damage-feedback" hidden></p><div class="world-hit-flash" aria-hidden="true" hidden></div>'
@@ -443,6 +456,7 @@ export function mountWorldPlay(options: {
   observer.observe(root);
   resize();
   async function request(body: Record<string, unknown>) {
+    const previousLevel = pet.level;
     const response = await fetch('/api/world/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
@@ -461,6 +475,18 @@ export function mountWorldPlay(options: {
       pet = profile!.characters!.characters.find((p) => p.id === pet.id)!;
     }
     if (!response.ok) throw new Error(data.error);
+    if (!disposed) {
+      const entry = rewardEntry(String(body.action), data.reward, previousLevel, pet.level);
+      if (entry) {
+        rewardEntries = appendReward(rewardEntries, entry);
+        const button = root.querySelector('[data-menu="rewards"]');
+        if (button) button.textContent = `Botín · ${rewardEntries.length}`;
+        if (entry.level) {
+          levelNotice.textContent = `¡${pet.name} alcanzó el nivel ${entry.level}!`;
+          levelNoticeUntil = performance.now() + 4500;
+        }
+      }
+    }
     return data;
   }
   if (!training)
@@ -924,6 +950,7 @@ export function mountWorldPlay(options: {
         return;
       }
       if (button.dataset.menu === 'exit') exit();
+      else if (button.dataset.menu === 'rewards') rewardsDialog();
       else if (button.dataset.menu === 'adventure') adventureDialog();
       else if (button.dataset.adventure) {
         if (busy || !session) return;
@@ -1355,6 +1382,7 @@ export function mountWorldPlay(options: {
       if (health <= 0) showDefeat();
     } else clearThreats(now);
     damageFeedback.hidden = now >= damageFeedbackUntil;
+    levelNotice.hidden = now >= levelNoticeUntil;
     hitFlash.hidden = now >= damageFeedbackUntil - 300;
     for (let i = effects.length - 1; i >= 0; i--) {
       const effect = effects[i];

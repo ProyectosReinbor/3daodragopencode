@@ -442,6 +442,61 @@ describe('full screen world controls', () => {
     expect(fetchMock.mock.calls.length).toBe(requests);
     expect(profile.world.materials.mineral).toBe(3);
   }, 20000);
+  it('records only confirmed rewards and announces a server-confirmed level increase', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    pet.level = 1;
+    profile.world = initialWorldProgress();
+    profile.world.acceptedQuests = ['supplies'];
+    profile.world.gathered = 6;
+    let rejectClaim = true;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(init.body as string);
+        if (body.action === 'claim_quest') {
+          if (rejectClaim) return { ok: false, json: async () => ({ error: 'Prueba de error' }) };
+          profile.characters!.characters.find((p) => p.id === pet.id)!.level = 2;
+          profile.world!.claimedQuests = ['supplies'];
+          return {
+            ok: true,
+            json: async () => ({
+              profile: structuredClone(profile),
+              reward: { coins: 35, xp: 30 },
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ session: 'rewards-qa', profile: structuredClone(profile) }),
+        };
+      })
+    );
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    const settle = async () => {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    };
+    await settle();
+    document.querySelector<HTMLButtonElement>('[data-menu="rewards"]')!.click();
+    expect(document.querySelector('[aria-label="Historial de botín"]')!.textContent).toContain(
+      'Aún no'
+    );
+    document.querySelector<HTMLButtonElement>('[data-close]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-menu="quests"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-quest="supplies"]')!.click();
+    await settle();
+    expect(document.querySelector('[data-menu="rewards"]')!.textContent).toBe('Botín · 0');
+    rejectClaim = false;
+    document.querySelector<HTMLButtonElement>('[data-quest="supplies"]')!.click();
+    await settle();
+    tick();
+    expect(document.querySelector('.world-level-up')!.textContent).toContain('nivel 2');
+    document.querySelector<HTMLButtonElement>('[data-menu="rewards"]')!.click();
+    expect(document.querySelectorAll('.world-reward-entry')).toHaveLength(1);
+    expect(document.querySelector('.world-reward-entry')!.textContent).toContain('+35 monedas');
+    expect(document.querySelector('.world-reward-entry')!.textContent).toContain('+30 XP');
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);
