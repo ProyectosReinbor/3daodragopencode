@@ -83,6 +83,7 @@ export function mountWorldPlay(options: {
     profile = options.profile;
   const training = !profile;
   let selectedTarget: Enemy | undefined;
+  let focusPaused = false;
   let progress = profile?.world || initialWorldProgress(),
     session = '',
     serverOffset = 0,
@@ -158,6 +159,11 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  function controlsDialog() {
+    modal.hidden = false;
+    modal.innerHTML =
+      '<article role="dialog" aria-modal="true" aria-label="Ayuda y controles"><button data-close aria-label="Cerrar ayuda">✕</button><h2>Ayuda y controles</h2><dl class="world-controls-help"><dt>Moverte</dt><dd>Flechas del teclado o joystick. La dirección depende del ángulo de la cámara.</dd><dt>Mirar alrededor</dt><dd>Arrastra el mundo para girar la cámara.</dd><dt>Elegir rival</dt><dd>Toca un enemigo para fijarlo. T o ↻ cambian de objetivo; × lo suelta.</dd><dt>Combatir</dt><dd>Espacio: ataque básico. Q, W y E: poderes. R: definitiva. Sal de los círculos rojos antes del golpe.</dd><dt>Recuperarte</dt><dd>1: poción de vida. 2: elixir de maná. También puedes usar los botones rápidos.</dd><dt>Interactuar</dt><dd>F o Explorar: entrar a un edificio, hablar, recoger materiales o abrir la forja según tu cercanía.</dd><dt>Explorar la ciudad</dt><dd>Toca el minimapa para abrir el mapa completo. Selecciona un lugar y pulsa Seguir destino.</dd><dt>Locales</dt><dd>Desde Misiones o Menú puedes abrir Actividades y Pasaporte. Entra en los locales para sus minijuegos.</dd><dt>Pausar</dt><dd>Abre Menú o un panel. Escape cierra el menú o panel abierto; durante la exploración sale al menú principal.</dd></dl><p>Al cambiar de ventana se pausa el mundo y se sueltan los controles. Al regresar, vuelve a pulsar la dirección para moverte.</p></article>';
+  }
   const targetHud = root.querySelector<HTMLElement>('.world-target')!;
   targetHud.hidden = true;
   targetHud.innerHTML =
@@ -309,6 +315,9 @@ export function mountWorldPlay(options: {
       '<button data-menu="activities">Actividades de la ciudad</button><button data-menu="passport">Pasaporte urbano</button>'
     );
   toolsPanel.append(toolsPanel.querySelector('[data-menu="exit"]')!);
+  toolsPanel
+    .querySelector('[data-menu="exit"]')!
+    .insertAdjacentHTML('beforebegin', '<button data-menu="controls">Ayuda y controles</button>');
   toolbar.append(tools);
   const toolsSummary = tools.querySelector<HTMLElement>('summary')!;
   tools.addEventListener(
@@ -789,7 +798,8 @@ export function mountWorldPlay(options: {
   }
   async function attack(slot = -1) {
     const now = performance.now();
-    if (defeated || tools.open || busy || !modal.hidden || (!training && !session)) return;
+    if (focusPaused || defeated || tools.open || busy || !modal.hidden || (!training && !session))
+      return;
     if (slot < 0 && now < attackAt) return;
     if (slot >= 0 && (now < cooldown[slot] || mana < skills[slot].energyCost)) {
       notify('Espera la recarga o utiliza un elixir.');
@@ -1265,6 +1275,7 @@ export function mountWorldPlay(options: {
         return;
       }
       if (button.dataset.menu === 'exit') exit();
+      else if (button.dataset.menu === 'controls') controlsDialog();
       else if (button.dataset.menu === 'activities') activitiesDialog();
       else if (
         button.dataset.activityFilter &&
@@ -1587,6 +1598,7 @@ export function mountWorldPlay(options: {
     'keydown',
     (event) => {
       const key = event.key.toLowerCase();
+      if (focusPaused) return;
       if (
         event.target instanceof Node &&
         tools.contains(event.target) &&
@@ -1769,14 +1781,30 @@ export function mountWorldPlay(options: {
       },
       { signal: events.signal }
     );
-  window.addEventListener('blur', reset, { signal: events.signal });
   document.addEventListener('visibilitychange', reset, { signal: events.signal });
+  window.addEventListener(
+    'blur',
+    () => {
+      focusPaused = true;
+      reset();
+    },
+    { signal: events.signal }
+  );
+  window.addEventListener(
+    'focus',
+    () => {
+      focusPaused = false;
+      reset();
+    },
+    { signal: events.signal }
+  );
   function loop(now: number) {
     if (disposed) return;
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     if (
       !defeated &&
+      !focusPaused &&
       modal.hidden &&
       !tools.open &&
       !document.hidden &&

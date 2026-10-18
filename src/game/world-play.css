@@ -197,6 +197,8 @@
 .world-tools summary { min-height: 44px; padding: 10px 14px; border: 1px solid #83ddc455; border-radius: 14px; color: #e4f5ed; background: #13343de8; cursor: pointer; list-style: none; }
 .world-tools summary::-webkit-details-marker { display: none; }
 .world-tools:not([open]) .world-tools-panel { display: none; }
+.world-controls-help dt { color: #a6e4d3; font-weight: 700; margin-top: 16px; }
+.world-controls-help dd { margin: 5px 0 0; line-height: 1.6; color: #d3e6e0; }
 .world-tools summary:focus-visible { outline: 3px solid #83ddc4; outline-offset: 3px; }
 .world-tools[open] { z-index: 6; }
 .world-tools-panel { position: absolute; top: calc(100% + 8px); right: 0; display: grid; gap: 7px; width: min(270px, calc(100vw - 32px)); max-height: min(65vh, 480px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 12px; border: 1px solid #83ddc466; border-radius: 16px; background: #10232df5; box-shadow: 0 12px 35px #0008; }

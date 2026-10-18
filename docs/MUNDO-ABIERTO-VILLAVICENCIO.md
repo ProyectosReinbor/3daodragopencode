@@ -25,6 +25,12 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Ayuda y pausa por cambio de ventana — 18 de octubre de 2026
+
+El menú incluye Ayuda y controles con movimiento relativo a la cámara, selección de objetivos, poderes, consumibles, interacción y acceso al mapa y actividades. El contenido se presenta como texto legible dentro del mismo panel oscuro del mundo.
+
+Al perder el foco de la ventana se restablecen teclas, joystick y arrastre y se pausa la simulación local. Los ataques pendientes se cancelan mediante el mismo mecanismo de pausa de los menús. Al recuperar el foco se restablecen nuevamente los controles, por lo que no se reanuda una dirección cuya tecla se soltó fuera del juego. Los listeners se liberan al salir. La prueba de integración verifica pausa, ausencia de movimiento residual, reanudación y acceso a la ayuda.
+
 ### Selección de objetivos de combate — 18 de octubre de 2026
 
 Un toque o clic sobre el modelo de un rival lo fija como objetivo; arrastrar la cámara no selecciona. T y el botón de cambio recorren los candidatos cercanos. Un anillo azul y la etiqueta «Fijado» distinguen la selección de las advertencias rojas de ataques. El botón de soltar devuelve el comportamiento de elegir al rival más cercano.

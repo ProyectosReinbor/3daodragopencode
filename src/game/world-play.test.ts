@@ -860,6 +860,26 @@ describe('full screen world controls', () => {
     tick();
     expect(document.querySelector('.world-target')!.textContent).not.toContain('Fijado');
   });
+  it('pauses on window blur and clears held movement before resuming', () => {
+    tick();
+    key('ArrowRight');
+    tick();
+    window.dispatchEvent(new Event('blur'));
+    const position = { x: rendered.x, z: rendered.z };
+    for (let i = 0; i < 20; i++) tick();
+    expect(rendered.x).toBe(position.x);
+    expect(rendered.z).toBe(position.z);
+    window.dispatchEvent(new Event('focus'));
+    tick();
+    expect(rendered.x).toBe(position.x);
+    key('ArrowRight');
+    tick();
+    expect(rendered.x).toBeGreaterThan(position.x);
+    document.querySelector<HTMLButtonElement>('[data-menu="controls"]')!.click();
+    expect(document.querySelector('[aria-label="Ayuda y controles"]')!.textContent).toContain(
+      'definitiva'
+    );
+  });
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);
