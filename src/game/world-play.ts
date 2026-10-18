@@ -313,7 +313,7 @@ export function mountWorldPlay(options: {
   if (!training)
     toolsPanel.insertAdjacentHTML(
       'afterbegin',
-      '<button data-menu="activities">Actividades de la ciudad</button><button data-menu="passport">Pasaporte urbano</button>'
+      '<button data-menu="materials">Guía de materiales</button><button data-menu="activities">Actividades de la ciudad</button><button data-menu="passport">Pasaporte urbano</button>'
     );
   toolsPanel.append(toolsPanel.querySelector('[data-menu="exit"]')!);
   toolsPanel
@@ -937,6 +937,26 @@ export function mountWorldPlay(options: {
         : '<p>No tienes piezas en esta categoría. Los monstruos dejan equipo y la forja permite fabricar nuevas piezas.</p>'
     }</article>`;
   }
+  function materialsGuide() {
+    modal.hidden = false;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Guía de materiales"><button data-close aria-label="Cerrar guía de materiales">✕</button><h2>Materiales de exploración</h2><p>Tus recursos guardados y sus usos en la forja. Localizar una fuente no consume materiales.</p>${Object.entries(
+      WORLD_MATERIALS
+    )
+      .map(([id, name]) => {
+        const owned = progress.materials?.[id] || 0;
+        const recipes = Object.entries(WORLD_RECIPES).filter(([, recipe]) =>
+          Object.hasOwn(recipe.cost, id)
+        );
+        const monsters = Object.entries(MONSTER_MATERIALS).filter(
+          ([, drop]) => drop.material === id
+        );
+        const hasSource = CITY_WORLD.nodes.some((node) => node.material === id);
+        return `<section class="world-monster-guide" data-material-card="${id}"><h3>${safe(name)} · ${owned}</h3><p>${recipes.map(([, recipe]) => `${safe(recipe.name)}: ${recipe.cost[id]} necesarios`).join(' · ') || 'Sin recetas disponibles'}</p>${monsters.length ? `<p>También lo dejan: ${monsters.map(([kind]) => safe(MONSTER_GUIDE[kind as keyof typeof MONSTER_GUIDE].name)).join(', ')}.</p>` : '<p>Se obtiene explorando las fuentes del mundo.</p>'}${hasSource ? `<button data-material-location="${id}">Localizar fuente de ${safe(name)}</button>` : '<p>No hay fuentes cartografiadas.</p>'}</section>`;
+      })
+      .join(
+        ''
+      )}<p>La fabricación requiere acercarte a la forja; aquí puedes planificar sin gastar recursos.</p><button data-material-forge>Localizar forja</button></article>`;
+  }
   let shopQuantity = 1;
   function shop() {
     modal.hidden = false;
@@ -1425,6 +1445,10 @@ export function mountWorldPlay(options: {
           busy = false;
           if (!disposed) adventureDialog();
         }
+      } else if (button.dataset.menu === 'materials') materialsGuide();
+      else if (button.hasAttribute('data-material-forge')) {
+        cityMap();
+        selectMapPlace(forgePlace);
       } else if (button.dataset.materialLocation) {
         const source = nearestMaterialSource(
           button.dataset.materialLocation,

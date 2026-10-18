@@ -25,6 +25,10 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Guía de materiales — 18 de octubre de 2026
+
+El menú del mundo incluye los cinco materiales del catálogo con sus existencias guardadas, recetas que los requieren y monstruos que los dejan. Cada material permite localizar una fuente usando la selección existente: prioriza fuentes disponibles y, si todas se recuperan, indica la espera al abrir el mapa. También permite marcar la forja. Consultar la guía no ejecuta acciones de compra, recolección o fabricación; fabricar sigue requiriendo proximidad a la forja. Se conserva la interfaz oscura y adaptable del mundo. Verificados 29 tests de controles, guía y planificación, ESLint y compilación de producción.
+
 ### Compras por paquetes — 18 de octubre de 2026
 
 La tienda permite comprar 1, 3 o 5 pociones o elixires por operación. Muestra precio total, existencias y monedas faltantes; deshabilita compras sin saldo y controles durante la solicitud. Las existencias se actualizan con la respuesta del servidor. Los precios y cantidades permitidas están en un catálogo compartido; la API valida el paquete completo antes de descontar monedas y mantiene compatibilidad con compras antiguas de una unidad. Pruebas con perfiles ficticios: cantidades inválidas, saldo insuficiente, precios manipulados, sesión de otra cuenta y compra confirmada desde la interfaz. Verificados 28 tests y compilación de producción.

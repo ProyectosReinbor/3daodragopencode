@@ -611,6 +611,40 @@ describe('full screen world controls', () => {
     expect(fetchMock.mock.calls.length).toBe(requests);
     expect(profile.world.monsterKills.wolf).toBe(3);
   }, 20000);
+  it('shows saved materials and recipe costs and locates sources without spending resources', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = { ...initialWorldProgress(), materials: { madera: 7, mineral: 4 } };
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ session: 'materials-qa', profile: structuredClone(profile) }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    const before = structuredClone(profile.world),
+      requests = fetchMock.mock.calls.length;
+    document.querySelector<HTMLButtonElement>('[data-menu="materials"]')!.click();
+    expect(document.querySelectorAll('[data-material-card]')).toHaveLength(5);
+    expect(document.querySelector('[data-material-card="madera"]')!.textContent).toContain(
+      'Madera · 7'
+    );
+    expect(document.querySelector('[data-material-card="madera"]')!.textContent).toContain(
+      'Hoja del explorador: 2 necesarios'
+    );
+    expect(document.querySelector('[data-material-card="cristal"]')!.textContent).toContain(
+      'Cristal de nieve · 0'
+    );
+    document.querySelector<HTMLButtonElement>('[data-material-location="madera"]')!.click();
+    expect(document.querySelector('[data-city-map]')).not.toBeNull();
+    expect(document.querySelector('[data-follow-place]')).not.toBeNull();
+    document.querySelector<HTMLButtonElement>('[data-menu="materials"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-material-forge]')!.click();
+    expect(document.querySelector('[data-follow-place="camp-forge"]')).not.toBeNull();
+    expect(fetchMock.mock.calls.length).toBe(requests);
+    expect(profile.world).toEqual(before);
+  }, 20000);
   it('previews shop bundles and refreshes stock only after a confirmed purchase', async () => {
     stop();
     const pet = createStarterCharacter(),
