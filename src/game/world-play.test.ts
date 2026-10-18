@@ -708,6 +708,54 @@ describe('full screen world controls', () => {
     expect(document.querySelectorAll('[data-memory-choice]')).toHaveLength(4);
     expect(document.querySelector<HTMLButtonElement>('[data-memory-choice]')!.disabled).toBe(true);
   }, 20000);
+  it('filters local activities and unlocks expired rewards without extra requests', async () => {
+    stop();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1000000);
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet),
+      venue = CITY_VENUES[0];
+    profile.world = initialWorldProgress();
+    profile.world.visitedVenues = [venue.id];
+    profile.world.venueGameCooldowns = { [venue.id]: 1001500 };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ session: 'activities-qa', profile }) });
+    vi.stubGlobal('fetch', fetchMock);
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    document.querySelector<HTMLButtonElement>('[data-menu="quests"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-menu="activities"]')!.click();
+    expect(document.querySelectorAll('[data-activity-venue]')).toHaveLength(6);
+    expect(document.querySelector('[data-activity-count="available"]')!.textContent).toBe('5');
+    document.querySelector<HTMLButtonElement>('[data-activity-filter="unvisited"]')!.click();
+    expect(document.querySelector<HTMLElement>(`[data-activity-venue="${venue.id}"]`)!.hidden).toBe(
+      true
+    );
+    document.querySelector<HTMLButtonElement>('[data-activity-filter="available"]')!.click();
+    const requests = fetchMock.mock.calls.length;
+    clock.mockReturnValue(1002000);
+    tick();
+    expect(document.querySelector<HTMLElement>(`[data-activity-venue="${venue.id}"]`)!.hidden).toBe(
+      false
+    );
+    expect(document.querySelector('[data-activity-count="available"]')!.textContent).toBe('6');
+    expect(fetchMock.mock.calls.length).toBe(requests);
+    document.querySelector<HTMLButtonElement>('[data-close]')!.click();
+    roomControl.entrance = true;
+    key('f');
+    roomControl.entrance = false;
+    profile.world.venueGameCooldowns[venue.id] = 1003000;
+    document.querySelector<HTMLButtonElement>('[data-menu="venue-game"]')!.click();
+    expect(document.querySelector<HTMLButtonElement>('[data-timed-venue-play]')!.disabled).toBe(
+      true
+    );
+    clock.mockReturnValue(1003000);
+    for (let i = 0; i < 6; i++) tick();
+    expect(document.querySelector<HTMLButtonElement>('[data-timed-venue-play]')!.disabled).toBe(
+      false
+    );
+    expect(fetchMock.mock.calls.length).toBe(requests);
+  }, 20000);
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);

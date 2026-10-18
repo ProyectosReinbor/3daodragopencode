@@ -718,6 +718,9 @@
 .world-monster-guide button { min-height: 44px; }
 .world-passport-venue { padding: 14px; margin: 14px 0; border: 1px solid #83ddc444; border-radius: 14px; background: #10232db3; }
 .world-passport-venue button { min-height: 44px; margin: 4px; }
+.world-activity-card { padding: 14px; margin: 14px 0; border: 1px solid #83ddc444; border-radius: 14px; background: #10232db3; }
+.world-activity-card button { min-height: 44px; margin: 4px; }
+.world-activity-card[hidden] { display: none; }
 .venue-memory-lights { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
 .venue-memory-lights button { min-height: 90px; display: grid; justify-items: center; align-content: center; border: 2px solid #83ddc444; transition: background .12s, border-color .12s; }
 .venue-memory-lights b { font-size: 32px; }

@@ -12,6 +12,7 @@ import { resourceWait, nearbyResource } from './resource-status';
 import { WORLD_CAMPS, activeCamp } from '../../shared/world-camps.js';
 import { MONSTER_GUIDE, nearestMonster } from './bestiary';
 import { mountVenueMemory } from './venue-memory';
+import { venueWait, venueWaitLabel, activityVisible } from './venue-activities';
 import { VENUE_GAME_REWARD } from '../../shared/venue-game.js';
 import {
   PASSPORT_VENUES,
@@ -154,19 +155,68 @@ export function mountWorldPlay(options: {
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
   let stopVenueGame: (() => void) | undefined;
+  let activityFilter = 'all';
+  function refreshActivities() {
+    const now = Date.now() + serverOffset;
+    modal.querySelectorAll<HTMLElement>('[data-venue-wait]').forEach((label) => {
+      const text = venueWaitLabel(venueWait(progress, label.dataset.venueWait!, now));
+      if (label.textContent !== text) label.textContent = text;
+    });
+    const play = modal.querySelector<HTMLButtonElement>('[data-timed-venue-play]');
+    if (play && activeRoom?.venue)
+      play.disabled = busy || !session || venueWait(progress, activeRoom.venue.id, now) > 0;
+    const cards = [...modal.querySelectorAll<HTMLElement>('[data-activity-venue]')];
+    let shown = 0;
+    cards.forEach((card) => {
+      const id = card.dataset.activityVenue!;
+      card.hidden = !activityVisible(
+        activityFilter,
+        !!progress.visitedVenues?.includes(id),
+        venueWait(progress, id, now)
+      );
+      if (!card.hidden) shown++;
+    });
+    const empty = modal.querySelector<HTMLElement>('[data-activity-empty]');
+    if (empty) empty.hidden = shown > 0;
+    modal.querySelectorAll<HTMLElement>('[data-activity-count]').forEach((count) => {
+      count.textContent = String(
+        PASSPORT_VENUES.filter((venue) =>
+          activityVisible(
+            count.dataset.activityCount!,
+            !!progress.visitedVenues?.includes(venue.id),
+            venueWait(progress, venue.id, now)
+          )
+        ).length
+      );
+    });
+  }
+  function activitiesDialog() {
+    modal.hidden = false;
+    const venues = [...PASSPORT_VENUES].sort(
+      (a, b) =>
+        Math.hypot(a.x - model.position.x, a.z - model.position.z) -
+        Math.hypot(b.x - model.position.x, b.z - model.position.z)
+    );
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Actividades de la ciudad"><button data-close aria-label="Cerrar actividades">✕</button><h2>Actividades de la ciudad</h2><p>Negocios ficticios del mundo · Visitas y minijuegos virtuales. Sigue un destino y entra al local para participar.</p><div class="world-journal-filters" role="group" aria-label="Filtrar actividades">${Object.entries(
+      { all: 'Todas', available: 'Premios disponibles', unvisited: 'Sin visitar' }
+    )
+      .map(
+        ([id, label]) =>
+          `<button data-activity-filter="${id}" aria-pressed="${activityFilter === id}">${label} (<span data-activity-count="${id}"></span>)</button>`
+      )
+      .join(
+        ''
+      )}</div><p data-activity-empty hidden>No hay locales en esta categoría. Puedes explorar los demás o revisar su próxima disponibilidad.</p>${venues.map((venue) => `<section class="world-activity-card" data-activity-venue="${venue.id}"><h3>${safe(venue.name)}</h3><p>${progress.visitedVenues?.includes(venue.id) ? 'Sello registrado' : 'Sello pendiente'} · ${Math.round(Math.hypot(venue.x - model.position.x, venue.z - model.position.z))} m en línea recta</p><p>Memoria de luces · <span data-venue-wait="${venue.id}"></span> · ${VENUE_GAME_REWARD.coins} monedas y ${VENUE_GAME_REWARD.xp} XP</p><p>NPC: ${safe(venue.npcName)} · ${safe(WORLD_QUESTS[venue.quest].name)}</p><button data-find-venue="${venue.id}">Ver destino</button>${activeRoom?.venue?.id === venue.id && !activeRoom.terrace ? '<button data-menu="venue-game">Abrir minijuego</button>' : ''}</section>`).join('')}<button data-menu="passport">Ver pasaporte urbano</button></article>`;
+    refreshActivities();
+  }
   function venueGameDialog() {
     const venue = activeRoom?.venue;
     if (!venue) return;
     stopVenueGame?.();
     stopVenueGame = undefined;
     modal.hidden = false;
-    const hours = Math.max(
-      0,
-      Math.ceil(
-        ((progress.venueGameCooldowns?.[venue.id] || 0) - Date.now() - serverOffset) / 3600000
-      )
-    );
-    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Memoria de luces"><button data-close aria-label="Cerrar minijuego">✕</button><h2>Memoria de luces</h2><p>${safe(venue.name)} · Observa tres luces y repítelas en el mismo orden.</p><p>Premio: ${VENUE_GAME_REWARD.coins} monedas y ${VENUE_GAME_REWARD.xp} XP. Una victoria premiada por local cada 24 horas.</p><p>${hours ? 'Premio disponible en aproximadamente ' + hours + ' h.' : 'Tu próximo intento puede recibir el premio.'}</p><button data-venue-play ${hours || busy || !session ? 'disabled' : ''}>Comenzar partida</button></article>`;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Memoria de luces"><button data-close aria-label="Cerrar minijuego">✕</button><h2>Memoria de luces</h2><p>${safe(venue.name)} · Observa tres luces y repítelas en el mismo orden.</p><p>Premio: ${VENUE_GAME_REWARD.coins} monedas y ${VENUE_GAME_REWARD.xp} XP. Una victoria premiada por local cada 24 horas.</p><p data-venue-wait="${venue.id}"></p><button data-venue-play data-timed-venue-play>Comenzar partida</button></article>`;
+    refreshActivities();
   }
   function passportDialog() {
     modal.hidden = false;
@@ -936,7 +986,7 @@ export function mountWorldPlay(options: {
       .querySelector('article')!
       .insertAdjacentHTML(
         'afterbegin',
-        '<button data-menu="passport">Pasaporte urbano · Visita los negocios</button>'
+        '<button data-menu="activities">Actividades de la ciudad</button><button data-menu="passport">Pasaporte urbano · Visita los negocios</button>'
       );
   }
   function forge() {
@@ -1129,7 +1179,22 @@ export function mountWorldPlay(options: {
         return;
       }
       if (button.dataset.menu === 'exit') exit();
-      else if (button.dataset.menu === 'venue-game') venueGameDialog();
+      else if (button.dataset.menu === 'activities') activitiesDialog();
+      else if (
+        button.dataset.activityFilter &&
+        ['all', 'available', 'unvisited'].includes(button.dataset.activityFilter)
+      ) {
+        activityFilter = button.dataset.activityFilter;
+        modal
+          .querySelectorAll('[data-activity-filter]')
+          .forEach((item) =>
+            item.setAttribute(
+              'aria-pressed',
+              String((item as HTMLElement).dataset.activityFilter === activityFilter)
+            )
+          );
+        refreshActivities();
+      } else if (button.dataset.menu === 'venue-game') venueGameDialog();
       else if (button.hasAttribute('data-venue-play')) {
         const venue = activeRoom?.venue;
         if (!venue || busy || !session) return;
@@ -1878,6 +1943,7 @@ export function mountWorldPlay(options: {
             resourceWait(n.id, progress.resourceCooldowns || {}, Date.now() + serverOffset) === 0;
       }
       if (now >= resourceStatusAt && !modal.hidden) {
+        refreshActivities();
         modal.querySelectorAll<HTMLElement>('[data-resource-status]').forEach((label) => {
           const seconds = resourceWait(
             label.dataset.resourceStatus!,

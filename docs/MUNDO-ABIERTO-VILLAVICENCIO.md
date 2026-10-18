@@ -25,6 +25,14 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Directorio de actividades y recargas — 18 de octubre de 2026
+
+Desde Misiones se abre Actividades de la ciudad. Los seis locales ficticios se ordenan por distancia y muestran sello del pasaporte, minijuego, recompensa y misión de su NPC. Hay filtros para todos, premios disponibles y lugares sin visitar, con contadores actualizados y acceso al mapa. El minijuego solo se puede abrir desde la tarjeta del local en cuyo interior está la mascota.
+
+Los tiempos conocidos de los premios se muestran en horas/minutos o minutos/segundos usando el desfase del servidor. Mientras el panel está abierto se actualizan etiquetas, filtros y contadores sin peticiones adicionales. El botón inicial de Memoria de luces se habilita al vencer su recarga sin tener que cerrar el diálogo. Esta disponibilidad es orientativa; la API conserva la validación final del premio y no cambia su límite de 24 horas.
+
+Las pruebas cubren el límite exacto del temporizador, perfiles antiguos, filtros independientes de sellos y premios y actualización de la interfaz sin nuevas peticiones.
+
 ### Memoria de luces en los locales — 17 de octubre de 2026
 
 Los negocios ficticios ofrecen un minijuego desde su panel interior. Se muestran tres luces durante unos segundos; después el jugador repite la secuencia usando botones con símbolos y nombres. La animación de selección respeta la preferencia de movimiento reducido. Cerrar el panel detiene el bucle visual y salir del mundo libera el controlador.
