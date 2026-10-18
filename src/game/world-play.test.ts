@@ -756,6 +756,37 @@ describe('full screen world controls', () => {
     );
     expect(fetchMock.mock.calls.length).toBe(requests);
   }, 20000);
+  it('groups secondary tools and pauses pending attacks while the menu is open', () => {
+    tick();
+    expect(document.querySelectorAll('header nav > button')).toHaveLength(1);
+    const menu = document.querySelector<HTMLDetailsElement>('.world-tools')!;
+    expect(menu.querySelector('[data-menu="graphics"]')).not.toBeNull();
+    expect(menu.querySelector('[data-menu="exit"]')).not.toBeNull();
+    const enemy = battleControl.enemy!;
+    enemy.mesh.position.set(0, 0, 1.7);
+    enemy.damage = 1000;
+    enemy.speed = 0;
+    tick();
+    menu.open = true;
+    menu.dispatchEvent(new Event('toggle'));
+    key('ArrowRight');
+    const initial = { x: rendered.x, z: rendered.z };
+    for (let i = 0; i < 30; i++) tick();
+    expect(rendered.x).toBe(initial.x);
+    expect(rendered.z).toBe(initial.z);
+    expect(document.querySelector('[aria-label="Mascota derrotada"]')).toBeNull();
+    expect(document.querySelector<HTMLElement>('.world-danger')!.hidden).toBe(true);
+    key('Escape');
+    expect(menu.open).toBe(false);
+    menu.dispatchEvent(new Event('toggle'));
+    tick();
+    expect(rendered.x).toBe(initial.x);
+    expect(document.querySelector('[aria-label="Mascota derrotada"]')).toBeNull();
+    menu.open = true;
+    menu.querySelector<HTMLButtonElement>('[data-menu="graphics"]')!.click();
+    expect(menu.open).toBe(false);
+    expect(document.querySelector('[aria-label="Ajustes gráficos"][role="dialog"]')).not.toBeNull();
+  });
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);

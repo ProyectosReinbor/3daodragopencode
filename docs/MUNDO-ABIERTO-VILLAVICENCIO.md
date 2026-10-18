@@ -25,6 +25,12 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Menú compacto del mundo — 18 de octubre de 2026
+
+La cabecera conserva Equipo y un menú desplegable con las herramientas secundarias: Misiones, Actividades, Pasaporte, Guía, Botín, calidad gráfica, pantalla completa y salida. Las herramientas disponibles se adaptan al campo de prueba. El desplegable tiene botones de al menos 44 píxeles, anchura limitada al viewport y desplazamiento vertical para pantallas horizontales bajas.
+
+Abrir el menú pausa la simulación local y cancela ataques enemigos pendientes. Los controles de movimiento se restablecen al abrir/cerrar; Escape cierra el desplegable y devuelve el foco a su resumen. Elegir una herramienta cierra el menú antes de abrir su panel y tocar fuera también lo descarta. El resumen y sus botones mantienen la activación nativa mediante teclado. Las pruebas verifican cabecera compacta, acceso a herramientas, pausa, cancelación de ataques y ausencia de movimiento residual.
+
 ### Directorio de actividades y recargas — 18 de octubre de 2026
 
 Desde Misiones se abre Actividades de la ciudad. Los seis locales ficticios se ordenan por distancia y muestran sello del pasaporte, minijuego, recompensa y misión de su NPC. Hay filtros para todos, premios disponibles y lugares sin visitar, con contadores actualizados y acceso al mapa. El minijuego solo se puede abrir desde la tarjeta del local en cuyo interior está la mascota.

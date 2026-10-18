@@ -193,6 +193,14 @@
   justify-content: flex-end;
   gap: 6px;
 }
+.world-tools { position: relative; }
+.world-tools summary { min-height: 44px; padding: 10px 14px; border: 1px solid #83ddc455; border-radius: 14px; color: #e4f5ed; background: #13343de8; cursor: pointer; list-style: none; }
+.world-tools summary::-webkit-details-marker { display: none; }
+.world-tools:not([open]) .world-tools-panel { display: none; }
+.world-tools summary:focus-visible { outline: 3px solid #83ddc4; outline-offset: 3px; }
+.world-tools[open] { z-index: 6; }
+.world-tools-panel { position: absolute; top: calc(100% + 8px); right: 0; display: grid; gap: 7px; width: min(270px, calc(100vw - 32px)); max-height: min(65vh, 480px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 12px; border: 1px solid #83ddc466; border-radius: 16px; background: #10232df5; box-shadow: 0 12px 35px #0008; }
+.foodie-world .world-tools-panel button { min-height: 44px; width: 100%; text-align: left; padding: 10px 12px; }
 .world-target {
   position: absolute;
   top: 126px;

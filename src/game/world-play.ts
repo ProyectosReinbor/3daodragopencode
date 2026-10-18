@@ -282,6 +282,49 @@ export function mountWorldPlay(options: {
     root
       .querySelector('nav')!
       .insertAdjacentHTML('beforeend', '<button data-menu="rewards">Botín · 0</button>');
+  const toolbar = root.querySelector('nav')!;
+  const tools = document.createElement('details');
+  tools.className = 'world-tools';
+  tools.innerHTML =
+    '<summary aria-label="Abrir menú del mundo" aria-expanded="false">☰ Menú</summary><div class="world-tools-panel" role="group" aria-label="Herramientas del mundo"></div>';
+  const toolsPanel = tools.querySelector<HTMLElement>('.world-tools-panel')!;
+  for (const button of [...toolbar.querySelectorAll<HTMLButtonElement>('button')]) {
+    if (button.dataset.menu === 'equipment') continue;
+    if (button.dataset.menu === 'bestiary') button.textContent = 'Guía de monstruos';
+    if (button.dataset.menu === 'graphics') button.textContent = 'Calidad gráfica';
+    if (button.dataset.menu === 'fullscreen') button.textContent = 'Pantalla completa';
+    toolsPanel.append(button);
+  }
+  if (!training)
+    toolsPanel.insertAdjacentHTML(
+      'afterbegin',
+      '<button data-menu="activities">Actividades de la ciudad</button><button data-menu="passport">Pasaporte urbano</button>'
+    );
+  toolsPanel.append(toolsPanel.querySelector('[data-menu="exit"]')!);
+  toolbar.append(tools);
+  const toolsSummary = tools.querySelector<HTMLElement>('summary')!;
+  tools.addEventListener(
+    'toggle',
+    () => {
+      reset();
+      toolsSummary.setAttribute('aria-expanded', String(tools.open));
+      toolsSummary.setAttribute(
+        'aria-label',
+        tools.open ? 'Cerrar menú del mundo' : 'Abrir menú del mundo'
+      );
+    },
+    { signal: events.signal }
+  );
+  root.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (tools.open && !tools.contains(event.target as Node)) {
+        tools.open = false;
+        reset();
+      }
+    },
+    { signal: events.signal }
+  );
   root.insertAdjacentHTML('beforeend', '<p class="world-level-up" role="status" hidden></p>');
   const levelNotice = root.querySelector<HTMLElement>('.world-level-up')!;
   const resourceHint = document.createElement('p');
@@ -719,7 +762,7 @@ export function mountWorldPlay(options: {
   }
   async function attack(slot = -1) {
     const now = performance.now();
-    if (defeated || busy || !modal.hidden || (!training && !session)) return;
+    if (defeated || tools.open || busy || !modal.hidden || (!training && !session)) return;
     if (slot < 0 && now < attackAt) return;
     if (slot >= 0 && (now < cooldown[slot] || mana < skills[slot].energyCost)) {
       notify('Espera la recarga o utiliza un elixir.');
@@ -1170,6 +1213,10 @@ export function mountWorldPlay(options: {
     async (event) => {
       const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
       if (!button) return;
+      if (tools.open) {
+        tools.open = false;
+        reset();
+      }
       if (defeated && button.hasAttribute('data-recover')) {
         recover();
         return;
@@ -1502,6 +1549,12 @@ export function mountWorldPlay(options: {
     (event) => {
       const key = event.key.toLowerCase();
       if (
+        event.target instanceof Node &&
+        tools.contains(event.target) &&
+        [' ', 'enter'].includes(key)
+      )
+        return;
+      if (
         key.startsWith('arrow') ||
         ['q', 'w', 'e', 'r', ' ', 'f', '1', '2', 'escape'].includes(key)
       )
@@ -1509,6 +1562,14 @@ export function mountWorldPlay(options: {
       pressed.add(key);
       if (defeated) {
         if (key === 'escape') exit();
+        return;
+      }
+      if (tools.open) {
+        if (key === 'escape') {
+          tools.open = false;
+          reset();
+          toolsSummary.focus();
+        }
         return;
       }
       if (event.repeat) return;
@@ -1558,7 +1619,7 @@ export function mountWorldPlay(options: {
     'pointermove',
     (event) => {
       if (event.pointerId !== cameraPointer) return;
-      if (modal.hidden && !document.hidden) {
+      if (modal.hidden && !tools.open && !document.hidden) {
         cameraYaw -= (event.clientX - dragX) * 0.006;
         cameraPitch = Math.max(0.25, Math.min(1.1, cameraPitch + (event.clientY - dragY) * 0.005));
       }
@@ -1632,6 +1693,7 @@ export function mountWorldPlay(options: {
     if (
       !defeated &&
       modal.hidden &&
+      !tools.open &&
       !document.hidden &&
       !(innerHeight > innerWidth && matchMedia('(pointer:coarse)').matches)
     ) {
