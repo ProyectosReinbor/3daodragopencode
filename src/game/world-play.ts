@@ -9,6 +9,7 @@ import { equipmentStats, previewEquipment, type EquipmentStats } from './equipme
 import { planRecipe, nearestMaterialSource } from './forge-planner';
 import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
 import { resourceWait, nearbyResource } from './resource-status';
+import { mountResourceExtraction } from './resource-extraction';
 import { WORLD_CAMPS, activeCamp } from '../../shared/world-camps.js';
 import { MONSTER_GUIDE, nearestMonster } from './bestiary';
 import { WORLD_CONSUMABLES, SHOP_QUANTITIES } from '../../shared/world-shop.js';
@@ -1128,6 +1129,7 @@ export function mountWorldPlay(options: {
       })
       .join('')}<p>Equipa tus creaciones desde Equipo.</p></article>`;
   }
+  let stopExtraction: (() => void) | undefined;
   async function gather(node: (typeof CITY_WORLD.nodes)[number]) {
     if (busy || !session) return;
     const wait = resourceWait(node.id, progress.resourceCooldowns || {}, Date.now() + serverOffset);
@@ -1144,26 +1146,14 @@ export function mountWorldPlay(options: {
       }
       const data = await request({ action: 'begin_gather', node: node.id });
       if (disposed || defeated) return;
+      stopExtraction?.();
       modal.hidden = false;
-      modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Extracción"><button data-close aria-label="Cerrar extracción">✕</button><h2>${safe(node.name)}</h2><p>Extrayendo material…</p><progress max="3" value="0"></progress><button data-gather="${node.id}" disabled>Recoger material</button></article>`;
-      const start = performance.now();
-      const tick = () => {
-        if (
-          disposed ||
-          modal.hidden ||
-          modal.querySelector('[data-gather]')?.getAttribute('data-gather') !== node.id
-        )
-          return;
-        const elapsed = (performance.now() - start) / 1000;
-        modal.querySelector<HTMLProgressElement>('progress')!.value = Math.min(3, elapsed);
-        if (elapsed >= 3.1) {
-          const button = modal.querySelector<HTMLButtonElement>('[data-gather]')!;
-          button.disabled = false;
-          button.dataset.token = data.challenge.token;
-          modal.querySelector('p')!.textContent = 'Extracción completada.';
-        } else window.setTimeout(tick, 100);
-      };
-      tick();
+      stopExtraction = mountResourceExtraction(
+        modal,
+        node,
+        data.challenge,
+        () => Date.now() + serverOffset
+      );
     } catch (e) {
       notify((e as Error).message);
     } finally {
@@ -2196,6 +2186,7 @@ export function mountWorldPlay(options: {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    stopExtraction?.();
     stopVenueGame?.();
     events.abort();
     cancelAnimationFrame(frame);

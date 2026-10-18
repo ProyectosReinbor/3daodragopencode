@@ -25,6 +25,10 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Extracción sincronizada y cancelable — 18 de octubre de 2026
+
+El panel de extracción usa `readyAt` y la hora ajustada del servidor para mostrar avance, segundos restantes y el plazo de 30 segundos para recoger. Incluye cancelación explícita y aviso de caducidad; no recoge automáticamente. Cada panel conserva sus propios elementos y temporizador, evitando que una extracción cerrada habilite el botón o sustituya el token al volver al mismo yacimiento. Los temporizadores terminan al ocultar, reemplazar o destruir el panel y al salir del mundo. La API mantiene las comprobaciones existentes de distancia, sesión, token y tiempo. Verificados 30 tests, incluidos límites de disponibilidad, caducidad, reapertura y liberación, además de ESLint y compilación de producción.
+
 ### Guía de materiales — 18 de octubre de 2026
 
 El menú del mundo incluye los cinco materiales del catálogo con sus existencias guardadas, recetas que los requieren y monstruos que los dejan. Cada material permite localizar una fuente usando la selección existente: prioriza fuentes disponibles y, si todas se recuperan, indica la espera al abrir el mapa. También permite marcar la forja. Consultar la guía no ejecuta acciones de compra, recolección o fabricación; fabricar sigue requiriendo proximidad a la forja. Se conserva la interfaz oscura y adaptable del mundo. Verificados 29 tests de controles, guía y planificación, ESLint y compilación de producción.
