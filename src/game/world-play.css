@@ -775,3 +775,9 @@
 }
 .world-danger[hidden], .world-damage-feedback[hidden], .world-hit-flash[hidden] { display: none; }
 @media(prefers-reduced-motion:reduce) { .world-hit-flash { display: none; } }
+.world-quick button[data-state="ready"] { border-color: #83ddc4; }
+.world-health.world-restoring { box-shadow: 0 0 18px #68e9ad; }
+.world-mana.world-restoring { box-shadow: 0 0 18px #72cfff; }
+.world-restoring { animation: world-recovery-pulse .45s ease-in-out 2; }
+@keyframes world-recovery-pulse { 50% { filter: brightness(1.4); } }
+@media(prefers-reduced-motion:reduce) { .world-restoring { animation: none; } }

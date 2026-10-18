@@ -100,6 +100,68 @@ describe('full screen world controls', () => {
   function key(value: string) {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: value, cancelable: true }));
   }
+  it('explains consumable availability and shows recovery only after use', async () => {
+    tick();
+    const manaButton = document.querySelector<HTMLButtonElement>('[data-use="mana"]')!;
+    expect(manaButton.disabled).toBe(true);
+    expect(manaButton.textContent).toContain('Al máximo');
+    key('e');
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    tick();
+    expect(manaButton.disabled).toBe(false);
+    expect(manaButton.dataset.state).toBe('ready');
+    manaButton.click();
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    tick();
+    expect(manaButton.textContent).toContain('× 2');
+    expect(manaButton.dataset.state).toBe('cooldown');
+    expect(manaButton.getAttribute('aria-label')).toContain('Espera');
+    expect(document.querySelector('.world-mana')!.classList.contains('world-restoring')).toBe(true);
+    for (let i = 0; i < 31; i++) tick();
+    expect(manaButton.dataset.state).toBe('full');
+    expect(document.querySelector('.world-mana')!.classList.contains('world-restoring')).toBe(
+      false
+    );
+    expect(document.querySelector('[data-use="potions"]')!.textContent).toContain('× 3');
+  });
+  it('keeps consumables and recovery feedback unchanged when the API rejects use', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(init.body as string);
+        return body.action === 'consume'
+          ? { ok: false, json: async () => ({ error: 'No se pudo usar el elixir.' }) }
+          : {
+              ok: true,
+              json: async () => ({ session: 'consume-qa', profile: structuredClone(profile) }),
+            };
+      })
+    );
+    const settle = async () => {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    };
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    await settle();
+    key('e');
+    await settle();
+    tick();
+    const button = document.querySelector<HTMLButtonElement>('[data-use="mana"]')!;
+    const before = document.querySelector('.world-mana')!.textContent;
+    button.click();
+    await settle();
+    tick();
+    expect(button.dataset.state).toBe('ready');
+    expect(button.textContent).toContain('× 3');
+    expect(document.querySelector('.world-mana')!.textContent).toBe(before);
+    expect(document.querySelector('.world-mana')!.classList.contains('world-restoring')).toBe(
+      false
+    );
+    expect(document.querySelector('.world-notice')!.textContent).toContain('No se pudo usar');
+  }, 20000);
   it('keeps the chosen camera angle and moves keys and joystick relative to the view', () => {
     tick();
     const canvas = document.querySelector('canvas')!;

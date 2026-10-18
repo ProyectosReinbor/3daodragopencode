@@ -10,6 +10,7 @@ import { planRecipe, nearestMaterialSource } from './forge-planner';
 import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
 import { resourceWait, nearbyResource } from './resource-status';
 import { mountResourceExtraction } from './resource-extraction';
+import { consumableStatus } from './consumable-status';
 import { WORLD_CAMPS, activeCamp } from '../../shared/world-camps.js';
 import { MONSTER_GUIDE, nearestMonster } from './bestiary';
 import { WORLD_CONSUMABLES, SHOP_QUANTITIES } from '../../shared/world-shop.js';
@@ -100,8 +101,9 @@ export function mountWorldPlay(options: {
     damageFeedbackUntil = 0;
   let frame = 0,
     last = performance.now(),
-    attackAt = 0,
-    consumeAt = 0;
+    attackAt = 0;
+  const consumeAt = { potions: 0, mana: 0 };
+  const restoringUntil = { potions: 0, mana: 0 };
   const cooldown = [0, 0, 0, 0],
     pressed = new Set<string>(),
     events = new AbortController();
@@ -1243,8 +1245,9 @@ export function mountWorldPlay(options: {
     } else notify('Acércate a un lugar del mapa o al boticario.');
   }
   async function consume(item: 'potions' | 'mana') {
-    if (defeated) return;
-    if (busy || !progress[item] || performance.now() < consumeAt || (!training && !session)) return;
+    if (defeated || focusPaused || !modal.hidden || tools.open || document.hidden) return;
+    if (busy || !progress[item] || performance.now() < consumeAt[item] || (!training && !session))
+      return;
     if ((item === 'potions' && health >= maxHealth()) || (item === 'mana' && mana >= 100)) {
       notify('Ya estás al máximo.');
       return;
@@ -1256,7 +1259,8 @@ export function mountWorldPlay(options: {
       if (disposed || defeated) return;
       if (item === 'potions') health = Math.min(maxHealth(), health + maxHealth() * 0.6);
       else mana = Math.min(100, mana + 60);
-      consumeAt = performance.now() + 1500;
+      consumeAt[item] = performance.now() + 1500;
+      restoringUntil[item] = performance.now() + 900;
       notify(item === 'potions' ? 'Vida recuperada' : 'Maná recuperado');
     } catch (e) {
       notify((e as Error).message);
@@ -2074,8 +2078,31 @@ export function mountWorldPlay(options: {
       : `◈ ${progress.coins} monedas · ${progress.kills} derrotados`;
     for (const item of ['potions', 'mana'] as const) {
       const button = root.querySelector<HTMLButtonElement>(`[data-use="${item}"]`)!;
-      button.querySelector('small')!.textContent = `× ${progress[item]}`;
-      button.disabled = defeated || !progress[item] || busy;
+      const status = consumableStatus({
+        stock: progress[item],
+        current: item === 'potions' ? health : mana,
+        maximum: item === 'potions' ? maxHealth() : 100,
+        readyAt: consumeAt[item],
+        now,
+        blocked:
+          defeated ||
+          busy ||
+          focusPaused ||
+          !modal.hidden ||
+          tools.open ||
+          document.hidden ||
+          (!training && !session),
+      });
+      button.querySelector('small')!.textContent = `× ${progress[item]} · ${status.label}`;
+      button.disabled = status.disabled;
+      button.dataset.state = status.state;
+      button.setAttribute(
+        'aria-label',
+        `${item === 'potions' ? 'Poción de vida' : 'Elixir de maná'}: ${progress[item]} unidades. ${status.label}`
+      );
+      root
+        .querySelector(item === 'potions' ? '.world-health' : '.world-mana')!
+        .classList.toggle('world-restoring', now < restoringUntil[item]);
     }
     for (let i = 0; i < 4; i++) {
       const button = root.querySelector<HTMLButtonElement>(`[data-power="${i}"]`)!;

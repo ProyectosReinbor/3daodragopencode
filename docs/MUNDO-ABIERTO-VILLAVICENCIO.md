@@ -25,6 +25,10 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Consumibles con estado visible — 18 de octubre de 2026
+
+Los accesos rápidos de vida y maná muestran existencias, disponibilidad, barra al máximo y segundos de espera. Ambos consumibles mantienen su espera independiente de 1,5 segundos, igual que la API. Los controles se bloquean durante pausas, paneles, derrota y solicitudes pendientes; se conserva la protección para no gastar una unidad con la barra llena. La recuperación confirmada resalta su barra durante 900 ms, con efecto estático al preferir movimiento reducido. Un rechazo del servidor no inicia espera ni efecto de recuperación. Las pruebas cubren límites de espera, disponibilidad, uso en práctica y fallo de la API con un perfil ficticio.
+
 ### Extracción sincronizada y cancelable — 18 de octubre de 2026
 
 El panel de extracción usa `readyAt` y la hora ajustada del servidor para mostrar avance, segundos restantes y el plazo de 30 segundos para recoger. Incluye cancelación explícita y aviso de caducidad; no recoge automáticamente. Cada panel conserva sus propios elementos y temporizador, evitando que una extracción cerrada habilite el botón o sustituya el token al volver al mismo yacimiento. Los temporizadores terminan al ocultar, reemplazar o destruir el panel y al salir del mundo. La API mantiene las comprobaciones existentes de distancia, sesión, token y tiempo. Verificados 30 tests, incluidos límites de disponibilidad, caducidad, reapertura y liberación, además de ESLint y compilación de producción.
