@@ -8,6 +8,7 @@ import { startAdventure, advanceAdventure } from '../shared/world-adventure.js';
 import { activateCamp } from '../shared/world-camps.js';
 import { visitVenue } from '../shared/world-passport.js';
 import { beginVenueGame, finishVenueGame } from './venue-game.js';
+import { buyConsumables } from '../shared/world-shop.js';
 // Sessions own combat cooldowns and encounter health. Rewards never come from profile PUT.
 export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = () => Date.now() }) {
   const sessions = new Map();
@@ -59,9 +60,8 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
         }
       } catch(error){return res.status(400).json({error:error.message,profile,serverNow:clock()});}
     } else if (action === 'buy') {
-      const price = item === 'potions' ? 15 : item === 'mana' ? 12 : 0;
-      if (!price || world.coins < price) return res.status(400).json({ error: 'No tienes suficientes monedas.' });
-      world.coins -= price; world[item]++;
+      try { buyConsumables(world, item, req.body.quantity); }
+      catch(error) { return res.status(400).json({error:error.message}); }
     } else if (action === 'consume') {
       if (!['potions', 'mana'].includes(item) || world[item] < 1) return res.status(400).json({ error: 'No te quedan consumibles.' });
       if ((session.cooldowns[item] || 0) > clock()) return res.status(400).json({ error: 'Espera un momento para usar otra poción.' });

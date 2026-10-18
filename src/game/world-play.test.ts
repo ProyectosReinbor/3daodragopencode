@@ -8,6 +8,7 @@ import { CITY_BUILDINGS, CITY_VENUES } from '../../shared/city-life.js';
 import { CITY_WORLD } from '../../shared/city-world.js';
 import { WORLD_CAMPS } from '../../shared/world-camps.js';
 import { visitVenue } from '../../shared/world-passport.js';
+import { buyConsumables } from '../../shared/world-shop.js';
 import type { Enemy } from './world';
 import { Raycaster } from 'three';
 
@@ -609,6 +610,53 @@ describe('full screen world controls', () => {
     );
     expect(fetchMock.mock.calls.length).toBe(requests);
     expect(profile.world.monsterKills.wolf).toBe(3);
+  }, 20000);
+  it('previews shop bundles and refreshes stock only after a confirmed purchase', async () => {
+    stop();
+    const pet = createStarterCharacter(),
+      profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.action === 'buy') buyConsumables(profile.world!, body.item, body.quantity);
+      return {
+        ok: true,
+        json: async () => ({ session: 'shop-qa', profile: structuredClone(profile) }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const settle = async () => {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    };
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    await settle();
+    roomControl.entrance = true;
+    key('f');
+    roomControl.entrance = false;
+    document.querySelector<HTMLButtonElement>('[data-room-action="shop"]')!.click();
+    const requests = fetchMock.mock.calls.length;
+    document.querySelector<HTMLButtonElement>('[data-shop-quantity="3"]')!.click();
+    expect(fetchMock.mock.calls.length).toBe(requests);
+    expect(document.querySelector<HTMLButtonElement>('[data-buy="potions"]')!.disabled).toBe(true);
+    expect(document.querySelector('[data-buy="potions"]')!.textContent).toContain(
+      'Te faltan 5 monedas'
+    );
+    document.querySelector<HTMLButtonElement>('[data-buy="mana"]')!.click();
+    expect(document.querySelector<HTMLButtonElement>('[data-shop-quantity="1"]')!.disabled).toBe(
+      true
+    );
+    await settle();
+    expect(JSON.parse(fetchMock.mock.lastCall![1].body as string)).toMatchObject({
+      action: 'buy',
+      item: 'mana',
+      quantity: 3,
+    });
+    expect(profile.world.coins).toBe(4);
+    expect(document.querySelector('[data-buy="mana"]')!.textContent).toContain('Tienes 6');
+    expect(document.querySelector<HTMLButtonElement>('[data-shop-quantity="1"]')!.disabled).toBe(
+      false
+    );
+    expect(document.querySelector<HTMLButtonElement>('[data-buy="mana"]')!.disabled).toBe(true);
   }, 20000);
   it('registers a passport stamp from inside a venue and restores it on a later visit', async () => {
     stop();

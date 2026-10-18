@@ -11,6 +11,7 @@ import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
 import { resourceWait, nearbyResource } from './resource-status';
 import { WORLD_CAMPS, activeCamp } from '../../shared/world-camps.js';
 import { MONSTER_GUIDE, nearestMonster } from './bestiary';
+import { WORLD_CONSUMABLES, SHOP_QUANTITIES } from '../../shared/world-shop.js';
 import { mountVenueMemory } from './venue-memory';
 import { venueWait, venueWaitLabel, activityVisible } from './venue-activities';
 import { VENUE_GAME_REWARD } from '../../shared/venue-game.js';
@@ -936,9 +937,17 @@ export function mountWorldPlay(options: {
         : '<p>No tienes piezas en esta categoría. Los monstruos dejan equipo y la forja permite fabricar nuevas piezas.</p>'
     }</article>`;
   }
+  let shopQuantity = 1;
   function shop() {
     modal.hidden = false;
-    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Tienda del boticario"><button data-close aria-label="Cerrar tienda">✕</button><h2>${safe(activeRoom?.name || 'El boticario')}</h2><p>Negocio del mundo · Tienes ${progress.coins} monedas.</p><button data-buy="potions">❤️ Poción de vida · 15 monedas<small>Restaura 60% de tu vida máxima</small></button><button data-buy="mana">🧪 Elixir de maná · 12 monedas<small>Restaura 60 de maná</small></button></article>`;
+    modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Tienda del boticario"><button data-close aria-label="Cerrar tienda">✕</button><h2>${safe(activeRoom?.name || 'El boticario')}</h2><p>Tienes ${progress.coins} monedas. Elige cuántas unidades comprar.</p><div class="world-journal-filters" role="group" aria-label="Cantidad por compra">${SHOP_QUANTITIES.map((quantity) => `<button data-shop-quantity="${quantity}" aria-pressed="${shopQuantity === quantity}" ${busy ? 'disabled' : ''}>${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}</button>`).join('')}</div>${Object.entries(
+      WORLD_CONSUMABLES
+    )
+      .map(([item, product]) => {
+        const total = product.price * shopQuantity;
+        return `<button data-buy="${item}" ${busy || training || progress.coins < total ? 'disabled' : ''}>${product.icon} ${product.name} × ${shopQuantity} · ${total} monedas<small>${product.description} · Tienes ${progress[item as 'potions' | 'mana']}</small><small>${progress.coins < total ? `Te faltan ${total - progress.coins} monedas` : `${product.price} monedas por unidad`}</small></button>`;
+      })
+      .join('')}${busy ? '<p role="status">Procesando compra…</p>' : ''}</article>`;
   }
   let mapX = 0,
     mapZ = 0,
@@ -1563,18 +1572,26 @@ export function mountWorldPlay(options: {
       else if (button.hasAttribute('data-attack')) void attack();
       else if (button.hasAttribute('data-interact')) interact();
       else if (button.dataset.use) void consume(button.dataset.use as 'potions' | 'mana');
-      else if (button.dataset.buy || button.dataset.equip) {
+      else if (button.dataset.shopQuantity) {
+        if (busy) return;
+        const quantity = Number(button.dataset.shopQuantity);
+        if (SHOP_QUANTITIES.includes(quantity)) {
+          shopQuantity = quantity;
+          shop();
+        }
+      } else if (button.dataset.buy || button.dataset.equip) {
         if (busy || training) return;
         busy = true;
+        if (button.dataset.buy) shop();
         if (button.dataset.equip) equipment();
         try {
           await request(
             button.dataset.buy
-              ? { action: 'buy', item: button.dataset.buy }
+              ? { action: 'buy', item: button.dataset.buy, quantity: shopQuantity }
               : { action: 'equip', item: button.dataset.equip }
           );
           if (disposed) return;
-          if (button.dataset.buy) shop();
+          if (button.dataset.buy) notify(`Compra recibida: ${shopQuantity} consumibles.`);
           else {
             health = Math.min(health, maxHealth());
             notify('Equipo actualizado. Tus estadísticas ya incluyen la nueva pieza.');
@@ -1583,6 +1600,12 @@ export function mountWorldPlay(options: {
           notify((e as Error).message);
         } finally {
           busy = false;
+          if (
+            !disposed &&
+            !modal.hidden &&
+            modal.querySelector('[aria-label="Tienda del boticario"]')
+          )
+            shop();
           if (
             !disposed &&
             !modal.hidden &&

@@ -25,6 +25,10 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Compras por paquetes — 18 de octubre de 2026
+
+La tienda permite comprar 1, 3 o 5 pociones o elixires por operación. Muestra precio total, existencias y monedas faltantes; deshabilita compras sin saldo y controles durante la solicitud. Las existencias se actualizan con la respuesta del servidor. Los precios y cantidades permitidas están en un catálogo compartido; la API valida el paquete completo antes de descontar monedas y mantiene compatibilidad con compras antiguas de una unidad. Pruebas con perfiles ficticios: cantidades inválidas, saldo insuficiente, precios manipulados, sesión de otra cuenta y compra confirmada desde la interfaz. Verificados 28 tests y compilación de producción.
+
 ### Ayuda y pausa por cambio de ventana — 18 de octubre de 2026
 
 El menú incluye Ayuda y controles con movimiento relativo a la cámara, selección de objetivos, poderes, consumibles, interacción y acceso al mapa y actividades. El contenido se presenta como texto legible dentro del mismo panel oscuro del mundo.
