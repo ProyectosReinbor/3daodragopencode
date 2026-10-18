@@ -781,3 +781,4 @@
 .world-restoring { animation: world-recovery-pulse .45s ease-in-out 2; }
 @keyframes world-recovery-pulse { 50% { filter: brightness(1.4); } }
 @media(prefers-reduced-motion:reduce) { .world-restoring { animation: none; } }
+.foodie-world button.world-gamepad-focus { outline: 3px solid #98ffe2; outline-offset: 2px; box-shadow: 0 0 16px #64d6bf66; }

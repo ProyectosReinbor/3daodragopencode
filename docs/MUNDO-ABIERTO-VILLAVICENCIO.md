@@ -25,6 +25,16 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Mando web para PC y celular — 18 de octubre de 2026
+
+El mundo abierto y el campo de práctica leen Gamepad API en el mismo ciclo de simulación. Se admiten mandos que el navegador presente con `mapping: standard`, conectados mediante USB o Bluetooth. No se instala un controlador propio ni se garantiza compatibilidad con todas las combinaciones de mando, navegador y sistema. La ayuda «Menú → Mando» muestra conexión, distribución y requisitos; los controles de teclado y pantalla continúan disponibles. La documentación de [Gamepad.mapping](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad/mapping) y [getGamepads](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getGamepads) describe la distribución y acceso. En celulares se debe servir la web con HTTPS; una IP local por HTTP puede impedir acceder a los mandos.
+
+Distribución: stick izquierdo para movimiento analógico relativo a la cámara; derecho para rotarla. A/✕ ataca; X/□ interactúa; B/○ usa impulso; Y/△ activa la definitiva. LB/L1 y RB/R1 usan Q y W; LT/L2 y RT/R2 usan poción y maná. R3 cambia rival, View/Share/Create abre el mapa del mundo, Start/Options abre o cierra la pausa. En paneles, cruceta o stick izquierdo recorre botones disponibles, A confirma y B vuelve. Los botones enfocados tienen contorno y se desplazan a la vista; los menús no disparan ataques de fondo. Las pulsaciones de combate se procesan una vez por presión, respetando las reglas existentes de recarga, sesión y recursos.
+
+La zona muerta radial del 20% evita deriva y conserva intensidad analógica. Se mantiene un mando activo estable cuando hay varios; desconectar borra su entrada. Al conectar, cambiar de mando o recuperar el foco es necesario soltar controles antes de habilitar nuevas entradas. Después de cerrar un panel se sueltan los sticks antes de caminar. Los controles sin distribución estándar y los errores de acceso no interrumpen el juego. No se conserva el identificador del dispositivo en el perfil.
+
+Verificados 37 tests de lectura, distribución completa, botones mantenidos, reconexión, deriva, navegación, movimiento, cámara, combate, interacción y consumibles, además de controles anteriores. Validación mediante mandos simulados; queda pendiente la prueba física con los dispositivos finales de PC y celular.
+
 ### Consumibles con estado visible — 18 de octubre de 2026
 
 Los accesos rápidos de vida y maná muestran existencias, disponibilidad, barra al máximo y segundos de espera. Ambos consumibles mantienen su espera independiente de 1,5 segundos, igual que la API. Los controles se bloquean durante pausas, paneles, derrota y solicitudes pendientes; se conserva la protección para no gastar una unidad con la barra llena. La recuperación confirmada resalta su barra durante 900 ms, con efecto estático al preferir movimiento reducido. Un rechazo del servidor no inicia espera ni efecto de recuperación. Las pruebas cubren límites de espera, disponibilidad, uso en práctica y fallo de la API con un perfil ficticio.

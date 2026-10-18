@@ -100,6 +100,88 @@ describe('full screen world controls', () => {
   function key(value: string) {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: value, cancelable: true }));
   }
+  it('moves and turns with a gamepad and clears input on disconnect and focus loss', () => {
+    const pad = {
+      index: 0,
+      id: 'qa-pad',
+      mapping: 'standard',
+      connected: true,
+      axes: [0, 0, 0, 0],
+      buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
+    };
+    vi.stubGlobal('navigator', { getGamepads: () => [pad] });
+    tick();
+    const initial = rendered.z;
+    pad.axes[1] = -1;
+    tick();
+    expect(rendered.z).toBeLessThan(initial);
+    pad.axes[1] = 0;
+    const before = { x: rendered.x, z: rendered.z };
+    pad.axes[2] = 1;
+    tick();
+    expect(rendered.x).not.toBe(before.x);
+    pad.axes[2] = 0;
+    pad.connected = false;
+    const disconnected = { x: rendered.x, z: rendered.z };
+    pad.axes[1] = -1;
+    tick();
+    expect(rendered.x).toBe(disconnected.x);
+    expect(rendered.z).toBe(disconnected.z);
+    pad.connected = true;
+    tick();
+    expect(rendered.z).toBe(disconnected.z);
+    pad.axes[1] = 0;
+    tick();
+    pad.axes[1] = -1;
+    tick();
+    expect(rendered.z).toBeLessThan(disconnected.z);
+    window.dispatchEvent(new Event('blur'));
+    tick();
+    const paused = rendered.z;
+    window.dispatchEvent(new Event('focus'));
+    tick();
+    expect(rendered.z).toBe(paused);
+    pad.axes[1] = 0;
+    tick();
+    pad.axes[1] = -1;
+    tick();
+    expect(rendered.z).toBeLessThan(paused);
+  });
+  it('opens gamepad help from the controller menu and confirms without attacking behind panels', () => {
+    const pad = {
+      index: 0,
+      id: 'qa-pad',
+      mapping: 'standard',
+      connected: true,
+      axes: [0, 0, 0, 0],
+      buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
+    };
+    vi.stubGlobal('navigator', { getGamepads: () => [pad] });
+    tick();
+    const press = (index: number) => {
+      pad.buttons[index].pressed = true;
+      tick();
+      pad.buttons[index].pressed = false;
+      tick();
+    };
+    press(9);
+    expect(document.querySelector<HTMLDetailsElement>('.world-tools')!.open).toBe(true);
+    const help = document.querySelector<HTMLButtonElement>('[data-menu="gamepad"]')!;
+    expect(help.textContent).toContain('conectado');
+    help.focus();
+    press(0);
+    expect(document.querySelector('[aria-label="Jugar con mando"]')).not.toBeNull();
+    expect(document.querySelector('.world-target')!.textContent).toContain('80 / 80');
+    press(1);
+    expect(document.querySelector<HTMLElement>('.world-modal')!.hidden).toBe(true);
+    press(3);
+    expect(document.querySelector('.world-notice')!.textContent).toContain('Rival derrotado');
+    press(2);
+    expect(document.querySelector('.world-target')!.textContent).toContain('80 / 80');
+    press(1);
+    press(7);
+    expect(document.querySelector('[data-use="mana"]')!.textContent).toContain('× 2');
+  });
   it('explains consumable availability and shows recovery only after use', async () => {
     tick();
     const manaButton = document.querySelector<HTMLButtonElement>('[data-use="mana"]')!;

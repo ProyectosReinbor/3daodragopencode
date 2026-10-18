@@ -11,6 +11,7 @@ import { rewardEntry, appendReward, type RewardEntry } from './reward-journal';
 import { resourceWait, nearbyResource } from './resource-status';
 import { mountResourceExtraction } from './resource-extraction';
 import { consumableStatus } from './consumable-status';
+import { createGamepadReader, navigateGamepadPanel } from './gamepad';
 import { WORLD_CAMPS, activeCamp } from '../../shared/world-camps.js';
 import { MONSTER_GUIDE, nearestMonster } from './bestiary';
 import { WORLD_CONSUMABLES, SHOP_QUANTITIES } from '../../shared/world-shop.js';
@@ -168,6 +169,11 @@ export function mountWorldPlay(options: {
     modal.innerHTML =
       '<article role="dialog" aria-modal="true" aria-label="Ayuda y controles"><button data-close aria-label="Cerrar ayuda">✕</button><h2>Ayuda y controles</h2><dl class="world-controls-help"><dt>Moverte</dt><dd>Flechas del teclado o joystick. La dirección depende del ángulo de la cámara.</dd><dt>Mirar alrededor</dt><dd>Arrastra el mundo para girar la cámara.</dd><dt>Elegir rival</dt><dd>Toca un enemigo para fijarlo. T o ↻ cambian de objetivo; × lo suelta.</dd><dt>Combatir</dt><dd>Espacio: ataque básico. Q, W y E: poderes. R: definitiva. Sal de los círculos rojos antes del golpe.</dd><dt>Recuperarte</dt><dd>1: poción de vida. 2: elixir de maná. También puedes usar los botones rápidos.</dd><dt>Interactuar</dt><dd>F o Explorar: entrar a un edificio, hablar, recoger materiales o abrir la forja según tu cercanía.</dd><dt>Explorar la ciudad</dt><dd>Toca el minimapa para abrir el mapa completo. Selecciona un lugar y pulsa Seguir destino.</dd><dt>Locales</dt><dd>Desde Misiones o Menú puedes abrir Actividades y Pasaporte. Entra en los locales para sus minijuegos.</dd><dt>Pausar</dt><dd>Abre Menú o un panel. Escape cierra el menú o panel abierto; durante la exploración sale al menú principal.</dd></dl><p>Al cambiar de ventana se pausa el mundo y se sueltan los controles. Al regresar, vuelve a pulsar la dirección para moverte.</p></article>';
   }
+  function gamepadDialog() {
+    modal.hidden = false;
+    modal.innerHTML =
+      '<article role="dialog" aria-modal="true" aria-label="Jugar con mando"><button data-close aria-label="Cerrar ayuda del mando">✕</button><h2>Jugar con mando</h2><p>Conecta el control por Bluetooth o USB y pulsa un botón para que el navegador lo detecte. Al conectar o volver a la pestaña, suelta botones y sticks una vez.</p><dl class="world-controls-help"><dt>Movimiento / cámara</dt><dd>Stick izquierdo / stick derecho. La mascota se mueve según la cámara.</dd><dt>Atacar / confirmar</dt><dd>A / ✕</dd><dt>Interactuar</dt><dd>X / □</dd><dt>Impulso / volver</dt><dd>B / ○</dd><dt>Definitiva</dt><dd>Y / △</dd><dt>Poderes Q y W</dt><dd>LB / L1 y RB / R1</dd><dt>Poción / maná</dt><dd>LT / L2 y RT / R2</dd><dt>Cambiar rival</dt><dd>Pulsa el stick derecho (R3).</dd><dt>Mapa</dt><dd>View / Share / Create (en el mundo abierto).</dd><dt>Menú / pausa</dt><dd>Start / Options / Menú</dd><dt>Paneles y minijuegos</dt><dd>Cruceta o stick izquierdo: elegir. A / ✕: confirmar. B / ○: cerrar. Suelta el stick al volver al mundo.</dd></dl><p>Requiere un navegador que exponga el mando con distribución estándar. En celulares, usa la web con HTTPS; una dirección HTTP de la red local puede impedir la detección. Si no aparece, puedes seguir usando controles táctiles o teclado.</p></article>';
+  }
   const targetHud = root.querySelector<HTMLElement>('.world-target')!;
   targetHud.hidden = true;
   targetHud.innerHTML =
@@ -322,6 +328,12 @@ export function mountWorldPlay(options: {
   toolsPanel
     .querySelector('[data-menu="exit"]')!
     .insertAdjacentHTML('beforebegin', '<button data-menu="controls">Ayuda y controles</button>');
+  toolsPanel
+    .querySelector('[data-menu="exit"]')!
+    .insertAdjacentHTML(
+      'beforebegin',
+      '<button data-menu="gamepad">Mando · Conecta y pulsa un botón</button>'
+    );
   toolbar.append(tools);
   const toolsSummary = tools.querySelector<HTMLElement>('summary')!;
   tools.addEventListener(
@@ -1299,6 +1311,7 @@ export function mountWorldPlay(options: {
       }
       if (button.dataset.menu === 'exit') exit();
       else if (button.dataset.menu === 'controls') controlsDialog();
+      else if (button.dataset.menu === 'gamepad') gamepadDialog();
       else if (button.dataset.menu === 'activities') activitiesDialog();
       else if (
         button.dataset.activityFilter &&
@@ -1776,6 +1789,7 @@ export function mountWorldPlay(options: {
     .querySelector('.world-help')!
     .append(' · Arrastra: cámara · T o toca un rival: fijar objetivo');
   function reset() {
+    gamepadMovementReady = false;
     pressed.clear();
     pointer = null;
     cameraPointer = null;
@@ -1839,10 +1853,100 @@ export function mountWorldPlay(options: {
     },
     { signal: events.signal }
   );
+  const gamepadReader = createGamepadReader();
+  const keyboardHelp = root.querySelector('.world-help')!.textContent;
+  let gamepadMovementReady = false,
+    gamepadNavigationAt = 0,
+    gamepadNavigationDirection = 0;
+  let previousGamepadStatus = '';
+  function updateGamepad(now: number, dt: number) {
+    const landscape = !(innerHeight > innerWidth && matchMedia('(pointer:coarse)').matches);
+    const input = gamepadReader.poll(!focusPaused && !document.hidden && landscape);
+    if (input.status !== previousGamepadStatus) {
+      if (input.status === 'connected')
+        notify('Mando conectado. Start / Options abre el menú. Suelta los sticks para comenzar.');
+      else if (previousGamepadStatus === 'connected')
+        notify('Mando desconectado. Puedes seguir con teclado o controles táctiles.');
+      previousGamepadStatus = input.status;
+      root.querySelector('.world-help')!.textContent =
+        input.status === 'connected'
+          ? '🎮 Sticks: mover / cámara · A/✕: atacar · X/□: interactuar · B/○: impulso · Y/△: definitiva · Start: menú'
+          : keyboardHelp;
+      root.querySelector('[data-menu="gamepad"]')!.textContent =
+        input.status === 'connected'
+          ? '🎮 Mando conectado · Controles'
+          : input.status === 'unsupported'
+            ? 'Mando sin distribución estándar · Ayuda'
+            : 'Mando · Conecta y pulsa un botón';
+    }
+    const idle = { x: 0, y: 0 };
+    if (input.status !== 'connected' || focusPaused || document.hidden || !landscape) {
+      gamepadMovementReady = false;
+      return idle;
+    }
+    if (input.actions.has('menu')) {
+      reset();
+      if (!modal.hidden && !defeated) modal.hidden = true;
+      else if (!defeated) tools.open = !tools.open;
+      gamepadNavigationDirection = 0;
+      return idle;
+    }
+    if (!modal.hidden || tools.open) {
+      gamepadMovementReady = false;
+      const scope = !modal.hidden ? modal : toolsPanel;
+      if (input.actions.has('dash') && !defeated) {
+        if (!modal.hidden) modal.hidden = true;
+        else tools.open = false;
+        reset();
+        return idle;
+      }
+      if (
+        input.navigation &&
+        (input.navigation !== gamepadNavigationDirection || now >= gamepadNavigationAt)
+      ) {
+        navigateGamepadPanel(scope, input.navigation);
+        gamepadNavigationAt = now + (input.navigation !== gamepadNavigationDirection ? 350 : 180);
+      } else if (
+        !scope.contains(document.activeElement) ||
+        (document.activeElement as HTMLButtonElement)?.disabled
+      ) {
+        navigateGamepadPanel(scope, 0);
+      }
+      gamepadNavigationDirection = input.navigation;
+      if (input.actions.has('attack')) navigateGamepadPanel(scope, 0)?.click();
+      return idle;
+    }
+    gamepadNavigationDirection = 0;
+    if (defeated) return idle;
+    if (!input.move.x && !input.move.y && !input.look.x && !input.look.y)
+      gamepadMovementReady = true;
+    if (input.actions.has('map') && !training) {
+      cityMap();
+      reset();
+      return idle;
+    }
+    if (input.actions.has('target')) cycleTarget();
+    if (input.actions.has('interact')) interact();
+    if (input.actions.has('attack')) void attack();
+    if (input.actions.has('dash')) void attack(2);
+    if (input.actions.has('ultimate')) void attack(3);
+    if (input.actions.has('power1')) void attack(0);
+    if (input.actions.has('power2')) void attack(1);
+    if (input.actions.has('potion')) void consume('potions');
+    if (input.actions.has('mana')) void consume('mana');
+    if (!gamepadMovementReady) return idle;
+    if (cameraPointer === null && modal.hidden) {
+      cameraYaw -= input.look.x * dt * 2.2;
+      cameraPitch = Math.max(0.25, Math.min(1.1, cameraPitch + input.look.y * dt * 1.3));
+    }
+    return input.move;
+  }
   function loop(now: number) {
     if (disposed) return;
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
+    const gamepadMove = updateGamepad(now, dt);
+    if (disposed) return;
     if (
       !defeated &&
       !focusPaused &&
@@ -1854,9 +1958,15 @@ export function mountWorldPlay(options: {
       const direction = new Vector3(
         pointer !== null
           ? axisX
-          : Number(pressed.has('arrowright')) - Number(pressed.has('arrowleft')),
+          : pressed.has('arrowright') || pressed.has('arrowleft')
+            ? Number(pressed.has('arrowright')) - Number(pressed.has('arrowleft'))
+            : gamepadMove.x,
         0,
-        pointer !== null ? axisZ : Number(pressed.has('arrowdown')) - Number(pressed.has('arrowup'))
+        pointer !== null
+          ? axisZ
+          : pressed.has('arrowdown') || pressed.has('arrowup')
+            ? Number(pressed.has('arrowdown')) - Number(pressed.has('arrowup'))
+            : gamepadMove.y
       );
       if (direction.length() > 1) direction.normalize();
       direction.applyAxisAngle(new Vector3(0, 1, 0), cameraYaw);
