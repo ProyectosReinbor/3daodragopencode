@@ -44,6 +44,8 @@ import {
   CircleGeometry,
   RingGeometry,
   Group,
+  Raycaster,
+  Vector2,
 } from 'three';
 import type { Character } from './characters';
 import { totalStats } from './characters';
@@ -65,6 +67,7 @@ import {
   type EnemyAttackState,
 } from './enemy-combat';
 import { moveWithCollisions } from './world-movement';
+import { nearbyCombatTargets, nextCombatTarget } from './combat-targeting';
 
 const safe = (value: string) =>
   value.replace(
@@ -79,6 +82,7 @@ export function mountWorldPlay(options: {
   let pet = options.pet,
     profile = options.profile;
   const training = !profile;
+  let selectedTarget: Enemy | undefined;
   let progress = profile?.world || initialWorldProgress(),
     session = '',
     serverOffset = 0,
@@ -154,6 +158,10 @@ export function mountWorldPlay(options: {
     )
     .join('');
   const modal = root.querySelector<HTMLElement>('.world-modal')!;
+  const targetHud = root.querySelector<HTMLElement>('.world-target')!;
+  targetHud.hidden = true;
+  targetHud.innerHTML =
+    '<span data-target-info></span><button data-next-target aria-label="Cambiar objetivo">↻</button><button data-clear-target aria-label="Soltar objetivo">×</button>';
   let stopVenueGame: (() => void) | undefined;
   let activityFilter = 'all';
   function refreshActivities() {
@@ -364,6 +372,7 @@ export function mountWorldPlay(options: {
       '<article role="dialog" aria-modal="true" aria-label="Mascota derrotada"><h2>Tu mascota necesita descansar</h2><p>Volverás al punto seguro con vida y maná completos. Conservas tu equipo, monedas, materiales y progreso de misiones.</p><button data-recover>Volver al punto seguro</button><button data-menu="exit">Salir al menú</button></article>';
   }
   function recover() {
+    selectedTarget = undefined;
     defeated = false;
     health = maxHealth();
     mana = 100;
@@ -482,6 +491,7 @@ export function mountWorldPlay(options: {
   let activeRoom: CityRoom | null = null;
   let roomReturn: Vector3 | null = null;
   function enterBuilding(building: CityRoom['building'], floor = 0) {
+    selectedTarget = undefined;
     if (!activeRoom) roomReturn = model.position.clone();
     else closeCityRoom(scene, activeRoom);
     activeRoom = openCityRoom(scene, building, floor);
@@ -591,6 +601,13 @@ export function mountWorldPlay(options: {
     presentation = createWorldPresentation(scene, renderer, zone, training, graphicsQuality);
   }
   prepare();
+  const targetRing = new Mesh(
+    new TorusGeometry(1, 0.08, 5, 28),
+    new MeshLambertMaterial({ color: 0x83ddf5, emissive: 0x164452 })
+  );
+  targetRing.rotation.x = -Math.PI / 2;
+  targetRing.visible = false;
+  scene.add(targetRing);
   if (!training)
     for (const camp of WORLD_CAMPS) {
       const marker = new Mesh(
@@ -739,16 +756,26 @@ export function mountWorldPlay(options: {
       })
       .catch((e) => notify(e.message));
   else notify('Derrota al rival de prueba. Aquí no se gastan tus recursos reales.');
-  const target = (range = 9) =>
-    world.enemies
-      .filter(
-        (e) =>
-          !defeated && !activeRoom && e.alive && e.mesh.position.distanceTo(model.position) < range
-      )
-      .sort(
-        (a, b) =>
-          a.mesh.position.distanceTo(model.position) - b.mesh.position.distanceTo(model.position)
-      )[0];
+  function targetCandidates() {
+    return defeated || activeRoom
+      ? []
+      : nearbyCombatTargets(
+          world.enemies,
+          model.position,
+          12,
+          training ? undefined : (x, z) => !!scene.userData.cityBuildingAt?.(x, z)
+        );
+  }
+  function target(range = 9) {
+    const candidates = targetCandidates();
+    if (selectedTarget && !candidates.includes(selectedTarget)) selectedTarget = undefined;
+    const enemy = selectedTarget || candidates[0];
+    return enemy && enemy.mesh.position.distanceTo(model.position) < range ? enemy : undefined;
+  }
+  function cycleTarget() {
+    selectedTarget = nextCombatTarget(targetCandidates(), selectedTarget);
+    if (selectedTarget) notify('Objetivo fijado: ' + selectedTarget.name);
+  }
   function burst(position: Vector3, big = false) {
     const mesh = new Mesh(
       new TorusGeometry(big ? 1.4 : 0.5, 0.08, 8, 36),
@@ -789,7 +816,11 @@ export function mountWorldPlay(options: {
     }
     const enemy = target(slot < 0 ? 3.6 : 9);
     if (!enemy) {
-      notify('Acércate a un enemigo para atacar.');
+      notify(
+        selectedTarget
+          ? 'Acércate al objetivo fijado para atacar.'
+          : 'Acércate a un enemigo para atacar.'
+      );
       return;
     }
     const before = mana;
@@ -1217,6 +1248,14 @@ export function mountWorldPlay(options: {
         tools.open = false;
         reset();
       }
+      if (button.hasAttribute('data-next-target')) {
+        cycleTarget();
+        return;
+      }
+      if (button.hasAttribute('data-clear-target')) {
+        selectedTarget = undefined;
+        return;
+      }
       if (defeated && button.hasAttribute('data-recover')) {
         recover();
         return;
@@ -1579,6 +1618,10 @@ export function mountWorldPlay(options: {
         return;
       }
       if (!modal.hidden) return;
+      if (key === 't') {
+        cycleTarget();
+        return;
+      }
       const slot = 'qwer'.indexOf(key);
       if (slot >= 0 && key.length === 1) void attack(slot);
       if (key === ' ') void attack();
@@ -1602,7 +1645,11 @@ export function mountWorldPlay(options: {
     cameraPitch = defaultPitch;
   let cameraPointer: number | null = null,
     dragX = 0,
-    dragY = 0;
+    dragY = 0,
+    tapX = 0,
+    tapY = 0,
+    dragDistance = 0;
+  const targetRay = new Raycaster();
   canvas.addEventListener(
     'pointerdown',
     (event) => {
@@ -1611,6 +1658,9 @@ export function mountWorldPlay(options: {
       cameraPointer = event.pointerId;
       dragX = event.clientX;
       dragY = event.clientY;
+      tapX = dragX;
+      tapY = dragY;
+      dragDistance = 0;
       canvas.setPointerCapture?.(event.pointerId);
     },
     { signal: events.signal }
@@ -1619,6 +1669,7 @@ export function mountWorldPlay(options: {
     'pointermove',
     (event) => {
       if (event.pointerId !== cameraPointer) return;
+      dragDistance = Math.max(dragDistance, Math.hypot(event.clientX - tapX, event.clientY - tapY));
       if (modal.hidden && !tools.open && !document.hidden) {
         cameraYaw -= (event.clientX - dragX) * 0.006;
         cameraPitch = Math.max(0.25, Math.min(1.1, cameraPitch + (event.clientY - dragY) * 0.005));
@@ -1632,11 +1683,45 @@ export function mountWorldPlay(options: {
     canvas.addEventListener(
       name,
       (event) => {
-        if (event.pointerId === cameraPointer) cameraPointer = null;
+        if (event.pointerId === cameraPointer) {
+          if (
+            name === 'pointerup' &&
+            dragDistance < 7 &&
+            modal.hidden &&
+            !tools.open &&
+            !defeated
+          ) {
+            const box = canvas.getBoundingClientRect();
+            if (box.width && box.height) {
+              targetRay.setFromCamera(
+                new Vector2(
+                  ((event.clientX - box.left) / box.width) * 2 - 1,
+                  (-(event.clientY - box.top) / box.height) * 2 + 1
+                ),
+                camera
+              );
+              const candidates = targetCandidates();
+              const hits = targetRay.intersectObjects(
+                candidates.map((enemy) => enemy.mesh),
+                true
+              );
+              const hit = hits[0];
+              const enemy =
+                hit && candidates.find((candidate) => candidate.mesh.getObjectById(hit.object.id));
+              if (enemy) {
+                selectedTarget = enemy;
+                notify('Objetivo fijado: ' + enemy.name);
+              }
+            }
+          }
+          cameraPointer = null;
+        }
       },
       { signal: events.signal }
     );
-  root.querySelector('.world-help')!.append(' · Arrastra el mundo: girar cámara');
+  root
+    .querySelector('.world-help')!
+    .append(' · Arrastra: cámara · T o toca un rival: fijar objetivo');
   function reset() {
     pressed.clear();
     pointer = null;
@@ -2018,9 +2103,18 @@ export function mountWorldPlay(options: {
       }
     }
     const enemy = target(12);
-    root.querySelector('.world-target')!.textContent = enemy
-      ? `${enemy.name} · ${Math.ceil(enemy.health)} / ${enemy.maxHealth} ❤️${attacks.get(enemy)?.phase === 'windup' ? ' · Preparando ataque' : ''}`
+    targetHud.hidden = !enemy;
+    targetHud.querySelector('[data-target-info]')!.textContent = enemy
+      ? `${selectedTarget ? 'Fijado · ' : ''}${enemy.name} · ${Math.ceil(enemy.health)} / ${enemy.maxHealth} ❤️${attacks.get(enemy)?.phase === 'windup' ? ' · Preparando ataque' : ''}`
       : '';
+    targetHud.querySelector<HTMLButtonElement>('[data-clear-target]')!.hidden = !selectedTarget;
+    targetRing.visible = !!selectedTarget && !activeRoom && !defeated;
+    if (selectedTarget)
+      targetRing.position.set(
+        selectedTarget.mesh.position.x,
+        selectedTarget.mesh.position.y + 0.1,
+        selectedTarget.mesh.position.z
+      );
     frame = requestAnimationFrame(loop);
   }
   frame = requestAnimationFrame(loop);

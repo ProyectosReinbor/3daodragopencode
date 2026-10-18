@@ -25,6 +25,14 @@ Hay constructores de interiores y una API de presencia cercana como infraestruct
 
 ## Verificación técnica
 
+### Selección de objetivos de combate — 18 de octubre de 2026
+
+Un toque o clic sobre el modelo de un rival lo fija como objetivo; arrastrar la cámara no selecciona. T y el botón de cambio recorren los candidatos cercanos. Un anillo azul y la etiqueta «Fijado» distinguen la selección de las advertencias rojas de ataques. El botón de soltar devuelve el comportamiento de elegir al rival más cercano.
+
+La selección busca rivales vivos y visibles a menos de doce metros, en la misma altura aproximada, y consulta las huellas de edificios para descartar fachadas intermedias. Se libera al morir, salir del rango, quedar bloqueado o entrar en un edificio. Mantener una selección fuera del alcance de un ataque pide acercarse; no desvía el golpe a otro rival ni aumenta el alcance básico o de los poderes. Los controles se suspenden con menús y derrota igual que el resto del combate.
+
+Las pruebas verifican orden y ciclo de candidatos, fachadas, diferencias de altura, ataque a la selección, distancia, muerte del objetivo y separación entre toque y arrastre. Es selección y visibilidad del cliente; esta entrega no convierte las posiciones o el combate completo en simulación autoritativa del servidor.
+
 ### Menú compacto del mundo — 18 de octubre de 2026
 
 La cabecera conserva Equipo y un menú desplegable con las herramientas secundarias: Misiones, Actividades, Pasaporte, Guía, Botín, calidad gráfica, pantalla completa y salida. Las herramientas disponibles se adaptan al campo de prueba. El desplegable tiene botones de al menos 44 píxeles, anchura limitada al viewport y desplazamiento vertical para pantallas horizontales bajas.

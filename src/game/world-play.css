@@ -215,6 +215,11 @@
 .world-target:empty {
   display: none;
 }
+.world-target { display: flex; align-items: center; gap: 6px; max-width: min(440px, 55vw); }
+.world-target[hidden], .world-target button[hidden] { display: none; }
+.foodie-world .world-target button { min-width: 44px; min-height: 44px; padding: 7px; }
+.world-target [data-target-info] { min-width: 0; overflow-wrap: anywhere; }
+.foodie-world .world-target button { flex-shrink: 0; }
 .world-notice {
   position: absolute;
   top: 170px;

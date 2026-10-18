@@ -9,10 +9,11 @@ import { CITY_WORLD } from '../../shared/city-world.js';
 import { WORLD_CAMPS } from '../../shared/world-camps.js';
 import { visitVenue } from '../../shared/world-passport.js';
 import type { Enemy } from './world';
+import { Raycaster } from 'three';
 
 const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false, pixelRatio: 1 }));
 const roomControl = vi.hoisted(() => ({ entrance: false }));
-const battleControl = vi.hoisted(() => ({ enemy: null as Enemy | null }));
+const battleControl = vi.hoisted(() => ({ enemy: null as Enemy | null, enemies: [] as Enemy[] }));
 vi.mock('./world', async () => {
   const actual = await vi.importActual<typeof import('./world')>('./world');
   return {
@@ -20,6 +21,7 @@ vi.mock('./world', async () => {
     createWorld: (...args: Parameters<typeof actual.createWorld>) => {
       const world = actual.createWorld(...args);
       battleControl.enemy = world.enemies[0];
+      battleControl.enemies = world.enemies;
       return world;
     },
   };
@@ -787,6 +789,77 @@ describe('full screen world controls', () => {
     expect(menu.open).toBe(false);
     expect(document.querySelector('[aria-label="Ajustes gráficos"][role="dialog"]')).not.toBeNull();
   });
+  it('keeps a chosen rival for attacks and releases dead targets', () => {
+    const [near, chosen] = battleControl.enemies;
+    near.name = 'Cercano';
+    chosen.name = 'Elegido';
+    for (const enemy of [near, chosen]) {
+      enemy.alive = true;
+      enemy.mesh.visible = true;
+      enemy.health = enemy.maxHealth = 80;
+      enemy.speed = 0;
+    }
+    near.mesh.position.set(0, 0, 1.7);
+    chosen.mesh.position.set(0, 0, 3);
+    tick();
+    key('t');
+    key('t');
+    tick();
+    expect(document.querySelector('.world-target')!.textContent).toContain('Fijado · Elegido');
+    document.querySelector<HTMLButtonElement>('[data-attack]')!.click();
+    expect(chosen.health).toBeLessThan(80);
+    expect(near.health).toBe(80);
+    chosen.mesh.position.z = 10;
+    for (let i = 0; i < 10; i++) tick();
+    document.querySelector<HTMLButtonElement>('[data-attack]')!.click();
+    expect(document.querySelector('.world-notice')!.textContent).toContain(
+      'Acércate al objetivo fijado'
+    );
+    expect(near.health).toBe(80);
+    chosen.alive = false;
+    tick();
+    expect(document.querySelector('.world-target')!.textContent).toContain('Cercano');
+    expect(document.querySelector<HTMLButtonElement>('[data-clear-target]')!.hidden).toBe(true);
+  });
+  it('distinguishes a target tap from dragging the camera', () => {
+    const [near, chosen] = battleControl.enemies;
+    near.mesh.position.set(0, 0, 1.7);
+    chosen.name = 'Tocado';
+    chosen.alive = true;
+    chosen.mesh.visible = true;
+    chosen.speed = 0;
+    chosen.mesh.position.set(2, 0, 3);
+    tick();
+    const hits = vi
+      .spyOn(Raycaster.prototype, 'intersectObjects')
+      .mockReturnValue([{ object: chosen.mesh }] as unknown as ReturnType<
+        Raycaster['intersectObjects']
+      >);
+    const canvas = document.querySelector('canvas')!;
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 100,
+    } as DOMRect);
+    const point = (type: string, x: number) => {
+      const event = new MouseEvent(type, { clientX: x, clientY: 50, button: 0, bubbles: true });
+      Object.defineProperty(event, 'pointerId', { value: 9 });
+      canvas.dispatchEvent(event);
+    };
+    point('pointerdown', 100);
+    point('pointermove', 130);
+    point('pointerup', 130);
+    expect(hits).not.toHaveBeenCalled();
+    point('pointerdown', 100);
+    point('pointerup', 100);
+    tick();
+    expect(hits).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.world-target')!.textContent).toContain('Fijado · Tocado');
+    document.querySelector<HTMLButtonElement>('[data-clear-target]')!.click();
+    tick();
+    expect(document.querySelector('.world-target')!.textContent).not.toContain('Fijado');
+  });
   it('warns before an enemy strike and allows moving out of the marked area', () => {
     const enemy = battleControl.enemy!;
     enemy.mesh.position.set(0, 0, 1.7);
@@ -858,7 +931,8 @@ describe('full screen world controls', () => {
     key('r');
     tick();
     expect(document.querySelector('.world-notice')!.textContent).toContain('Rival derrotado');
-    expect(document.querySelector('.world-target')!.textContent).toBe('');
+    expect(document.querySelector<HTMLElement>('.world-target')!.hidden).toBe(true);
+    expect(document.querySelector('[data-target-info]')!.textContent).toBe('');
     key('f');
     tick();
     expect(document.querySelector('.world-target')!.textContent).toContain('80 / 80');
