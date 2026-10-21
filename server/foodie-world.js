@@ -1,3 +1,4 @@
+import { validAttackPosition } from '../shared/world-combat-range.js';
 import { combatResources, powerRule, spendPower } from './world-combat.js';
 import { WORLD_QUESTS, questProgress } from '../shared/world-quests.js';
 import { randomUUID } from 'node:crypto';
@@ -119,10 +120,13 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
       reward = {material:node.material,amount:node.amount};
     } else if (action === 'attack') {
       const spec = Object.hasOwn(MONSTER_REWARDS,kind) ? MONSTER_REWARDS[kind] : null;
-      const encounterSpec=typeof enemy==='string' && /^city:\d+$/.test(enemy) ? CITY_ENCOUNTERS[Number(enemy.slice(5))] : null;
+      const encounterSpec=typeof enemy==='string' && /^city:(0|[1-9]\d*)$/.test(enemy) ? CITY_ENCOUNTERS[Number(enemy.slice(5))] : null;
       if(!encounterSpec && !((enemy==='aldea:0'&&kind==='wolf')||(enemy==='aldea:1'&&kind==='skeleton')))return res.status(400).json({error:'Enemigo desconocido.'});
       if(encounterSpec && encounterSpec.kind!==kind)return res.status(400).json({error:'Enemigo inválido.'});
       if (!spec || typeof enemy !== 'string' || enemy.length > 80 || !Number.isInteger(slot) || slot < -1 || slot > 3) return res.status(400).json({ error: 'Ataque inválido.' });
+      const spawn = encounterSpec || (enemy === 'aldea:0' ? {x:3.5,z:-5} : {x:-6,z:-3});
+      if (!validAttackPosition(req.body.position, req.body.enemyPosition, spawn, slot))
+        return res.status(400).json({error:'Acércate al enemigo y combate a su misma altura.'});
       const now = clock();
       const rule = powerRule(pet, slot);
       if (rule.support) return res.status(400).json({error:'Este poder no causa daño directo.'});

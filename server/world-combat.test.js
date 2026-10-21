@@ -1,3 +1,4 @@
+import { attackPosition } from './combat-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { combatResources, powerRule, spendPower } from './world-combat.js';
@@ -39,7 +40,7 @@ test('support casts cannot be used for enemy damage and mana persists through re
       auth:()=>{},clock:()=>now,getProfile:()=>structuredClone(profile),saveProfile:(_id,next)=>{profile=structuredClone(next);},
     });
   };
-  function call(path,body){let status=200,data;routes.get('/api/world/'+path)({phone:'qa',body},{status(code){status=code;return this;},json(value){data=value;return this;}});return {status,data};}
+  function call(path,body){let status=200,data;routes.get('/api/world/'+path)({phone:'qa',body:attackPosition(body)},{status(code){status=code;return this;},json(value){data=value;return this;}});return {status,data};}
   restart();
   let session=call('start',{characterId:'pet'}).data.session;
   assert.equal(call('action',{session,action:'attack',slot:0,enemy:'aldea:0',kind:'wolf'}).status,400);
@@ -70,7 +71,7 @@ test('a first offensive spell initializes and spends mana without a prior suppor
   const response={status(){return this;},json(data){if(data.session)session=data.session;return this;}};
   routes.get('/api/world/start')({phone:'qa',body:{characterId:'pet'}},response);
   assert.equal(profile.world.combat.mana,100);
-  routes.get('/api/world/action')({phone:'qa',body:{session,action:'attack',slot:3,enemy:'aldea:0',kind:'wolf'}},response);
+  routes.get('/api/world/action')({phone:'qa',body:attackPosition({session,action:'attack',slot:3,enemy:'aldea:0',kind:'wolf'})},response);
   assert.equal(profile.world.combat.mana,60);
   assert.equal(profile.world.kills,1);
 });

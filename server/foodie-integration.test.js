@@ -1,3 +1,4 @@
+import { attackPosition } from './combat-fixture.js';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -16,7 +17,7 @@ let token;
 async function request(path, body, method = body ? 'POST' : 'GET', authToken = token) {
   const response = await fetch(base + '/api' + path, {
     method, headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? JSON.stringify(attackPosition(body)) : undefined,
   });
   return { status: response.status, data: await response.json() };
 }

@@ -1,3 +1,4 @@
+import { attackPosition } from './combat-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mountFoodieWorld } from './foodie-world.js';
@@ -25,7 +26,7 @@ function harness() {
   restart();
   function call(path, body, owner = 'owner') {
     let status = 200, data;
-    routes.get('/api/world/' + path)({ phone: owner, body }, {
+    routes.get('/api/world/' + path)({ phone: owner, body: attackPosition(body) }, {
       status(code) { status = code; return this; },
       json(value) { data = value; return this; },
     });

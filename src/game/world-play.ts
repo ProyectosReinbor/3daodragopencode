@@ -1,3 +1,4 @@
+import { ENEMY_LEASH, BASIC_RANGE, POWER_RANGE } from '../../shared/world-combat-range.js';
 import {
   pendingPurchase,
   rememberPurchase,
@@ -738,7 +739,7 @@ export function mountWorldPlay(options: {
       body: JSON.stringify({
         ...body,
         session,
-        position: { x: model.position.x, z: model.position.z },
+        position: { x: model.position.x, y: model.position.y, z: model.position.z },
       }),
       signal: events.signal,
     });
@@ -880,7 +881,7 @@ export function mountWorldPlay(options: {
       return;
     }
 
-    const enemy = target(slot < 0 ? 3.6 : 9);
+    const enemy = target(slot < 0 ? BASIC_RANGE : POWER_RANGE);
     if (!enemy) {
       notify(
         selectedTarget
@@ -913,6 +914,11 @@ export function mountWorldPlay(options: {
       else {
         const data = await request({
           action: 'attack',
+          enemyPosition: {
+            x: enemy.mesh.position.x,
+            y: enemy.mesh.position.y,
+            z: enemy.mesh.position.z,
+          },
           slot,
           kind: enemy.kind,
           enemy: `${training ? zone : 'city'}:${world.enemies.indexOf(enemy)}`,
@@ -2084,7 +2090,10 @@ export function mountWorldPlay(options: {
         if (state.phase === 'idle' && distance < 10 && distance > 1.5) {
           const chase = model.position.clone().sub(enemy.mesh.position).setY(0).normalize();
           const next = enemy.mesh.position.clone().addScaledVector(chase, dt * enemy.speed);
-          if (training || !scene.userData.cityBuildingAt?.(next.x, next.z))
+          if (
+            (training || next.distanceTo(enemy.spawnPosition) <= ENEMY_LEASH) &&
+            (training || !scene.userData.cityBuildingAt?.(next.x, next.z))
+          )
             enemy.mesh.position.copy(next);
           enemy.mesh.rotation.y = Math.atan2(chase.x, chase.z);
         }

@@ -179,3 +179,7 @@ El mundo exige clave de compra y conserva recibos por cuenta junto con saldo/inv
 ## Actualización posterior: maná validado en servidor
 
 El hallazgo de recursos de combate se reduce: maná persistente, regeneración, costes del loadout y recargas ahora se deciden en servidor. Los apoyos requieren confirmación y no pueden enviarse como daño directo. La vida/daño recibido y la verificación de alcance/movimiento siguen pendientes. Véase `MUNDO-ABIERTO-VILLAVICENCIO.md`.
+
+## Actualización posterior: comprobaciones geométricas de ataque
+
+Ahora se rechazan ataques sin posiciones o incoherentes en distancia, altura y zona de persecución. Este cierre es parcial: jugador y enemigo continúan declarando sus coordenadas desde el cliente; falta movimiento validado en servidor. Por ello el riesgo de falsificar posiciones sigue abierto. Véase `MUNDO-ABIERTO-VILLAVICENCIO.md`.

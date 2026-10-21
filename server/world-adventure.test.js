@@ -1,3 +1,4 @@
+import { attackPosition } from './combat-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
@@ -11,7 +12,7 @@ test('world resources, timed mining, crafting and quest rewards persist without 
   mountFoodieWorld(app,{clock:()=>now,auth:(req,res,next)=>{if(req.headers.authorization!=='Bearer QA')return res.status(401).json({error:'Unauthorized'});req.phone=req.headers['x-user']||'a';next();},getProfile:()=>structuredClone(profile),saveProfile:(_phone,p)=>{profile=structuredClone(p);}});
   const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
   let session;
-  async function request(body,path='/action',user='a'){const r=await fetch(`http://127.0.0.1:${server.address().port}/api/world${path}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer QA','x-user':user},body:JSON.stringify({...body,session})});return {status:r.status,data:await r.json()};}
+  async function request(body,path='/action',user='a'){const r=await fetch(`http://127.0.0.1:${server.address().port}/api/world${path}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer QA','x-user':user},body:JSON.stringify({...attackPosition(body),session})});return {status:r.status,data:await r.json()};}
   try {
     session=(await request({characterId:'pet'},'/start')).data.session;
     assert.equal((await request({action:'accept_quest',quest:'supplies'},'/action','b')).status,409);

@@ -91,3 +91,7 @@ Implementadas claves obligatorias de compra, recibos persistentes y recuperació
 ## Desarrollo: maná y poderes del servidor
 
 Implementados saldo persistente, regeneración por reloj del servidor, costes según poderes guardados y confirmación de poderes de apoyo. Reconectar o cambiar Pet no reinicia el maná; no se aceptan apoyos como ataques directos. Cliente y elixires usan el saldo confirmado. Siguen pendientes vida/daño recibido, alcance y movimiento autorizados; el combate conserva autoridad parcial.
+
+## Desarrollo: coherencia de alcance
+
+Los ataques exigen posiciones 3D y pasan controles de distancia, altura y zona del enemigo antes de gasto o premio. La persecución del cliente queda acotada al mismo radio de 30 m. Sigue pendiente autenticar el movimiento: las coordenadas declaradas pueden falsificarse y esta entrega no acredita presencia física ni línea de visión. Véase `docs/MUNDO-ABIERTO-VILLAVICENCIO.md`.
