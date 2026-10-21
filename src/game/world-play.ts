@@ -747,6 +747,7 @@ export function mountWorldPlay(options: {
       if (data.serverNow) serverOffset = data.serverNow - Date.now();
       profile = data.profile;
       progress = profile!.world!;
+      if (progress.combat?.mana !== undefined) mana = progress.combat.mana;
       pet = profile!.characters!.characters.find((p) => p.id === pet.id)!;
     }
     if (!response.ok) throw Object.assign(new Error(data.error), { status: response.status });
@@ -784,6 +785,7 @@ export function mountWorldPlay(options: {
         const serverNow = data.serverNow || Date.now();
         const remaining = (until = 0) => Math.max(0, until - serverNow);
         const combat = progress.combat;
+        if (combat?.mana !== undefined) mana = combat.mana;
         attackAt = localNow + remaining(combat?.cooldowns[-1]);
         cooldown.forEach((_, slot) => {
           cooldown[slot] = localNow + remaining(combat?.cooldowns[slot]);
@@ -857,17 +859,27 @@ export function mountWorldPlay(options: {
       effect?.type === 'shield' ||
       effect?.type === 'dash'
     ) {
-      mana -= skills[slot].energyCost;
-      cooldown[slot] = now + [5000, 8000, 7000, 22000][slot];
-      if (effect?.type === 'heal') health = Math.min(maxHealth(), health + effect.value);
-      if (effect?.type === 'shield') shield = now + 5000;
-      if (slot === 2 || effect?.type === 'dash') {
-        movePet(new Vector3(Math.sin(model.rotation.y), 0, Math.cos(model.rotation.y)), 3);
+      busy = true;
+      try {
+        if (training) mana -= skills[slot].energyCost;
+        else await request({ action: 'cast', slot });
+        if (disposed) return;
+        cooldown[slot] = performance.now() + [5000, 8000, 7000, 22000][slot];
+        if (effect?.type === 'heal') health = Math.min(maxHealth(), health + effect.value);
+        if (effect?.type === 'shield') shield = performance.now() + 5000;
+        if (slot === 2 || effect?.type === 'dash') {
+          movePet(new Vector3(Math.sin(model.rotation.y), 0, Math.cos(model.rotation.y)), 3);
+        }
+        burst(model.position);
+        notify(skills[slot].name);
+      } catch (error) {
+        notify((error as Error).message);
+      } finally {
+        busy = false;
       }
-      burst(model.position);
-      notify(skills[slot].name);
       return;
     }
+
     const enemy = target(slot < 0 ? 3.6 : 9);
     if (!enemy) {
       notify(
@@ -1310,7 +1322,7 @@ export function mountWorldPlay(options: {
       else await request({ action: 'consume', item });
       if (disposed || defeated) return;
       if (item === 'potions') health = Math.min(maxHealth(), health + maxHealth() * 0.6);
-      else mana = Math.min(100, mana + 60);
+      else if (training || progress.combat?.mana === undefined) mana = Math.min(100, mana + 60);
       consumeAt[item] = performance.now() + 1500;
       restoringUntil[item] = performance.now() + 900;
       notify(item === 'potions' ? 'Vida recuperada' : 'Maná recuperado');

@@ -23,7 +23,7 @@ test('passport accepts venue entrances and interiors, and grants completion only
 test('passport visits persist and completion cannot be claimed again in a new session',async()=>{
   let profile={characters:{characters:[{id:'pet',level:1,xp:0,baseStats:{atk:6,def:6,spd:6,hp:6,ability:6},upgrades:[]}]}};
   const app=express();app.use(express.json());
-  mountFoodieWorld(app,{auth:(req,res,next)=>{req.phone=req.headers['x-user']||'owner';next();},getProfile:()=>structuredClone(profile),saveProfile:(_phone,p)=>{profile=structuredClone(p);}});
+  mountFoodieWorld(app,{clock:()=>100000,auth:(req,res,next)=>{req.phone=req.headers['x-user']||'owner';next();},getProfile:()=>structuredClone(profile),saveProfile:(_phone,p)=>{profile=structuredClone(p);}});
   const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
   let session;
   const request=async(body,path='action',user='owner')=>{

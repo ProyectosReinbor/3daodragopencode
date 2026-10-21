@@ -175,3 +175,7 @@ La entrega de persistencia de combate conserva encuentros y cooldowns en el perf
 ## Actualización posterior: doble cobro de compras corregido
 
 El mundo exige clave de compra y conserva recibos por cuenta junto con saldo/inventario. Repetir la misma intención no vuelve a gastar; cambiar su contenido da conflicto. La tienda conserva la intención local y permite confirmar una respuesta perdida con la misma clave tras reentrar. El hallazgo de doble cobro queda corregido para este recorrido; la recuperación desde otro dispositivo o tras borrar almacenamiento sigue fuera de esta entrega. Véase `MUNDO-ABIERTO-VILLAVICENCIO.md`.
+
+## Actualización posterior: maná validado en servidor
+
+El hallazgo de recursos de combate se reduce: maná persistente, regeneración, costes del loadout y recargas ahora se deciden en servidor. Los apoyos requieren confirmación y no pueden enviarse como daño directo. La vida/daño recibido y la verificación de alcance/movimiento siguen pendientes. Véase `MUNDO-ABIERTO-VILLAVICENCIO.md`.

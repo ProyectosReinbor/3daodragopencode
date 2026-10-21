@@ -87,3 +87,7 @@ Implementado el primer cierre del análisis: encuentros y cooldowns se conservan
 ## Desarrollo: compras sin doble cobro
 
 Implementadas claves obligatorias de compra, recibos persistentes y recuperación de respuesta perdida mediante «Confirmar compra pendiente». Los reintentos no vuelven a descontar monedas; cambiar producto/cantidad con la misma clave produce conflicto. El cliente conserva la intención por cuenta al recargar. Véanse límites de almacenamiento e implementación en `docs/MUNDO-ABIERTO-VILLAVICENCIO.md`. La validación autoritativa de alcance/movimiento y recursos de combate sigue pendiente.
+
+## Desarrollo: maná y poderes del servidor
+
+Implementados saldo persistente, regeneración por reloj del servidor, costes según poderes guardados y confirmación de poderes de apoyo. Reconectar o cambiar Pet no reinicia el maná; no se aceptan apoyos como ataques directos. Cliente y elixires usan el saldo confirmado. Siguen pendientes vida/daño recibido, alcance y movimiento autorizados; el combate conserva autoridad parcial.

@@ -1,3 +1,4 @@
+import { combatResources, powerRule, spendPower } from './world-combat.js';
 import { WORLD_QUESTS, questProgress } from '../shared/world-quests.js';
 import { randomUUID } from 'node:crypto';
 import { WORLD_ITEMS, MONSTER_REWARDS, initialWorldProgress } from '../shared/world-items.js';
@@ -18,6 +19,7 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
     if (!pet) return res.status(400).json({ error: 'Selecciona un personaje de tu colección.' });
     profile.world ||= initialWorldProgress();
     profile.world.crafted ??= Object.values(WORLD_RECIPES).filter(r=>profile.world.items.includes(r.output)).length;
+    combatResources(profile.world, clock());
     saveProfile(req.phone, profile);
     for (const [id, old] of sessions) if (old.phone === req.phone || old.expires < clock()) sessions.delete(id);
     const id = randomUUID();
@@ -62,11 +64,18 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
     } else if (action === 'buy') {
       try { purchaseOnce(world, req.body); }
       catch(error) { return res.status(error.status || 400).json({error:error.message}); }
+    } else if (action === 'cast') {
+      try {
+        const rule = powerRule(pet, slot);
+        if (!rule.support) return res.status(400).json({error:'Este poder necesita un enemigo.'});
+        spendPower(combatResources(world, clock()), rule, slot, clock());
+      } catch(error) { return res.status(error.status || 400).json({error:error.message}); }
     } else if (action === 'consume') {
       if (!['potions', 'mana'].includes(item) || world[item] < 1) return res.status(400).json({ error: 'No te quedan consumibles.' });
-      const combat = world.combat ||= { cooldowns: {}, encounters: {} };
+      const combat = combatResources(world, clock());
       if ((combat.cooldowns[item] || 0) > clock()) return res.status(400).json({ error: 'Espera un momento para usar otra poción.' });
       combat.cooldowns[item] = clock() + 1500; world[item]--;
+      if (item === 'mana') combat.mana = Math.min(100, combat.mana + 60);
     } else if (action === 'equip') {
       if (!WORLD_ITEMS[item] || !world.items.includes(item)) return res.status(400).json({ error: 'Todavía no has encontrado ese objeto.' });
       world.equipped[pet.id] ||= {}; world.equipped[pet.id][WORLD_ITEMS[item].slot] = item;
@@ -115,8 +124,9 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
       if(encounterSpec && encounterSpec.kind!==kind)return res.status(400).json({error:'Enemigo inválido.'});
       if (!spec || typeof enemy !== 'string' || enemy.length > 80 || !Number.isInteger(slot) || slot < -1 || slot > 3) return res.status(400).json({ error: 'Ataque inválido.' });
       const now = clock();
-      const cooldown = [450, 5000, 8000, 7000, 22000][slot + 1];
-      const combat = world.combat ||= { cooldowns: {}, encounters: {} };
+      const rule = powerRule(pet, slot);
+      if (rule.support) return res.status(400).json({error:'Este poder no causa daño directo.'});
+      const combat = combatResources(world, now);
       if ((combat.cooldowns[slot] || 0) > now) return res.status(429).json({ error: 'La habilidad todavía se está recuperando.' });
       let encounter = combat.encounters[enemy];
       if (encounter && (encounter.kind !== kind || (encounter.health <= 0 && encounter.nextSpawn > now)))
@@ -130,7 +140,8 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
         combat.encounters[enemy] = encounter;
       }
       if (encounter.health <= 0) encounter.health = spec.health;
-      combat.cooldowns[slot] = now + cooldown;
+      try { spendPower(combat, rule, slot, now); }
+      catch(error) { return res.status(error.status || 400).json({error:error.message}); }
       const equipment = Object.values(world.equipped[pet.id] || {}).map(id => WORLD_ITEMS[id]);
       const attack = pet.baseStats.atk + pet.level - 1 + (pet.upgrades || []).filter(u => u.stat === 'atk').reduce((sum, u) => sum + (u.amount || u.value || 0), 0) + equipment.filter(x => x?.stat === 'atk').reduce((sum, x) => sum + x.bonus, 0);
       damage = Math.round((10 + attack * 2 + pet.baseStats.ability) * (slot === 3 ? 3 : slot === -1 ? 0.7 : 1.3));

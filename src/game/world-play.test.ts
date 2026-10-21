@@ -254,6 +254,8 @@ describe('full screen world controls', () => {
       'fetch',
       vi.fn(async (_url: string, init: RequestInit) => {
         const body = JSON.parse(init.body as string);
+        if (body.action === 'cast')
+          profile.world!.combat = { mana: 85, cooldowns: {}, encounters: {} };
         return body.action === 'consume'
           ? { ok: false, json: async () => ({ error: 'No se pudo usar el elixir.' }) }
           : {
@@ -925,6 +927,50 @@ describe('full screen world controls', () => {
     expect(purchaseIds[0]).toBe(purchaseIds[1]);
     expect(profile.world.coins).toBe(28);
     expect(profile.world.mana).toBe(4);
+  }, 20000);
+  it('confirms support powers with the server and only applies their cooldown on success', async () => {
+    stop();
+    const pet = createStarterCharacter();
+    const profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    profile.world.combat = { cooldowns: {}, encounters: {}, mana: 20 };
+    let rejected = true;
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.action === 'cast' && rejected)
+        return {
+          ok: false,
+          status: 400,
+          json: async () => ({ error: 'Maná rechazado por servidor' }),
+        };
+      if (body.action === 'cast') profile.world!.combat!.mana = 5;
+      return {
+        ok: true,
+        json: async () => ({ session: 'cast-qa', profile: structuredClone(profile) }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    tick();
+    document.querySelector<HTMLButtonElement>('[data-power="2"]')!.click();
+    await vi.waitFor(() =>
+      expect(document.querySelector('.world-notice')!.textContent).toContain('Maná rechazado')
+    );
+    tick();
+    expect(document.querySelector<HTMLButtonElement>('[data-power="2"]')!.disabled).toBe(false);
+    rejected = false;
+    document.querySelector<HTMLButtonElement>('[data-power="2"]')!.click();
+    await vi.waitFor(() =>
+      expect(document.querySelector('.world-notice')!.textContent).toBe('Impulso')
+    );
+    tick();
+    expect(JSON.parse(fetchMock.mock.lastCall![1].body as string)).toMatchObject({
+      action: 'cast',
+      slot: 2,
+    });
+    expect(document.querySelector<HTMLButtonElement>('[data-power="2"]')!.disabled).toBe(true);
+    expect(document.querySelector('.world-mana')!.textContent).toContain('6 / 100');
   }, 20000);
   it('registers a passport stamp from inside a venue and restores it on a later visit', async () => {
     stop();

@@ -19,7 +19,7 @@ test('return beacons require a known nearby destination and keep legacy profiles
 test('authenticated beacon activation persists across sessions without granting resources', async () => {
   let profile={characters:{characters:[{id:'pet',level:1,xp:0,baseStats:{atk:6,def:6,spd:6,hp:6,ability:6}}]}};
   const app=express();app.use(express.json());
-  mountFoodieWorld(app,{auth:(req,res,next)=>{req.phone=req.headers['x-user']||'owner';next();},getProfile:()=>structuredClone(profile),saveProfile:(_phone,p)=>{profile=structuredClone(p);}});
+  mountFoodieWorld(app,{clock:()=>100000,auth:(req,res,next)=>{req.phone=req.headers['x-user']||'owner';next();},getProfile:()=>structuredClone(profile),saveProfile:(_phone,p)=>{profile=structuredClone(p);}});
   const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
   let session;
   const request=async(body,path='action',user='owner')=>{

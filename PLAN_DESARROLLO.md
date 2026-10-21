@@ -92,3 +92,5 @@ Antes de ampliar recompensas o implementar evolución: impedir que una sesión n
 Avance posterior: estado de combate y recargas persistidos por cuenta, con restauración visual al entrar y regresiones de reconexión/reinicio. La prioridad 1 sigue abierta respecto a alcance, movimiento y recursos de combate; la prioridad 2 de compras idempotentes sigue pendiente.
 
 Avance de compras: implementados recibos persistentes, conflictos por clave reutilizada y confirmación de compra pendiente tras pérdida de respuesta. Queda por ampliar la reconciliación a otras intenciones y dispositivos, y migrar recibos fuera del JSON de progreso si las mediciones de volumen lo requieren. Continúa abierta la autoridad de alcance y recursos de combate.
+
+Avance de recursos de combate: maná, regeneración, costes y recargas se controlan en servidor, incluidos apoyos. La fase de autoridad permanece abierta para movimiento, alcance, vida y daño recibido; no habilitar premios competitivos como si la simulación ya fuera íntegramente autoritativa.

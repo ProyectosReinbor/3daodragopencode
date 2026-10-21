@@ -218,3 +218,15 @@ No borrar el almacenamiento del navegador durante una compra incierta: esta prim
 Se añadieron pruebas de replay con saldo insuficiente, conflicto de contenido, solicitudes simultáneas, reconexión, serialización, reinicio del controlador, fallo al guardar y recuperación visual tras perder la respuesta. No se efectuaron compras ni escrituras con cuentas reales.
 
 Verificación: `npm run check` aprobado, con 338 pruebas de cliente y 54 de servidor; formato, TypeScript y lint sin errores (14 advertencias previas). Build aprobado con el aviso existente de tamaño del mundo. La recuperación de respuesta perdida y reentrada se comprobó con la interfaz y WebGL simulados; las compras se probaron con perfiles ficticios, sin alterar datos de jugadores.
+
+## Maná y poderes confirmados por servidor — 20 de octubre de 2026
+
+El servidor conserva `world.combat.mana` y su reloj de actualización junto con las recargas. Migra de forma aditiva al entrar al mundo: 100 de maná inicial si no existía saldo, regeneración de 4 por segundo hasta 100 y sin otorgar regeneración por retroceso del reloj. El saldo se comparte por cuenta para impedir reiniciarlo cambiando mascota o sesión; la regeneración transcurre también durante la ausencia.
+
+`server/world-combat.js` resuelve los dos poderes por la selección y elemento del Pet guardado, más impulso y definitiva. El cliente no indica coste, maná resultante ni poder alternativo. Ataques gastan el maná correspondiente y habilidades de apoyo se confirman mediante `action: cast`. No se permite usar curación, escudo o impulso como daño directo ni lanzar una definitiva mediante la ruta de apoyo. Un fallo de validación no guarda gastos ni premios.
+
+El cliente espera la confirmación para aplicar curación, escudo e impulso y toma el maná devuelto por el servidor; el campo experimental sin cuenta mantiene su simulación local. Un elixir confirmado añade hasta 60 de maná en servidor, sin duplicar el aumento en pantalla. El guardado general de perfiles conserva este estado desde el servidor.
+
+Esta entrega autoriza maná y recargas, no la simulación completa: la vida y el daño recibido, posiciones, alcance y geometría permanecen en el cliente. Los efectos de apoyo visuales no acreditan movimiento legítimo ni visitas físicas. La sincronización de maná se realiza al entrar y al responder acciones; entre respuestas el cliente anima su regeneración local y el servidor decide el gasto real.
+
+Verificación de la entrega: 339 pruebas de cliente y 58 de servidor aprobadas; formato, TypeScript y lint sin errores (14 advertencias previas), y compilación de producción aprobada con el aviso de tamaño conocido. Se añadieron pruebas de saldo inicial, gasto, regeneración, reloj regresivo, apoyos, falta de maná, elixir y reconexión. Las pruebas de balizas/pasaporte usan ahora un reloj fijo para comparar progreso sin depender del instante de actualización del maná. La interfaz comprueba rechazo y confirmación del impulso con WebGL simulado.
