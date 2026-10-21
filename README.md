@@ -4,6 +4,8 @@
 
 El [GDD técnico vigente](docs/GDD-TECNICO-AODASE-PETS.md) desarrolla el plan urbano. La [guía de implementación](docs/IMPLEMENTACION-AODASE.md) explica el estado actual, la configuración y las pruebas. Los documentos anteriores de Foodie Pets conservan el historial del proyecto.
 
+Estado y prioridades revisados el 20 de octubre de 2026: [estado del proyecto](ESTADO-PROYECTO.md) y [plan de desarrollo](PLAN_DESARROLLO.md). Las guías de entregas anteriores conservan resultados históricos.
+
 ## Disponible
 
 - Portada y PWA AODASE PETS, con vista conceptual del universo urbano.
@@ -17,7 +19,7 @@ El [GDD técnico vigente](docs/GDD-TECNICO-AODASE-PETS.md) desarrolla el plan ur
 - Administración de negocios, productos, ofertas y canje de facturas.
 - Conservación de mascotas, IDs, sesiones y QR existentes.
 
-El mapa geográfico, las visitas verificadas, las misiones urbanas, el ADN evolutivo y el portal independiente de cada negocio son próximas entregas. El campo 3D actual es un espacio de aventura separado de la futura ciudad real.
+El mundo urbano ya incorpora cartografía de Villavicencio, edificios, misiones, extracción, fabricación y aventura guiada. Las visitas físicas verificadas, la evolución mediante ADN y el portal independiente de cada negocio siguen pendientes. La exploración virtual no acredita presencia física ni afiliación comercial de los lugares.
 
 ## Ejecutar
 
