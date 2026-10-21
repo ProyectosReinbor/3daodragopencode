@@ -75,3 +75,7 @@ La compilación vuelve a pasar y conserva los mismos tamaños de artefactos. For
 Arranque local comprobado con `npm run dev`: web en `http://localhost:5173/`, panel en `http://localhost:3000/`, API de salud directa y mediante proxy con respuesta HTTP 200. No se crearon usuarios ni se ejercieron operaciones de escritura para esta comprobación.
 
 Resultado final del bloque: `npm run check` aprobado (salida 0), con 336 pruebas Vitest y 48 pruebas Node aprobadas; `npm run build` aprobado. Persisten 14 advertencias no bloqueantes de lint y el aviso de tamaño de bundles. Esto sustituye el fallo de formato registrado en la revisión inicial, conservada arriba como historial.
+
+## Revisión detallada de alcance y brechas
+
+El [análisis detallado](docs/ANALISIS-DETALLADO-PROYECTO.md), sobre `a6bcfd8`, inventaría funcionalidades conectadas, código heredado y criterios faltantes por bloque A0–A6. La sonda aislada en memoria confirmó tres prioridades: ataque sin posición aceptado, reinicio de cooldown/encuentros al crear sesión y compra idéntica cobrada dos veces. También se detectó que la API de presencia no tiene consumidor en el cliente actual y que el formulario administrativo conserva la emisión inmediata en lugar del código pendiente de canje. Estos puntos son hallazgos pendientes, no correcciones aplicadas.

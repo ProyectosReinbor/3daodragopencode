@@ -84,3 +84,7 @@ Cada lote debe revisarse, comprobarse, confirmarse en Git y publicarse siguiendo
 ## Seguimiento de ejecución
 
 Primer bloque de fase 0 implementado el 20 de octubre de 2026: versión Node compartida con CI, pruebas de servidor integradas en `check`, instalación de dependencias del servidor en el workflow y formato de cliente corregido. La fase 0 sigue abierta: quedan validación de instalación limpia/CI remoto, regresiones adicionales de recuperación y actualización gradual de guías históricas. Véase el avance y la verificación en `ESTADO-PROYECTO.md`.
+
+## Ajuste de prioridades tras revisión detallada
+
+Antes de ampliar recompensas o implementar evolución: impedir que una sesión nueva reinicie encuentros/cooldowns premiados, validar alcance y recursos de combate, y hacer idempotentes las compras del mundo. Después, unificar la presentación del inventario y conectar el panel a emisión de códigos pendientes. El [análisis detallado](docs/ANALISIS-DETALLADO-PROYECTO.md) contiene reproducciones, límites y criterios; las fases de producto permanecen abiertas según sus criterios de salida.
