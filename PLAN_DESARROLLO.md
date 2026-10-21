@@ -96,3 +96,5 @@ Avance de compras: implementados recibos persistentes, conflictos por clave reut
 Avance de recursos de combate: maná, regeneración, costes y recargas se controlan en servidor, incluidos apoyos. La fase de autoridad permanece abierta para movimiento, alcance, vida y daño recibido; no habilitar premios competitivos como si la simulación ya fuera íntegramente autoritativa.
 
 Avance de alcance: implementadas comprobaciones de posiciones declaradas, distancia, altura y radio de persecución compartido. Permanece abierta la validación del movimiento y posición mantenidos en servidor; esta comprobación geométrica no cierra por sí sola la autoridad de combate.
+
+Requisito previo de movimiento completado el 21 de octubre: límites de solicitudes separados por uso y por cuenta autenticada del mundo. Se evita que el ritmo de combate permitido agote el antiguo límite general antes de añadir posiciones periódicas. La integración de seguimiento y validación de movimiento continúa pendiente; estos límites requieren medición de carga antes del piloto.

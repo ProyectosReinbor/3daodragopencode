@@ -95,3 +95,7 @@ Implementados saldo persistente, regeneración por reloj del servidor, costes se
 ## Desarrollo: coherencia de alcance
 
 Los ataques exigen posiciones 3D y pasan controles de distancia, altura y zona del enemigo antes de gasto o premio. La persecución del cliente queda acotada al mismo radio de 30 m. Sigue pendiente autenticar el movimiento: las coordenadas declaradas pueden falsificarse y esta entrega no acredita presencia física ni línea de visión. Véase `docs/MUNDO-ABIERTO-VILLAVICENCIO.md`.
+
+## Desarrollo: límites de tráfico compatibles con combate
+
+Separados los presupuestos del mundo (300/minuto por cuenta y 1.200/minuto por IP), acceso de jugador (10/minuto por IP), acceso admin (10/minuto por IP) y resto de API (100/minuto por IP). Respuestas de espera con `Retry-After`, aislamiento entre cuentas y normalización de rutas. Esto evita el conflicto entre el antiguo máximo general y el ritmo permitido de ataque; prepara la futura integración de movimiento, que sigue pendiente.

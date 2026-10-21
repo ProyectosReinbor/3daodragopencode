@@ -183,3 +183,7 @@ El hallazgo de recursos de combate se reduce: maná persistente, regeneración, 
 ## Actualización posterior: comprobaciones geométricas de ataque
 
 Ahora se rechazan ataques sin posiciones o incoherentes en distancia, altura y zona de persecución. Este cierre es parcial: jugador y enemigo continúan declarando sus coordenadas desde el cliente; falta movimiento validado en servidor. Por ello el riesgo de falsificar posiciones sigue abierto. Véase `MUNDO-ABIERTO-VILLAVICENCIO.md`.
+
+## Actualización posterior: política de peticiones separada
+
+Corregido el conflicto de presupuestos entre combate y máximo general: mundo dispone de límites por cuenta autenticada y por IP; acceso de jugador y admin conservan presupuestos específicos más bajos. Hay `Retry-After` y normalización de rutas. Los valores todavía requieren validación de carga en el alojamiento; el seguimiento de movimiento sigue pendiente. Véase `MUNDO-ABIERTO-VILLAVICENCIO.md`.

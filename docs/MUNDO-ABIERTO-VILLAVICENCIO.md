@@ -240,3 +240,20 @@ La validación precede a gasto de maná, recargas, daño y premios. Los ataques 
 **Límite explícito:** las posiciones todavía se declaran desde el navegador. Este cambio comprueba coherencia geométrica, pero no demuestra desplazamiento legítimo, ausencia de teletransporte, línea de visión, colisiones o presencia física. Un cliente manipulado puede inventar coordenadas coherentes. La siguiente etapa deberá mantener posición y movimiento en servidor; no declarar combate totalmente autoritativo ni usar estos controles como acreditación de visitas reales.
 
 Verificación: 339 pruebas de cliente y 60 de servidor aprobadas; TypeScript, formato y lint sin errores (14 advertencias previas). Build de producción aprobado con advertencia de tamaño conocida. La prueba de geometría verifica también que un alias como `city:00` no cree otro encuentro para el mismo enemigo: solo se aceptan IDs canónicos. Las pruebas de combate existentes ahora declaran coordenadas explícitas mediante un ayudante de fixtures; las pruebas de rechazo omiten o alteran esas posiciones deliberadamente. No se probaron dispositivos físicos ni se validó movimiento autoritativo.
+
+## Presupuestos de API para juego y acceso — 21 de octubre de 2026
+
+La limitación anterior de 100 solicitudes por minuto por IP podía bloquear el propio ataque básico de 450 ms (máximo teórico cercano a 133/min), incluso antes de incorporar reportes de movimiento. Se separan los presupuestos:
+
+- Mundo: 300 solicitudes/minuto por cuenta autenticada, compartidas entre entrada, acciones y presencia. Cambiar sesión no reinicia este contador. Como protección exterior hay 1.200/minuto por IP para rutas de mundo.
+- Registro y login de jugador: 10/minuto por IP en conjunto.
+- Login administrativo: 10/minuto por IP, separado del jugador; antes solo tenía el límite general.
+- Resto de la API: 100/minuto por IP.
+
+Las respuestas 429 incluyen `Retry-After` y, al agotar un contador, segundos de espera en JSON. Los rechazos no extienden la ventana. La clasificación normaliza mayúsculas y barras finales para coincidir con las rutas de Express sin permitir saltarse el límite de acceso. Los contadores se limpian de forma diferida; cada limitador admite hasta 10.000 claves activas sin expulsar contadores vigentes.
+
+Los presupuestos son una configuración inicial verificable, no resultados de carga ni garantía para una cantidad ilimitada de jugadores tras una IP. Viven en memoria de una instancia y se reinician con el proceso; un despliegue con múltiples procesos requiere almacenamiento compartido o limitación coordinada. Los cooldowns del combate y recibos de compra permanecen persistentes en el perfil, independientes de estos contadores.
+
+Esta entrega prepara el tráfico necesario para futuras posiciones periódicas. **No implementa todavía seguimiento de movimiento ni posición autoritativa.** Las coordenadas continúan siendo declaradas por el cliente.
+
+Verificación de esta entrega: 339 pruebas de cliente y 65 de servidor aprobadas; formato, TypeScript y lint sin errores (14 advertencias previas). Cinco pruebas nuevas cubren ventanas/esperas, clasificación de rutas, aislamiento por IP/cuenta y el orden de autenticación en rutas reales del módulo de mundo. Una ejecución de servidor coincidió con otra batería que usa puertos fijos; se repitió la batería de servidor por separado y pasó completa. No hay cambios de frontend ni de artefactos de compilación en este bloque. No se realizó una prueba de carga del alojamiento.

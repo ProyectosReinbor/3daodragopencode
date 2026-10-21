@@ -1,3 +1,4 @@
+import { createRateLimit } from './rate-limits.js';
 import { validAttackPosition } from '../shared/world-combat-range.js';
 import { combatResources, powerRule, spendPower } from './world-combat.js';
 import { WORLD_QUESTS, questProgress } from '../shared/world-quests.js';
@@ -14,7 +15,8 @@ import { purchaseOnce } from './world-purchases.js';
 // Sessions authorize access; the persisted account owns combat state and cooldowns.
 export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = () => Date.now() }) {
   const sessions = new Map();
-  app.post('/api/world/start', auth, (req, res) => {
+  const accountLimit = createRateLimit({limit:300, clock, key:req=>req.phone});
+  app.post('/api/world/start', auth, accountLimit, (req, res) => {
     const profile = getProfile(req.phone);
     const pet = profile?.characters?.characters.find(p => p.id === req.body.characterId);
     if (!pet) return res.status(400).json({ error: 'Selecciona un personaje de tu colección.' });
@@ -27,7 +29,7 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
     sessions.set(id, { publicId: randomUUID(), phone: req.phone, petId: pet.id, expires: clock() + 3600000 });
     res.json({ session: id, profile, serverNow: clock() });
   });
-  app.post('/api/world/action', auth, (req, res) => {
+  app.post('/api/world/action', auth, accountLimit, (req, res) => {
     const session = sessions.get(req.body.session);
     if (!session || session.phone !== req.phone || session.expires < clock()) return res.status(409).json({ error: 'Vuelve a entrar al mundo para continuar.' });
     const profile = getProfile(req.phone);
@@ -169,7 +171,7 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
     saveProfile(req.phone, profile);
     res.json({ profile, reward, serverNow:clock(), damage, enemyHealth: enemy ? world.combat?.encounters[enemy]?.health : undefined });
   });
-  app.post('/api/world/presence', auth, (req,res) => {
+  app.post('/api/world/presence', auth, accountLimit, (req,res) => {
     const session = sessions.get(req.body.session), now = clock();
     if (!session || session.phone !== req.phone || session.expires < now) return res.status(409).json({error:'Vuelve a entrar al mundo.'});
     const {x,z} = req.body;

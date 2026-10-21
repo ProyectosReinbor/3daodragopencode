@@ -1,3 +1,4 @@
+import { createApiRateLimits } from './rate-limits.js';
 import { mountAdminCrud } from './admin-crud.js';
 import { adminHostRouting } from './admin-host.js';
 import { mountAdminManagement } from './admin-management.js';
@@ -385,34 +386,6 @@ function adminAuth(req, res, next) {
 
 const BCRYPT_ROUNDS = 12;
 
-const rateLimitStore = new Map();
-const authRateLimitStore = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const RATE_LIMIT_MAX = 100;
-const AUTH_RATE_LIMIT_MAX = 10;
-
-function checkRateLimit(ip, max = RATE_LIMIT_MAX, store = rateLimitStore) {
-  const now = Date.now();
-  const entry = store.get(ip);
-  if (!entry || now - entry.start > RATE_LIMIT_WINDOW) {
-    store.set(ip, { start: now, count: 1 });
-    return true;
-  }
-  entry.count++;
-  return entry.count <= max;
-}
-
-function cleanupStore(store) {
-  const now = Date.now();
-  for (const [ip, entry] of store) {
-    if (now - entry.start > RATE_LIMIT_WINDOW * 2) store.delete(ip);
-  }
-}
-setInterval(() => {
-  cleanupStore(rateLimitStore);
-  cleanupStore(authRateLimitStore);
-}, 60000);
-
 function validatePhone(phone) {
   return typeof phone === 'string' && /^\d{6,15}$/.test(phone);
 }
@@ -506,18 +479,10 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
-  const ip = req.ip || req.connection.remoteAddress;
-  if (!checkRateLimit(ip)) {
-    return res.status(429).json({ error: 'Demasiadas peticiones. Intenta de nuevo en un minuto.' });
-  }
   next();
-});
+}, createApiRateLimits());
 
 app.post('/api/register', async (req, res) => {
-  const ip = req.ip || req.connection.remoteAddress;
-  if (!checkRateLimit(ip, AUTH_RATE_LIMIT_MAX, authRateLimitStore)) {
-    return res.status(429).json({ error: 'Demasiados intentos de registro. Intenta de nuevo en un minuto.' });
-  }
 
   const { phone, password } = req.body;
   if (!phone || !password) return res.status(400).json({ error: 'Telefono y contrasena requeridos' });
@@ -536,10 +501,6 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
-  const ip = req.ip || req.connection.remoteAddress;
-  if (!checkRateLimit(ip, AUTH_RATE_LIMIT_MAX, authRateLimitStore)) {
-    return res.status(429).json({ error: 'Demasiados intentos de login. Intenta de nuevo en un minuto.' });
-  }
 
   const { phone, password } = req.body;
   if (!phone || !password) return res.status(400).json({ error: 'Telefono y contrasena requeridos' });
