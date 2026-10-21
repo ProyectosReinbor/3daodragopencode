@@ -152,7 +152,13 @@ function makeCharacter(rng: Rng): Character {
   const element = pick<Element>(['fuego', 'agua', 'tierra', 'aire', 'sombra', 'luz'], rng);
   const bodyType = pick<BodyType>(['humanoid', 'bestia', 'espectral', 'golem'], rng);
   const colors = ELEMENT_COLORS[element];
-  const pools: Record<Rarity, number> = { comun: 28, raro: 38, epico: 52, legendario: 72, especial: 84 };
+  const pools: Record<Rarity, number> = {
+    comun: 28,
+    raro: 38,
+    epico: 52,
+    legendario: 72,
+    especial: 84,
+  };
   return {
     id,
     name: genName(element, id, rng),

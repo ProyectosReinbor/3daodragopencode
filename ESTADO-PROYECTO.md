@@ -65,3 +65,13 @@ Cerrar la estabilización y completar una primera evolución visible antes de am
 El chequeo agregado `npm run check` no puede considerarse aprobado mientras falle formato. El workflow actual también puede detenerse en ese paso antes de llegar a pruebas/build. Estos fallos de base se registran como trabajo de la fase 0; la revisión documental no los introduce ni certifica su resolución.
 
 Salida de build: entrada JavaScript 173,05 kB (58,54 kB gzip), Three.js 524,70 kB (133,94 kB gzip) y mundo diferido 4.798,81 kB (1.018,48 kB gzip). Son tamaños de artefactos, no tiempos medidos de carga. Conviene investigar la contribución de cartografía y geometría antes de decidir cómo dividir o externalizar datos.
+
+## Avance de estabilización — 20 de octubre de 2026
+
+Implementado el primer bloque de fase 0: Node 24.12.0 como referencia en `.nvmrc`, rango Node 24 en ambos paquetes y lockfiles, scripts `typecheck`, `test:server` y `test:all`, y `check` incluyendo servidor. CI instala dependencias de ambos paquetes y ejecuta la comprobación agregada con la versión declarada. Se corrigió el formato pendiente de `src/`; los cambios de fuentes se verificaron contra la salida de Prettier sobre HEAD para confirmar que son únicamente de formato.
+
+La compilación vuelve a pasar y conserva los mismos tamaños de artefactos. Formato ahora pasa; lint queda en 14 advertencias y cero errores. La instalación limpia en Linux y la ejecución remota de GitHub Actions quedan sujetas al resultado del workflow; no se han certificado desde este equipo. El resto de las fases continúa pendiente.
+
+Arranque local comprobado con `npm run dev`: web en `http://localhost:5173/`, panel en `http://localhost:3000/`, API de salud directa y mediante proxy con respuesta HTTP 200. No se crearon usuarios ni se ejercieron operaciones de escritura para esta comprobación.
+
+Resultado final del bloque: `npm run check` aprobado (salida 0), con 336 pruebas Vitest y 48 pruebas Node aprobadas; `npm run build` aprobado. Persisten 14 advertencias no bloqueantes de lint y el aviso de tamaño de bundles. Esto sustituye el fallo de formato registrado en la revisión inicial, conservada arriba como historial.

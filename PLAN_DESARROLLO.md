@@ -80,3 +80,7 @@ Depende de resultados del piloto y de autoridad suficiente. Priorizar por uso ob
 5. Medir el mundo en los dispositivos disponibles y preparar el runbook de alojamiento.
 
 Cada lote debe revisarse, comprobarse, confirmarse en Git y publicarse siguiendo `AGENTS.md`. Publicar código en GitHub no equivale a desplegarlo en el alojamiento.
+
+## Seguimiento de ejecución
+
+Primer bloque de fase 0 implementado el 20 de octubre de 2026: versión Node compartida con CI, pruebas de servidor integradas en `check`, instalación de dependencias del servidor en el workflow y formato de cliente corregido. La fase 0 sigue abierta: quedan validación de instalación limpia/CI remoto, regresiones adicionales de recuperación y actualización gradual de guías históricas. Véase el avance y la verificación en `ESTADO-PROYECTO.md`.

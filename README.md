@@ -23,11 +23,11 @@ El mundo urbano ya incorpora cartografía de Villavicencio, edificios, misiones,
 
 ## Ejecutar
 
-Requiere Node.js compatible con las dependencias instaladas. Desde la raíz:
+Requiere Node.js 24 (mínimo 24.12.0; referencia en `.nvmrc`). Desde la raíz:
 
 ```powershell
-npm install
-npm --prefix server install
+npm ci
+npm ci --prefix server
 npm run dev
 ```
 
@@ -51,10 +51,11 @@ La antigua variable `VITE_FOODIE_WHATSAPP` sigue disponible como alternativa. Lo
 ## Verificar
 
 ```powershell
+npm run check
 npm run build
-npm run test
-node --test server/foodie-integration.test.js server/guardian-domain.test.js server/guardian-integration.test.js server/urban-businesses.test.js server/aodase-integration.test.js
 ```
+
+`npm run check` ejecuta lint, formato, TypeScript y todas las pruebas de cliente y servidor. Para ejecutar solo el servidor usa `npm run test:server`; para ambas baterías, `npm run test:all`. GitHub Actions instala ambos conjuntos de dependencias y usa la versión de `.nvmrc`.
 
 Las pruebas HTTP crean bases temporales y usuarios propios. `npm run test` incluye los contratos compartidos del catálogo urbano, la diversidad genética, la anatomía y el ciclo de animaciones. El historial de comprobaciones está en la guía de implementación. El [diseño de arte, genética y vida](docs/ARTE-GENETICA-Y-VIDA.md) explica esta ampliación.
 

@@ -193,16 +193,65 @@
   justify-content: flex-end;
   gap: 6px;
 }
-.world-tools { position: relative; }
-.world-tools summary { min-height: 44px; padding: 10px 14px; border: 1px solid #83ddc455; border-radius: 14px; color: #e4f5ed; background: #13343de8; cursor: pointer; list-style: none; }
-.world-tools summary::-webkit-details-marker { display: none; }
-.world-tools:not([open]) .world-tools-panel { display: none; }
-.world-controls-help dt { color: #a6e4d3; font-weight: 700; margin-top: 16px; }
-.world-controls-help dd { margin: 5px 0 0; line-height: 1.6; color: #d3e6e0; }
-.world-tools summary:focus-visible { outline: 3px solid #83ddc4; outline-offset: 3px; }
-.world-tools[open] { z-index: 6; }
-.world-tools-panel { position: absolute; top: calc(100% + 8px); right: 0; display: grid; gap: 7px; width: min(270px, calc(100vw - 32px)); max-height: min(65vh, 480px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 12px; border: 1px solid #83ddc466; border-radius: 16px; background: #10232df5; box-shadow: 0 12px 35px #0008; }
-.foodie-world .world-tools-panel button { min-height: 44px; width: 100%; text-align: left; padding: 10px 12px; }
+.world-tools {
+  position: relative;
+}
+.world-tools summary {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #83ddc455;
+  border-radius: 14px;
+  color: #e4f5ed;
+  background: #13343de8;
+  cursor: pointer;
+  list-style: none;
+}
+.world-tools summary::-webkit-details-marker {
+  display: none;
+}
+.world-tools:not([open]) .world-tools-panel {
+  display: none;
+}
+.world-controls-help dt {
+  color: #a6e4d3;
+  font-weight: 700;
+  margin-top: 16px;
+}
+.world-controls-help dd {
+  margin: 5px 0 0;
+  line-height: 1.6;
+  color: #d3e6e0;
+}
+.world-tools summary:focus-visible {
+  outline: 3px solid #83ddc4;
+  outline-offset: 3px;
+}
+.world-tools[open] {
+  z-index: 6;
+}
+.world-tools-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 7px;
+  width: min(270px, calc(100vw - 32px));
+  max-height: min(65vh, 480px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 12px;
+  border: 1px solid #83ddc466;
+  border-radius: 16px;
+  background: #10232df5;
+  box-shadow: 0 12px 35px #0008;
+}
+.foodie-world .world-tools-panel button {
+  min-height: 44px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+}
 .world-target {
   position: absolute;
   top: 126px;
@@ -217,11 +266,28 @@
 .world-target:empty {
   display: none;
 }
-.world-target { display: flex; align-items: center; gap: 6px; max-width: min(440px, 55vw); }
-.world-target[hidden], .world-target button[hidden] { display: none; }
-.foodie-world .world-target button { min-width: 44px; min-height: 44px; padding: 7px; }
-.world-target [data-target-info] { min-width: 0; overflow-wrap: anywhere; }
-.foodie-world .world-target button { flex-shrink: 0; }
+.world-target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(440px, 55vw);
+}
+.world-target[hidden],
+.world-target button[hidden] {
+  display: none;
+}
+.foodie-world .world-target button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 7px;
+}
+.world-target [data-target-info] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.foodie-world .world-target button {
+  flex-shrink: 0;
+}
 .world-notice {
   position: absolute;
   top: 170px;
@@ -666,7 +732,10 @@
   font-size: 9px;
 }
 @media (max-height: 520px) {
-  .world-map-credit { top: 190px; font-size: 8px; }
+  .world-map-credit {
+    top: 190px;
+    font-size: 8px;
+  }
 }
 .world-building-bar {
   position: absolute;
@@ -682,11 +751,23 @@
   color: #d9f6eb;
   background: #07151de8;
 }
-.world-building-bar strong { width: 100%; font-size: 13px; }
-.world-building-bar button { min-height: 44px; padding: 8px; }
-.world-building-bar[hidden], .world-room-active .world-quest-tracker { display: none; }
+.world-building-bar strong {
+  width: 100%;
+  font-size: 13px;
+}
+.world-building-bar button {
+  min-height: 44px;
+  padding: 8px;
+}
+.world-building-bar[hidden],
+.world-room-active .world-quest-tracker {
+  display: none;
+}
 @media (max-height: 520px) {
-  .world-building-bar { top: 105px; width: 235px; }
+  .world-building-bar {
+    top: 105px;
+    width: 235px;
+  }
 }
 .world-adventure-tracker {
   position: absolute;
@@ -703,48 +784,227 @@
   border: 1px solid #e7cc8766;
   border-radius: 14px;
 }
-.world-adventure-tracker strong { font-size: 13px; }
-.world-adventure-tracker small { grid-column: 2; font-size: 11px; }
-.world-adventure-arrow { grid-row: span 2; align-self: center; font-size: 28px; text-align: center; }
-.world-navigation-active { color: #b5edff; border-color: #83ddf577; }
-.world-navigation { border: 1px solid #83ddf544; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
-.world-navigation button { min-height: 44px; }
-.world-journal-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-.world-journal-filters button { min-height: 44px; }
-.world-journal-filters button[aria-pressed="true"] { border-color: #83ddc4; background: #19404b; color: #e5fff5; }
-.world-quest-card progress { width: 100%; height: 10px; accent-color: #83ddc4; }
-.world-quest-card > small { color: #a6dfcf; }
-.world-equipment-stats { display: flex; flex-wrap: wrap; gap: 10px 18px; padding: 12px 0; }
-.world-equipment-stats b, .equipment-gain { color: #83ddc4; }
-.equipment-loss { color: #ffb19b; }
-.world-equipment-preview, .world-equipment-item { border: 1px solid #83ddc433; border-radius: 12px; padding: 12px; margin: 12px 0; background: #10232db3; }
-.world-equipment-preview ul { padding-left: 20px; line-height: 1.8; }
-.world-equipment-item button { min-height: 44px; margin-right: 8px; }
-.world-forge-recipe { padding: 14px; margin: 14px 0; border: 1px solid #83ddc444; border-radius: 14px; background: #10232db3; }
-.world-forge-recipe li { margin: 8px 0; }
-.world-forge-recipe button { min-height: 44px; margin: 4px; }
-.world-reward-entry { padding: 12px; margin: 12px 0; border: 1px solid #83ddc444; border-radius: 12px; background: #10232db3; }
-.world-reward-entry li { margin: 5px 0; }
-.world-level-up { position: absolute; top: 105px; left: 50%; transform: translateX(-50%); max-width: 50%; padding: 10px 16px; border: 1px solid #f1d48b; border-radius: 12px; background: #142a32f2; color: #ffe6a6; text-align: center; pointer-events: none; }
-.world-level-up[hidden] { display: none; }
-.world-resource-hint { position: absolute; right: max(16px, env(safe-area-inset-right)); top: 290px; max-width: 180px; padding: 10px; border: 1px solid #83ddc455; border-radius: 12px; background: #10232ded; color: #d9f6eb; font-size: 12px; pointer-events: none; }
-.world-resource-hint[hidden], .world-room-active .world-resource-hint { display: none; }
-.world-monster-guide { border: 1px solid #83ddc444; border-radius: 14px; padding: 14px; margin: 14px 0; background: #10232db3; }
-.world-monster-guide button { min-height: 44px; }
-.world-passport-venue { padding: 14px; margin: 14px 0; border: 1px solid #83ddc444; border-radius: 14px; background: #10232db3; }
-.world-passport-venue button { min-height: 44px; margin: 4px; }
-.world-activity-card { padding: 14px; margin: 14px 0; border: 1px solid #83ddc444; border-radius: 14px; background: #10232db3; }
-.world-activity-card button { min-height: 44px; margin: 4px; }
-.world-activity-card[hidden] { display: none; }
-.venue-memory-lights { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
-.venue-memory-lights button { min-height: 90px; display: grid; justify-items: center; align-content: center; border: 2px solid #83ddc444; transition: background .12s, border-color .12s; }
-.venue-memory-lights b { font-size: 32px; }
-.venue-memory-lights button[aria-pressed="true"], .venue-memory-lights button:active { border-color: #ffe2a1; background: #476b66; color: #fff2bc; opacity: 1; }
-@media(prefers-reduced-motion:reduce) { .venue-memory-lights button { transition: none; } }
-@media(max-height:500px) { .world-resource-hint { top: 205px; max-width: 145px; font-size: 10px; padding: 7px; } }
-.world-adventure-tracker[hidden], .world-room-active .world-adventure-tracker,
-.world-guided-adventure .world-quest-tracker { display: none; }
-@media(max-height:520px) { .world-adventure-tracker { top: 105px; width: 215px; padding: 9px; } }
+.world-adventure-tracker strong {
+  font-size: 13px;
+}
+.world-adventure-tracker small {
+  grid-column: 2;
+  font-size: 11px;
+}
+.world-adventure-arrow {
+  grid-row: span 2;
+  align-self: center;
+  font-size: 28px;
+  text-align: center;
+}
+.world-navigation-active {
+  color: #b5edff;
+  border-color: #83ddf577;
+}
+.world-navigation {
+  border: 1px solid #83ddf544;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.world-navigation button {
+  min-height: 44px;
+}
+.world-journal-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.world-journal-filters button {
+  min-height: 44px;
+}
+.world-journal-filters button[aria-pressed='true'] {
+  border-color: #83ddc4;
+  background: #19404b;
+  color: #e5fff5;
+}
+.world-quest-card progress {
+  width: 100%;
+  height: 10px;
+  accent-color: #83ddc4;
+}
+.world-quest-card > small {
+  color: #a6dfcf;
+}
+.world-equipment-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  padding: 12px 0;
+}
+.world-equipment-stats b,
+.equipment-gain {
+  color: #83ddc4;
+}
+.equipment-loss {
+  color: #ffb19b;
+}
+.world-equipment-preview,
+.world-equipment-item {
+  border: 1px solid #83ddc433;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0;
+  background: #10232db3;
+}
+.world-equipment-preview ul {
+  padding-left: 20px;
+  line-height: 1.8;
+}
+.world-equipment-item button {
+  min-height: 44px;
+  margin-right: 8px;
+}
+.world-forge-recipe {
+  padding: 14px;
+  margin: 14px 0;
+  border: 1px solid #83ddc444;
+  border-radius: 14px;
+  background: #10232db3;
+}
+.world-forge-recipe li {
+  margin: 8px 0;
+}
+.world-forge-recipe button {
+  min-height: 44px;
+  margin: 4px;
+}
+.world-reward-entry {
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid #83ddc444;
+  border-radius: 12px;
+  background: #10232db3;
+}
+.world-reward-entry li {
+  margin: 5px 0;
+}
+.world-level-up {
+  position: absolute;
+  top: 105px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 50%;
+  padding: 10px 16px;
+  border: 1px solid #f1d48b;
+  border-radius: 12px;
+  background: #142a32f2;
+  color: #ffe6a6;
+  text-align: center;
+  pointer-events: none;
+}
+.world-level-up[hidden] {
+  display: none;
+}
+.world-resource-hint {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  top: 290px;
+  max-width: 180px;
+  padding: 10px;
+  border: 1px solid #83ddc455;
+  border-radius: 12px;
+  background: #10232ded;
+  color: #d9f6eb;
+  font-size: 12px;
+  pointer-events: none;
+}
+.world-resource-hint[hidden],
+.world-room-active .world-resource-hint {
+  display: none;
+}
+.world-monster-guide {
+  border: 1px solid #83ddc444;
+  border-radius: 14px;
+  padding: 14px;
+  margin: 14px 0;
+  background: #10232db3;
+}
+.world-monster-guide button {
+  min-height: 44px;
+}
+.world-passport-venue {
+  padding: 14px;
+  margin: 14px 0;
+  border: 1px solid #83ddc444;
+  border-radius: 14px;
+  background: #10232db3;
+}
+.world-passport-venue button {
+  min-height: 44px;
+  margin: 4px;
+}
+.world-activity-card {
+  padding: 14px;
+  margin: 14px 0;
+  border: 1px solid #83ddc444;
+  border-radius: 14px;
+  background: #10232db3;
+}
+.world-activity-card button {
+  min-height: 44px;
+  margin: 4px;
+}
+.world-activity-card[hidden] {
+  display: none;
+}
+.venue-memory-lights {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+.venue-memory-lights button {
+  min-height: 90px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  border: 2px solid #83ddc444;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+.venue-memory-lights b {
+  font-size: 32px;
+}
+.venue-memory-lights button[aria-pressed='true'],
+.venue-memory-lights button:active {
+  border-color: #ffe2a1;
+  background: #476b66;
+  color: #fff2bc;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .venue-memory-lights button {
+    transition: none;
+  }
+}
+@media (max-height: 500px) {
+  .world-resource-hint {
+    top: 205px;
+    max-width: 145px;
+    font-size: 10px;
+    padding: 7px;
+  }
+}
+.world-adventure-tracker[hidden],
+.world-room-active .world-adventure-tracker,
+.world-guided-adventure .world-quest-tracker {
+  display: none;
+}
+@media (max-height: 520px) {
+  .world-adventure-tracker {
+    top: 105px;
+    width: 215px;
+    padding: 9px;
+  }
+}
 .world-danger {
   position: absolute;
   bottom: 165px;
@@ -773,12 +1033,40 @@
   box-shadow: inset 0 0 65px #d74b4b80;
   pointer-events: none;
 }
-.world-danger[hidden], .world-damage-feedback[hidden], .world-hit-flash[hidden] { display: none; }
-@media(prefers-reduced-motion:reduce) { .world-hit-flash { display: none; } }
-.world-quick button[data-state="ready"] { border-color: #83ddc4; }
-.world-health.world-restoring { box-shadow: 0 0 18px #68e9ad; }
-.world-mana.world-restoring { box-shadow: 0 0 18px #72cfff; }
-.world-restoring { animation: world-recovery-pulse .45s ease-in-out 2; }
-@keyframes world-recovery-pulse { 50% { filter: brightness(1.4); } }
-@media(prefers-reduced-motion:reduce) { .world-restoring { animation: none; } }
-.foodie-world button.world-gamepad-focus { outline: 3px solid #98ffe2; outline-offset: 2px; box-shadow: 0 0 16px #64d6bf66; }
+.world-danger[hidden],
+.world-damage-feedback[hidden],
+.world-hit-flash[hidden] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-hit-flash {
+    display: none;
+  }
+}
+.world-quick button[data-state='ready'] {
+  border-color: #83ddc4;
+}
+.world-health.world-restoring {
+  box-shadow: 0 0 18px #68e9ad;
+}
+.world-mana.world-restoring {
+  box-shadow: 0 0 18px #72cfff;
+}
+.world-restoring {
+  animation: world-recovery-pulse 0.45s ease-in-out 2;
+}
+@keyframes world-recovery-pulse {
+  50% {
+    filter: brightness(1.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-restoring {
+    animation: none;
+  }
+}
+.foodie-world button.world-gamepad-focus {
+  outline: 3px solid #98ffe2;
+  outline-offset: 2px;
+  box-shadow: 0 0 16px #64d6bf66;
+}

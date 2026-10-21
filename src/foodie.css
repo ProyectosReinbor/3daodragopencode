@@ -791,138 +791,875 @@
 }
 
 /* Foodie Pet customization, dice and vertical dart minigame */
-.pet-custom-form { text-align:left; max-width:560px; margin:auto; }
-.custom-pair { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.pet-custom-form input[type=color] { width:100%; height:48px; padding:4px; cursor:pointer; }
-.power-choices { border:1px solid #ddd9ca; border-radius:16px; padding:16px; margin:20px 0; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.power-choices label { display:flex; align-items:center; gap:8px; padding:9px; background:#fff8e9; border-radius:9px; font-size:13px; }
-.power-choices input { width:18px; height:18px; margin:0; accent-color:#687c42; }
-.dice-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:24px 0; }
-.dice-stat { background:#fff8e9; padding:14px 5px; border:1px solid #e5dec9; border-radius:16px; }
-.dice-stat > span { font-size:12px; display:block; }
-.dice-stat b { display:block; font-size:24px; }
-.dice-face { font-size:38px; display:inline-block; color:#687c42; line-height:1.3; }
-.dart-game { display:flex; justify-content:center; align-items:center; gap:30px; margin:26px 0; }
-.prize-bar { position:relative; width:70px; height:320px; border:5px solid white; border-radius:18px; box-shadow:0 5px 22px #3d462322; background:linear-gradient(to bottom,#e66d63 0% 20%,#f6b44f 20% 35%,#7cad68 35% 44%,#479354 44% 48%,#d8ed85 48% 52%,#479354 52% 56%,#7cad68 56% 65%,#f6b44f 65% 80%,#e66d63 80% 100%); }
-.dart-arrow { position:absolute; left:-42px!important; top:5%; transform:translateY(-50%); font-size:38px; color:#384a2d; line-height:1; filter:drop-shadow(0 2px 0 white); }
-.prize-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; color:#344b25; }
-.prize-legend { display:grid; gap:13px; text-align:left; font-size:13px; max-width:225px; }
-@media(max-width:520px) { .dice-grid {grid-template-columns:repeat(3,1fr);} .custom-pair {grid-template-columns:1fr;} .power-choices {grid-template-columns:1fr;} .dart-game {gap:18px;} .prize-legend {max-width:170px;} }
-
-.onboarding-step-back { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-top:22px; }
-.dice-stat b { font-size:16px; padding-top:8px; }
-.dice-face { background:#fff; border-radius:8px; box-shadow:0 4px 8px #35412222; margin:3px; width:40px; height:46px; backface-visibility:visible; }
-.dart-flight-scene { position:relative; width:100%; height:330px; background:linear-gradient(150deg,#eef0dc,#fff8e9); border-radius:24px; overflow:hidden; margin:24px auto; }
-.red-white-target { position:absolute; left:75%; top:50%; width:230px; height:230px; transform:translate(-50%,-50%); border-radius:50%; border:8px solid #9e302c; background:radial-gradient(circle,#da3f39 0% 9%,white 9% 20%,#df544b 20% 35%,white 35% 50%,#df544b 50% 65%,white 65% 80%,#df544b 80%); box-shadow:0 10px 25px #793a2825; }
-.target-bullseye { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; }
-.flying-dart { position:absolute; left:8%; top:80%; font-size:70px; line-height:1; color:#354a31; filter:drop-shadow(0 4px 3px #354a3144); }
-.dart-impact { position:absolute; left:50%; transform:translate(-50%,-50%); color:#283724; font-size:34px; text-shadow:0 0 3px white; }
-.trial-viewport { height:360px; border-radius:22px; overflow:hidden; }
-.trial-viewport canvas { display:block; width:100%; height:100%; }
-.trial-controls { display:flex; justify-content:center; gap:12px; touch-action:none; }
-.trial-controls button { width:48px; height:48px; border-radius:12px; border:1px solid #ced4ba; background:#eceddc; font-size:24px; color:#354a31; }
-.trial-powers { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; }
-@media(max-width:520px) { .red-white-target {width:180px;height:180px;left:68%;} .dart-flight-scene {height:300px;} .trial-viewport {height:320px;} }
-
-.flying-dart svg { display:block; width:120px; height:40px; }
-
-/* The Foodie studio: a persistent stage beside a focused inspector. */
-.foodie-onboarding-panel.studio-panel { width:min(1120px,100%); max-width:1120px; }
-.studio-title { text-align:left; margin:16px 0 26px; }
-.studio-eyebrow { font-size:10px; letter-spacing:3px; color:#6c7d52; font-weight:800; }
-.foodie-onboarding-panel .studio-title h2 { font-size:clamp(30px,4vw,46px); line-height:1.08; margin:12px 0; color:#38482f; }
-.foodie-onboarding-panel .studio-title p { max-width:600px; margin:0; text-align:left; }
-.studio-layout { display:grid; grid-template-columns:1.15fr 1fr; gap:26px; align-items:start; text-align:left; }
-.studio-stage { position:sticky; top:22px; border:1px solid #dadfcb; border-radius:28px; padding:20px; background:radial-gradient(ellipse at 45% 30%,#fafbef,#e5e9d5 80%); box-shadow:0 16px 35px #38482f0a; min-width:0; }
-.studio-stage-heading { display:flex; justify-content:space-between; gap:10px; font-size:9px; letter-spacing:1.6px; color:#74815d; }
-#studio-pet-badge { background:#f9fbec; border:1px solid #d9dfc9; border-radius:20px; padding:6px 10px; color:#455537; font-weight:700; }
-.studio-stage-heading > span:last-child { padding:7px 0; }
-.studio-canvas { height:430px; width:100%; }
-.studio-canvas canvas { display:block; width:100%; height:100%; border-radius:18px; }
-.studio-tools { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
-.studio-tools button,.studio-sculpt-tools button { background:#f7f8ed; border:1px solid #d6dcc7; border-radius:10px; padding:10px 6px; font-size:11px; color:#506041; cursor:pointer; }
-.studio-tools button[aria-pressed=true],.studio-sculpt-tools button[aria-pressed=true] {background:#647d4e;color:white;border-color:#647d4e;}
-.foodie-onboarding-panel #studio-tip { font-size:11px; line-height:1.6; min-height:36px; text-align:center; margin:16px 0; color:#6d795d; }
-.studio-history {display:flex;justify-content:center;gap:14px;flex-wrap:wrap;border-top:1px solid #d9dfc9;padding-top:14px;}
-.studio-history button {border:0;background:none;font-size:10px;color:#526444;cursor:pointer;padding:4px 0;}
-.studio-history button:disabled {opacity:.3;cursor:default;}
-.foodie-onboarding-panel form.studio-inspector { display:block; margin:0; padding:0; min-width:0; background:#fffcf5; border:1px solid #e5e1d3; border-radius:24px; overflow:hidden; }
-.studio-tabs { display:flex; overflow-x:auto; scrollbar-width:thin; background:#f5f2e8; padding:8px; gap:2px; }
-.studio-tabs button {flex:1; min-width:max-content; font-size:11px; background:none; border:0; border-radius:10px; padding:10px; color:#8a8e7b; cursor:pointer;}
-.studio-tabs button[aria-selected=true] {color:#405334;background:white;box-shadow:0 2px 7px #4752330d;font-weight:700;}
-.studio-sections {padding:24px;min-height:360px;}
-.studio-sections > section[hidden] {display:none;}
-.studio-sections h3 {font-family:Georgia,serif;font-size:23px;font-weight:500;margin:0 0 9px;color:#3c4e32;}
-.studio-sections h4 {font-size:11px;letter-spacing:.6px;color:#5d6a50;margin:20px 0 10px;}
-.foodie-onboarding-panel .studio-sections p {font-size:12px;line-height:1.6;margin:0 0 20px;text-align:left;color:#8b8d7d;}
-.studio-families {display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px;}
-.studio-families button {text-align:left;border:1px solid #e4e4d7;border-radius:14px;background:#fffdf7;padding:12px 9px;cursor:pointer;min-width:0;color:#536148;}
-.studio-families button > span {display:block;font-size:26px;margin-bottom:8px;}
-.studio-families strong {display:block;font-size:11px;line-height:1.3;margin-bottom:4px;}
-.studio-families small {display:block;font-size:9px;line-height:1.5;color:#989b8a;}
-.studio-families button[aria-pressed=true] {background:#edf1dd;border-color:#9caa82;box-shadow:inset 0 0 0 1px #9caa82;}
-.foodie-onboarding-panel .studio-select {display:block;font-size:11px;color:#66705b;font-weight:600;margin:18px 0;}
-.foodie-onboarding-panel .studio-select select,.foodie-onboarding-panel .studio-select input {margin-top:8px;background:#fffef8;border:1px solid #dddccd;color:#46543b;border-radius:10px;font-size:12px;padding:12px;width:100%;box-sizing:border-box;}
-.studio-moods {display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
-.studio-moods button {border:1px solid #dfdfd0;border-radius:20px;font-size:11px;padding:9px 6px;background:transparent;color:#7b846e;cursor:pointer;}
-.studio-moods button[aria-pressed=true] {background:#e4ecd1;border-color:#acb996;color:#415334;}
-.foodie-onboarding-panel .studio-range {display:block;margin:22px 0;color:#6d765f;font-size:11px;}
-.studio-range > span {display:flex;justify-content:space-between;gap:8px;}
-.studio-range output {font-variant-numeric:tabular-nums;font-size:10px;color:#a2a58e;}
-.foodie-onboarding-panel .studio-range input[type=range] {appearance:auto;accent-color:#778c5b;border:0;box-shadow:none;padding:0;background:transparent;width:100%;min-height:20px;margin:10px 0 0;cursor:pointer;}
-.studio-precision {margin:18px 0;background:#f7f5e9;padding:14px;border-radius:14px;color:#69775b;font-size:11px;}
-.studio-precision summary {cursor:pointer;}
-.studio-palette {display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0;}
-.foodie-onboarding-panel .studio-palette label {font-size:11px;text-align:center;color:#7b856d;}
-.foodie-onboarding-panel .studio-palette input[type=color] {display:block;width:100%;height:44px;border:1px solid #dedecf;background:white;border-radius:10px;padding:3px;margin-top:8px;cursor:pointer;}
-.studio-sculpt-tools {display:flex;gap:6px;flex-wrap:wrap;}
-.studio-sculpt-note {background:#f1f4e4;border-radius:14px;padding:16px;font-size:12px;color:#6d7e54;}
-.studio-sculpt-note p {margin:8px 0 0!important;}
-.studio-power-grid {display:grid;gap:8px;}
-.foodie-onboarding-panel .studio-power-grid label {display:flex;align-items:center;gap:10px;background:#f6f6eb;border:1px solid #e3e5d4;border-radius:12px;padding:12px;cursor:pointer;}
-.foodie-onboarding-panel .studio-power-grid input {accent-color:#738856;width:17px;height:17px;padding:0;margin:0;flex-shrink:0;}
-.studio-power-grid strong,.studio-power-grid small {display:block;}
-.studio-power-grid strong {font-size:11px;color:#59684c;}
-.studio-power-grid small {font-size:10px;color:#979d88;line-height:1.5;margin-top:4px;}
-.studio-footer {border-top:1px solid #e5e3d6;padding:18px 24px;background:#fcfbf3;}
-.studio-footer .foodie-primary {width:100%;font-size:12px;}
-.studio-footer small {display:block;text-align:center;font-size:9px;color:#9c9f8c;margin-top:10px;}
-#studio-error {color:#b65040;font-size:12px;margin:0 0 8px;}
-@media(max-width:850px) { .studio-layout {grid-template-columns:1fr 1fr;gap:16px;} .studio-stage {padding:12px;} .studio-canvas {height:360px;} .studio-sections {padding:18px;} .studio-families {grid-template-columns:repeat(2,1fr);} .studio-tools {grid-template-columns:repeat(2,1fr);} }
-@media(max-width:650px) { .studio-layout {display:block;} .studio-stage {position:relative;top:auto;margin-bottom:20px;} .studio-canvas {height:330px;} .studio-tools {grid-template-columns:repeat(4,1fr);} .studio-title {margin-top:12px;} .studio-families {grid-template-columns:repeat(3,1fr);} .studio-stage-heading > span:last-child {font-size:8px;} .studio-tabs {position:sticky;top:0;} .studio-sections {min-height:0;} }
-
-@media(max-width:650px) {
-  .studio-stage {position:sticky;top:8px;z-index:2;padding:10px;background:radial-gradient(ellipse at 45% 30%,#fafbef,#e5e9d5 80%);box-shadow:0 10px 22px #38482f17;}
-  .studio-canvas {height:clamp(200px,31vh,260px);}
-  .foodie-onboarding-panel #studio-tip {min-height:18px;margin:9px 0;font-size:10px;}
-  .studio-history {gap:12px;padding-top:8px;}
-  .studio-tools button {font-size:9px;padding:9px 3px;}
-  .studio-sections {padding:16px;}
+.pet-custom-form {
+  text-align: left;
+  max-width: 560px;
+  margin: auto;
+}
+.custom-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.pet-custom-form input[type='color'] {
+  width: 100%;
+  height: 48px;
+  padding: 4px;
+  cursor: pointer;
+}
+.power-choices {
+  border: 1px solid #ddd9ca;
+  border-radius: 16px;
+  padding: 16px;
+  margin: 20px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.power-choices label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  background: #fff8e9;
+  border-radius: 9px;
+  font-size: 13px;
+}
+.power-choices input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #687c42;
+}
+.dice-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin: 24px 0;
+}
+.dice-stat {
+  background: #fff8e9;
+  padding: 14px 5px;
+  border: 1px solid #e5dec9;
+  border-radius: 16px;
+}
+.dice-stat > span {
+  font-size: 12px;
+  display: block;
+}
+.dice-stat b {
+  display: block;
+  font-size: 24px;
+}
+.dice-face {
+  font-size: 38px;
+  display: inline-block;
+  color: #687c42;
+  line-height: 1.3;
+}
+.dart-game {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  margin: 26px 0;
+}
+.prize-bar {
+  position: relative;
+  width: 70px;
+  height: 320px;
+  border: 5px solid white;
+  border-radius: 18px;
+  box-shadow: 0 5px 22px #3d462322;
+  background: linear-gradient(
+    to bottom,
+    #e66d63 0% 20%,
+    #f6b44f 20% 35%,
+    #7cad68 35% 44%,
+    #479354 44% 48%,
+    #d8ed85 48% 52%,
+    #479354 52% 56%,
+    #7cad68 56% 65%,
+    #f6b44f 65% 80%,
+    #e66d63 80% 100%
+  );
+}
+.dart-arrow {
+  position: absolute;
+  left: -42px !important;
+  top: 5%;
+  transform: translateY(-50%);
+  font-size: 38px;
+  color: #384a2d;
+  line-height: 1;
+  filter: drop-shadow(0 2px 0 white);
+}
+.prize-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  color: #344b25;
+}
+.prize-legend {
+  display: grid;
+  gap: 13px;
+  text-align: left;
+  font-size: 13px;
+  max-width: 225px;
+}
+@media (max-width: 520px) {
+  .dice-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .custom-pair {
+    grid-template-columns: 1fr;
+  }
+  .power-choices {
+    grid-template-columns: 1fr;
+  }
+  .dart-game {
+    gap: 18px;
+  }
+  .prize-legend {
+    max-width: 170px;
+  }
 }
 
-@media(max-width:650px) {
-  .studio-layout {display:grid;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);height:calc(100svh - 24px);gap:12px;}
-  .studio-stage {position:relative;top:auto;z-index:auto;margin:0;}
-  .studio-canvas {height:clamp(160px,28svh,236px);}
-  .foodie-onboarding-panel form.studio-inspector {display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0;height:100%;}
-  .studio-tabs {position:relative;top:auto;}
-  .studio-sections {overflow-y:auto;overscroll-behavior:contain;min-height:0;}
-  .studio-footer {padding:12px 16px;}
+.onboarding-step-back {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+.dice-stat b {
+  font-size: 16px;
+  padding-top: 8px;
+}
+.dice-face {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px #35412222;
+  margin: 3px;
+  width: 40px;
+  height: 46px;
+  backface-visibility: visible;
+}
+.dart-flight-scene {
+  position: relative;
+  width: 100%;
+  height: 330px;
+  background: linear-gradient(150deg, #eef0dc, #fff8e9);
+  border-radius: 24px;
+  overflow: hidden;
+  margin: 24px auto;
+}
+.red-white-target {
+  position: absolute;
+  left: 75%;
+  top: 50%;
+  width: 230px;
+  height: 230px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 8px solid #9e302c;
+  background: radial-gradient(
+    circle,
+    #da3f39 0% 9%,
+    white 9% 20%,
+    #df544b 20% 35%,
+    white 35% 50%,
+    #df544b 50% 65%,
+    white 65% 80%,
+    #df544b 80%
+  );
+  box-shadow: 0 10px 25px #793a2825;
+}
+.target-bullseye {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+}
+.flying-dart {
+  position: absolute;
+  left: 8%;
+  top: 80%;
+  font-size: 70px;
+  line-height: 1;
+  color: #354a31;
+  filter: drop-shadow(0 4px 3px #354a3144);
+}
+.dart-impact {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #283724;
+  font-size: 34px;
+  text-shadow: 0 0 3px white;
+}
+.trial-viewport {
+  height: 360px;
+  border-radius: 22px;
+  overflow: hidden;
+}
+.trial-viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.trial-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  touch-action: none;
+}
+.trial-controls button {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid #ced4ba;
+  background: #eceddc;
+  font-size: 24px;
+  color: #354a31;
+}
+.trial-powers {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+@media (max-width: 520px) {
+  .red-white-target {
+    width: 180px;
+    height: 180px;
+    left: 68%;
+  }
+  .dart-flight-scene {
+    height: 300px;
+  }
+  .trial-viewport {
+    height: 320px;
+  }
+}
+
+.flying-dart svg {
+  display: block;
+  width: 120px;
+  height: 40px;
+}
+
+/* The Foodie studio: a persistent stage beside a focused inspector. */
+.foodie-onboarding-panel.studio-panel {
+  width: min(1120px, 100%);
+  max-width: 1120px;
+}
+.studio-title {
+  text-align: left;
+  margin: 16px 0 26px;
+}
+.studio-eyebrow {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #6c7d52;
+  font-weight: 800;
+}
+.foodie-onboarding-panel .studio-title h2 {
+  font-size: clamp(30px, 4vw, 46px);
+  line-height: 1.08;
+  margin: 12px 0;
+  color: #38482f;
+}
+.foodie-onboarding-panel .studio-title p {
+  max-width: 600px;
+  margin: 0;
+  text-align: left;
+}
+.studio-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 26px;
+  align-items: start;
+  text-align: left;
+}
+.studio-stage {
+  position: sticky;
+  top: 22px;
+  border: 1px solid #dadfcb;
+  border-radius: 28px;
+  padding: 20px;
+  background: radial-gradient(ellipse at 45% 30%, #fafbef, #e5e9d5 80%);
+  box-shadow: 0 16px 35px #38482f0a;
+  min-width: 0;
+}
+.studio-stage-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 9px;
+  letter-spacing: 1.6px;
+  color: #74815d;
+}
+#studio-pet-badge {
+  background: #f9fbec;
+  border: 1px solid #d9dfc9;
+  border-radius: 20px;
+  padding: 6px 10px;
+  color: #455537;
+  font-weight: 700;
+}
+.studio-stage-heading > span:last-child {
+  padding: 7px 0;
+}
+.studio-canvas {
+  height: 430px;
+  width: 100%;
+}
+.studio-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+}
+.studio-tools {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.studio-tools button,
+.studio-sculpt-tools button {
+  background: #f7f8ed;
+  border: 1px solid #d6dcc7;
+  border-radius: 10px;
+  padding: 10px 6px;
+  font-size: 11px;
+  color: #506041;
+  cursor: pointer;
+}
+.studio-tools button[aria-pressed='true'],
+.studio-sculpt-tools button[aria-pressed='true'] {
+  background: #647d4e;
+  color: white;
+  border-color: #647d4e;
+}
+.foodie-onboarding-panel #studio-tip {
+  font-size: 11px;
+  line-height: 1.6;
+  min-height: 36px;
+  text-align: center;
+  margin: 16px 0;
+  color: #6d795d;
+}
+.studio-history {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  border-top: 1px solid #d9dfc9;
+  padding-top: 14px;
+}
+.studio-history button {
+  border: 0;
+  background: none;
+  font-size: 10px;
+  color: #526444;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.studio-history button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.foodie-onboarding-panel form.studio-inspector {
+  display: block;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  background: #fffcf5;
+  border: 1px solid #e5e1d3;
+  border-radius: 24px;
+  overflow: hidden;
+}
+.studio-tabs {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  background: #f5f2e8;
+  padding: 8px;
+  gap: 2px;
+}
+.studio-tabs button {
+  flex: 1;
+  min-width: max-content;
+  font-size: 11px;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px;
+  color: #8a8e7b;
+  cursor: pointer;
+}
+.studio-tabs button[aria-selected='true'] {
+  color: #405334;
+  background: white;
+  box-shadow: 0 2px 7px #4752330d;
+  font-weight: 700;
+}
+.studio-sections {
+  padding: 24px;
+  min-height: 360px;
+}
+.studio-sections > section[hidden] {
+  display: none;
+}
+.studio-sections h3 {
+  font-family: Georgia, serif;
+  font-size: 23px;
+  font-weight: 500;
+  margin: 0 0 9px;
+  color: #3c4e32;
+}
+.studio-sections h4 {
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  color: #5d6a50;
+  margin: 20px 0 10px;
+}
+.foodie-onboarding-panel .studio-sections p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0 0 20px;
+  text-align: left;
+  color: #8b8d7d;
+}
+.studio-families {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.studio-families button {
+  text-align: left;
+  border: 1px solid #e4e4d7;
+  border-radius: 14px;
+  background: #fffdf7;
+  padding: 12px 9px;
+  cursor: pointer;
+  min-width: 0;
+  color: #536148;
+}
+.studio-families button > span {
+  display: block;
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+.studio-families strong {
+  display: block;
+  font-size: 11px;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+.studio-families small {
+  display: block;
+  font-size: 9px;
+  line-height: 1.5;
+  color: #989b8a;
+}
+.studio-families button[aria-pressed='true'] {
+  background: #edf1dd;
+  border-color: #9caa82;
+  box-shadow: inset 0 0 0 1px #9caa82;
+}
+.foodie-onboarding-panel .studio-select {
+  display: block;
+  font-size: 11px;
+  color: #66705b;
+  font-weight: 600;
+  margin: 18px 0;
+}
+.foodie-onboarding-panel .studio-select select,
+.foodie-onboarding-panel .studio-select input {
+  margin-top: 8px;
+  background: #fffef8;
+  border: 1px solid #dddccd;
+  color: #46543b;
+  border-radius: 10px;
+  font-size: 12px;
+  padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.studio-moods {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+.studio-moods button {
+  border: 1px solid #dfdfd0;
+  border-radius: 20px;
+  font-size: 11px;
+  padding: 9px 6px;
+  background: transparent;
+  color: #7b846e;
+  cursor: pointer;
+}
+.studio-moods button[aria-pressed='true'] {
+  background: #e4ecd1;
+  border-color: #acb996;
+  color: #415334;
+}
+.foodie-onboarding-panel .studio-range {
+  display: block;
+  margin: 22px 0;
+  color: #6d765f;
+  font-size: 11px;
+}
+.studio-range > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.studio-range output {
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  color: #a2a58e;
+}
+.foodie-onboarding-panel .studio-range input[type='range'] {
+  appearance: auto;
+  accent-color: #778c5b;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+  width: 100%;
+  min-height: 20px;
+  margin: 10px 0 0;
+  cursor: pointer;
+}
+.studio-precision {
+  margin: 18px 0;
+  background: #f7f5e9;
+  padding: 14px;
+  border-radius: 14px;
+  color: #69775b;
+  font-size: 11px;
+}
+.studio-precision summary {
+  cursor: pointer;
+}
+.studio-palette {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+.foodie-onboarding-panel .studio-palette label {
+  font-size: 11px;
+  text-align: center;
+  color: #7b856d;
+}
+.foodie-onboarding-panel .studio-palette input[type='color'] {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border: 1px solid #dedecf;
+  background: white;
+  border-radius: 10px;
+  padding: 3px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+.studio-sculpt-tools {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.studio-sculpt-note {
+  background: #f1f4e4;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 12px;
+  color: #6d7e54;
+}
+.studio-sculpt-note p {
+  margin: 8px 0 0 !important;
+}
+.studio-power-grid {
+  display: grid;
+  gap: 8px;
+}
+.foodie-onboarding-panel .studio-power-grid label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f6f6eb;
+  border: 1px solid #e3e5d4;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+}
+.foodie-onboarding-panel .studio-power-grid input {
+  accent-color: #738856;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+}
+.studio-power-grid strong,
+.studio-power-grid small {
+  display: block;
+}
+.studio-power-grid strong {
+  font-size: 11px;
+  color: #59684c;
+}
+.studio-power-grid small {
+  font-size: 10px;
+  color: #979d88;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.studio-footer {
+  border-top: 1px solid #e5e3d6;
+  padding: 18px 24px;
+  background: #fcfbf3;
+}
+.studio-footer .foodie-primary {
+  width: 100%;
+  font-size: 12px;
+}
+.studio-footer small {
+  display: block;
+  text-align: center;
+  font-size: 9px;
+  color: #9c9f8c;
+  margin-top: 10px;
+}
+#studio-error {
+  color: #b65040;
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+@media (max-width: 850px) {
+  .studio-layout {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .studio-stage {
+    padding: 12px;
+  }
+  .studio-canvas {
+    height: 360px;
+  }
+  .studio-sections {
+    padding: 18px;
+  }
+  .studio-families {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .studio-tools {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 650px) {
+  .studio-layout {
+    display: block;
+  }
+  .studio-stage {
+    position: relative;
+    top: auto;
+    margin-bottom: 20px;
+  }
+  .studio-canvas {
+    height: 330px;
+  }
+  .studio-tools {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .studio-title {
+    margin-top: 12px;
+  }
+  .studio-families {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .studio-stage-heading > span:last-child {
+    font-size: 8px;
+  }
+  .studio-tabs {
+    position: sticky;
+    top: 0;
+  }
+  .studio-sections {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 650px) {
+  .studio-stage {
+    position: sticky;
+    top: 8px;
+    z-index: 2;
+    padding: 10px;
+    background: radial-gradient(ellipse at 45% 30%, #fafbef, #e5e9d5 80%);
+    box-shadow: 0 10px 22px #38482f17;
+  }
+  .studio-canvas {
+    height: clamp(200px, 31vh, 260px);
+  }
+  .foodie-onboarding-panel #studio-tip {
+    min-height: 18px;
+    margin: 9px 0;
+    font-size: 10px;
+  }
+  .studio-history {
+    gap: 12px;
+    padding-top: 8px;
+  }
+  .studio-tools button {
+    font-size: 9px;
+    padding: 9px 3px;
+  }
+  .studio-sections {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 650px) {
+  .studio-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100svh - 24px);
+    gap: 12px;
+  }
+  .studio-stage {
+    position: relative;
+    top: auto;
+    z-index: auto;
+    margin: 0;
+  }
+  .studio-canvas {
+    height: clamp(160px, 28svh, 236px);
+  }
+  .foodie-onboarding-panel form.studio-inspector {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: 0;
+    height: 100%;
+  }
+  .studio-tabs {
+    position: relative;
+    top: auto;
+  }
+  .studio-sections {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    min-height: 0;
+  }
+  .studio-footer {
+    padding: 12px 16px;
+  }
 }
 
 /* Optional random entry point; the existing studio controls and layout remain intact. */
-.foodie-onboarding-panel .studio-random{display:block;margin:10px 0 0 auto;border:1px solid #a5b087;border-radius:11px;background:#f6f7df;color:#546740;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;}
-.foodie-onboarding-panel .studio-random:hover{background:#e8edc9;}
-.studio-start-choice{box-sizing:border-box;width:min(520px,calc(100vw - 32px));max-height:calc(100svh - 32px);overflow:auto;border:1px solid #dfdfc9;border-radius:26px;padding:32px;background:#fcfbf0;color:#4b5941;box-shadow:0 24px 90px #27332433;text-align:center;}
-.studio-start-choice::backdrop{background:#26342977;backdrop-filter:blur(5px);}
-.studio-choice-icon{display:block;font-size:38px;color:#99a66f;}
-.studio-start-choice h2{font:600 28px Georgia,serif;margin:14px 0;}
-.studio-start-choice p{font-size:13px;line-height:1.7;color:#7c846f;}
-.studio-choice-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:24px 0 16px;}
-.studio-choice-actions button{padding:20px 14px;border:1px solid #cdd3b5;border-radius:17px;background:#f0f3dc;color:#536445;cursor:pointer;}
-.studio-choice-actions button:hover{background:#e3eac5;border-color:#87976b;}
-.studio-choice-actions b,.studio-choice-actions small{display:block;}
-.studio-choice-actions b{font-size:16px;margin-bottom:9px;}
-.studio-choice-actions small{font-size:11px;line-height:1.5;color:#7c886b;}
-.studio-start-choice .studio-choice-note{font-size:11px;margin-bottom:0;}
-@media(max-width:450px){.studio-start-choice{padding:24px 18px;}.studio-start-choice h2{font-size:24px;}.studio-choice-actions{gap:9px;}.studio-choice-actions button{padding:18px 10px;}}
+.foodie-onboarding-panel .studio-random {
+  display: block;
+  margin: 10px 0 0 auto;
+  border: 1px solid #a5b087;
+  border-radius: 11px;
+  background: #f6f7df;
+  color: #546740;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.foodie-onboarding-panel .studio-random:hover {
+  background: #e8edc9;
+}
+.studio-start-choice {
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100svh - 32px);
+  overflow: auto;
+  border: 1px solid #dfdfc9;
+  border-radius: 26px;
+  padding: 32px;
+  background: #fcfbf0;
+  color: #4b5941;
+  box-shadow: 0 24px 90px #27332433;
+  text-align: center;
+}
+.studio-start-choice::backdrop {
+  background: #26342977;
+  backdrop-filter: blur(5px);
+}
+.studio-choice-icon {
+  display: block;
+  font-size: 38px;
+  color: #99a66f;
+}
+.studio-start-choice h2 {
+  font:
+    600 28px Georgia,
+    serif;
+  margin: 14px 0;
+}
+.studio-start-choice p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #7c846f;
+}
+.studio-choice-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 24px 0 16px;
+}
+.studio-choice-actions button {
+  padding: 20px 14px;
+  border: 1px solid #cdd3b5;
+  border-radius: 17px;
+  background: #f0f3dc;
+  color: #536445;
+  cursor: pointer;
+}
+.studio-choice-actions button:hover {
+  background: #e3eac5;
+  border-color: #87976b;
+}
+.studio-choice-actions b,
+.studio-choice-actions small {
+  display: block;
+}
+.studio-choice-actions b {
+  font-size: 16px;
+  margin-bottom: 9px;
+}
+.studio-choice-actions small {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #7c886b;
+}
+.studio-start-choice .studio-choice-note {
+  font-size: 11px;
+  margin-bottom: 0;
+}
+@media (max-width: 450px) {
+  .studio-start-choice {
+    padding: 24px 18px;
+  }
+  .studio-start-choice h2 {
+    font-size: 24px;
+  }
+  .studio-choice-actions {
+    gap: 9px;
+  }
+  .studio-choice-actions button {
+    padding: 18px 10px;
+  }
+}
