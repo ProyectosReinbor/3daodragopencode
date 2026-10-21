@@ -1,4 +1,5 @@
 export interface WorldProgress {
+  purchaseReceipts?: Record<string, { item: string; quantity: number }>;
   combat?: {
     cooldowns: Record<string, number>;
     encounters: Record<string, { kind: string; health: number; nextSpawn: number }>;

@@ -1,3 +1,9 @@
+import {
+  pendingPurchase,
+  rememberPurchase,
+  confirmPurchase,
+  type PurchaseIntent,
+} from './purchase-intent';
 import { cityRoadMarkup } from './city-map';
 import { openCityRoom, closeCityRoom, nearbyCityEntrance, type CityRoom } from './city-life';
 import { CITY_CITIZENS, CITY_VENUES, CITY_PARKS } from '../../shared/city-life.js';
@@ -58,7 +64,7 @@ import { createWorld, type Enemy } from './world';
 import { zoneConfig } from './zones';
 import type { PlayerProfile, ZoneId } from './profile';
 import { getAllAbilities, getElementAbilities, calculateAbilityEffect } from './abilities';
-import { getToken } from './api';
+import { getPhone, getToken } from './api';
 import { createCityWorld, CITY_WORLD, biomeAt } from './city-world';
 import { WORLD_ITEMS, MONSTER_REWARDS, initialWorldProgress } from '../../shared/world-items';
 import './world-play.css';
@@ -743,7 +749,7 @@ export function mountWorldPlay(options: {
       progress = profile!.world!;
       pet = profile!.characters!.characters.find((p) => p.id === pet.id)!;
     }
-    if (!response.ok) throw new Error(data.error);
+    if (!response.ok) throw Object.assign(new Error(data.error), { status: response.status });
     if (!disposed) {
       const entry = rewardEntry(String(body.action), data.reward, previousLevel, pet.level);
       if (entry) {
@@ -994,17 +1000,29 @@ export function mountWorldPlay(options: {
         ''
       )}<p>La fabricación requiere acercarte a la forja; aquí puedes planificar sin gastar recursos.</p><button data-material-forge>Localizar forja</button></article>`;
   }
+  const purchaseOwner = getPhone() || pet.id;
   let shopQuantity = 1;
   function shop() {
+    let pending: PurchaseIntent | null;
+    try {
+      pending = pendingPurchase(purchaseOwner);
+    } catch {
+      modal.hidden = false;
+      modal.innerHTML =
+        '<article role="dialog" aria-modal="true" aria-label="Tienda del boticario"><button data-close>Cerrar</button><h2>No se pudo recuperar la compra pendiente</h2><p>No se harán nuevos cargos hasta recuperar el almacenamiento de este navegador.</p></article>';
+      return;
+    }
     modal.hidden = false;
     modal.innerHTML = `<article role="dialog" aria-modal="true" aria-label="Tienda del boticario"><button data-close aria-label="Cerrar tienda">✕</button><h2>${safe(activeRoom?.name || 'El boticario')}</h2><p>Tienes ${progress.coins} monedas. Elige cuántas unidades comprar.</p><div class="world-journal-filters" role="group" aria-label="Cantidad por compra">${SHOP_QUANTITIES.map((quantity) => `<button data-shop-quantity="${quantity}" aria-pressed="${shopQuantity === quantity}" ${busy ? 'disabled' : ''}>${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}</button>`).join('')}</div>${Object.entries(
       WORLD_CONSUMABLES
     )
       .map(([item, product]) => {
         const total = product.price * shopQuantity;
-        return `<button data-buy="${item}" ${busy || training || progress.coins < total ? 'disabled' : ''}>${product.icon} ${product.name} × ${shopQuantity} · ${total} monedas<small>${product.description} · Tienes ${progress[item as 'potions' | 'mana']}</small><small>${progress.coins < total ? `Te faltan ${total - progress.coins} monedas` : `${product.price} monedas por unidad`}</small></button>`;
+        return `<button data-buy="${item}" ${busy || training || pending || progress.coins < total ? 'disabled' : ''}>${product.icon} ${product.name} × ${shopQuantity} · ${total} monedas<small>${product.description} · Tienes ${progress[item as 'potions' | 'mana']}</small><small>${progress.coins < total ? `Te faltan ${total - progress.coins} monedas` : `${product.price} monedas por unidad`}</small></button>`;
       })
-      .join('')}${busy ? '<p role="status">Procesando compra…</p>' : ''}</article>`;
+      .join(
+        ''
+      )}${pending ? `<p role="status">Hay una compra pendiente de confirmar: ${pending.quantity} ${safe(WORLD_CONSUMABLES[pending.item].name)}. Puedes consultarla sin volver a pagar.</p><button data-retry-purchase ${busy || !session ? 'disabled' : ''}>Confirmar compra pendiente</button>` : ''}${busy ? '<p role="status">Procesando compra…</p>' : ''}</article>`;
   }
   let mapX = 0,
     mapZ = 0,
@@ -1632,24 +1650,42 @@ export function mountWorldPlay(options: {
           shopQuantity = quantity;
           shop();
         }
-      } else if (button.dataset.buy || button.dataset.equip) {
+      } else if (
+        button.dataset.buy ||
+        button.hasAttribute('data-retry-purchase') ||
+        button.dataset.equip
+      ) {
         if (busy || training) return;
+        const buying = !button.dataset.equip;
+        let purchase: PurchaseIntent | null = null;
         busy = true;
-        if (button.dataset.buy) shop();
+        if (buying) shop();
         if (button.dataset.equip) equipment();
         try {
+          if (buying) purchase = pendingPurchase(purchaseOwner);
+          if (buying && !purchase) {
+            purchase = {
+              requestId: crypto.randomUUID(),
+              item: button.dataset.buy as 'potions' | 'mana',
+              quantity: shopQuantity,
+            };
+            rememberPurchase(purchaseOwner, purchase);
+          }
           await request(
-            button.dataset.buy
-              ? { action: 'buy', item: button.dataset.buy, quantity: shopQuantity }
+            buying
+              ? { action: 'buy', ...purchase }
               : { action: 'equip', item: button.dataset.equip }
           );
+          if (buying) confirmPurchase(purchaseOwner, purchase!.requestId);
           if (disposed) return;
-          if (button.dataset.buy) notify(`Compra recibida: ${shopQuantity} consumibles.`);
+          if (buying) notify(`Compra recibida: ${purchase!.quantity} consumibles.`);
           else {
             health = Math.min(health, maxHealth());
             notify('Equipo actualizado. Tus estadísticas ya incluyen la nueva pieza.');
           }
         } catch (e) {
+          if (buying && purchase && (e as { status?: number }).status === 400)
+            confirmPurchase(purchaseOwner, purchase!.requestId);
           notify((e as Error).message);
         } finally {
           busy = false;

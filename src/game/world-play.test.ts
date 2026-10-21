@@ -875,6 +875,57 @@ describe('full screen world controls', () => {
     );
     expect(document.querySelector<HTMLButtonElement>('[data-buy="mana"]')!.disabled).toBe(true);
   }, 20000);
+  it('recovers a lost purchase response after re-entry with the same request ID', async () => {
+    stop();
+    const pet = createStarterCharacter();
+    const profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    const receipts = new Set<string>();
+    let lostResponse = true;
+    const purchaseIds: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(init.body as string);
+        if (body.action === 'buy') {
+          purchaseIds.push(body.requestId);
+          if (!receipts.has(body.requestId)) {
+            buyConsumables(profile.world!, body.item, body.quantity);
+            receipts.add(body.requestId);
+          }
+          if (lostResponse) {
+            lostResponse = false;
+            throw new Error('Respuesta perdida');
+          }
+        }
+        return {
+          ok: true,
+          json: async () => ({ session: 'purchase-qa', profile: structuredClone(profile) }),
+        };
+      })
+    );
+    const enterShop = async () => {
+      stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+      roomControl.entrance = true;
+      key('f');
+      roomControl.entrance = false;
+      document.querySelector<HTMLButtonElement>('[data-room-action="shop"]')!.click();
+    };
+    await enterShop();
+    document.querySelector<HTMLButtonElement>('[data-buy="mana"]')!.click();
+    await vi.waitFor(() => expect(document.querySelector('[data-retry-purchase]')).not.toBeNull());
+    expect(profile.world.coins).toBe(28);
+    stop();
+    await enterShop();
+    expect(document.querySelector<HTMLButtonElement>('[data-buy="mana"]')!.disabled).toBe(true);
+    document.querySelector<HTMLButtonElement>('[data-retry-purchase]')!.click();
+    await vi.waitFor(() => expect(document.querySelector('[data-retry-purchase]')).toBeNull());
+    expect(purchaseIds).toHaveLength(2);
+    expect(purchaseIds[0]).toBe(purchaseIds[1]);
+    expect(profile.world.coins).toBe(28);
+    expect(profile.world.mana).toBe(4);
+  }, 20000);
   it('registers a passport stamp from inside a venue and restores it on a later visit', async () => {
     stop();
     const pet = createStarterCharacter(),

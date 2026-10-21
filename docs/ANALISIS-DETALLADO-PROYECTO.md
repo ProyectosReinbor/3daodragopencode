@@ -171,3 +171,7 @@ No se recorrió visualmente la aplicación en esta revisión, no se probó hardw
 ## Actualización posterior: reinicio de recompensas corregido
 
 La entrega de persistencia de combate conserva encuentros y cooldowns en el perfil de la cuenta y los restaura al entrar al mundo. El hallazgo «reiniciar sesión permite eludir recuperación de combate» queda corregido para nuevas acciones guardadas, incluidas reconexiones y reinicios de proceso. Las sesiones temporales todavía deben reabrirse tras reiniciar servidor; no se convierten en sesiones permanentes. Los hallazgos de alcance/recursos de combate y compras idempotentes permanecen abiertos. Véase `MUNDO-ABIERTO-VILLAVICENCIO.md` para alcance y pruebas.
+
+## Actualización posterior: doble cobro de compras corregido
+
+El mundo exige clave de compra y conserva recibos por cuenta junto con saldo/inventario. Repetir la misma intención no vuelve a gastar; cambiar su contenido da conflicto. La tienda conserva la intención local y permite confirmar una respuesta perdida con la misma clave tras reentrar. El hallazgo de doble cobro queda corregido para este recorrido; la recuperación desde otro dispositivo o tras borrar almacenamiento sigue fuera de esta entrega. Véase `MUNDO-ABIERTO-VILLAVICENCIO.md`.

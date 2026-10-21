@@ -83,3 +83,7 @@ El [análisis detallado](docs/ANALISIS-DETALLADO-PROYECTO.md), sobre `a6bcfd8`, 
 ## Desarrollo: combate persistente al reconectar
 
 Implementado el primer cierre del análisis: encuentros y cooldowns se conservan en el perfil de la cuenta; reconexión, cambio de Pet y reinicio del proceso no reinician premios ni esperas. El mundo restaura representación de enemigos y temporizadores al entrar. Véanse alcance y regresiones en `docs/MUNDO-ABIERTO-VILLAVICENCIO.md`. Ataques sin alcance validado y compras sin idempotencia continúan pendientes.
+
+## Desarrollo: compras sin doble cobro
+
+Implementadas claves obligatorias de compra, recibos persistentes y recuperación de respuesta perdida mediante «Confirmar compra pendiente». Los reintentos no vuelven a descontar monedas; cambiar producto/cantidad con la misma clave produce conflicto. El cliente conserva la intención por cuenta al recargar. Véanse límites de almacenamiento e implementación en `docs/MUNDO-ABIERTO-VILLAVICENCIO.md`. La validación autoritativa de alcance/movimiento y recursos de combate sigue pendiente.

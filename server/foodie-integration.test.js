@@ -219,7 +219,7 @@ test('world rewards are server-owned, persisted, and cannot be replayed or forge
   assert.equal(start.status,200);
   const session = start.data.session;
   assert.equal(start.data.profile.world.coins,40);
-  const buy = await request('/world/action',{session,action:'buy',item:'potions'});
+  const buy = await request('/world/action',{session,action:'buy',requestId:crypto.randomUUID(),item:'potions'});
   assert.equal(buy.data.profile.world.coins,25);
   assert.equal(buy.data.profile.world.potions,4);
   assert.equal((await request('/world/action',{session,action:'equip',item:'blade'})).status,400);
@@ -251,5 +251,5 @@ test('world rewards are server-owned, persisted, and cannot be replayed or forge
   assert.equal((await request('/world/action',{session,action:'consume',item:'potions'})).status,400);
   const other=await request('/world/start',{characterId:pet.id});
   assert.equal(other.status,200);
-  assert.equal((await request('/world/action',{session,action:'buy',item:'mana'})).status,409);
+  assert.equal((await request('/world/action',{session,action:'buy',requestId:crypto.randomUUID(),item:'mana'})).status,409);
 });

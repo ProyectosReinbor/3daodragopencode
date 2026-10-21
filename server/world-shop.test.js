@@ -27,7 +27,7 @@ test('shop API owns prices and quantities and requires the account session', asy
   const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
   let session;
   const request = async (body, path = 'action', user = 'owner') => {
-    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/world/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user': user }, body: JSON.stringify({ session, ...body }) });
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/world/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user': user }, body: JSON.stringify({ session, requestId: crypto.randomUUID(), ...body }) });
     return { status: response.status, data: await response.json() };
   };
   try {
@@ -43,5 +43,18 @@ test('shop API owns prices and quantities and requires the account session', asy
     assert.equal((await request({ action: 'buy', item: 'potions' })).status, 200);
     assert.equal(profile.world.coins, 49);
     assert.equal(profile.world.potions, 4);
+    const intent = { action: 'buy', item: 'mana', quantity: 1, requestId: 'repeat-purchase-qa' };
+    const results = await Promise.all([request(intent), request(intent)]);
+    assert.deepEqual(results.map(r => r.status), [200, 200]);
+    assert.equal(profile.world.coins, 37);
+    assert.equal(profile.world.mana, 7);
+    assert.equal((await request({ ...intent, quantity: 3 })).status, 409);
+    assert.equal((await request({ ...intent, item: 'potions' })).status, 409);
+    session = (await request({ characterId: 'pet' }, 'start')).data.session;
+    assert.equal((await request(intent)).status, 200);
+    assert.equal(profile.world.coins, 37);
+    assert.equal((await request({ ...intent, requestId: null })).status, 400);
+    assert.equal((await request({ ...intent, requestId: '__proto__' })).status, 400);
+
   } finally { await new Promise(resolve => server.close(resolve)); }
 });

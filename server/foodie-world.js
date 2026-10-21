@@ -8,7 +8,7 @@ import { startAdventure, advanceAdventure } from '../shared/world-adventure.js';
 import { activateCamp } from '../shared/world-camps.js';
 import { visitVenue } from '../shared/world-passport.js';
 import { beginVenueGame, finishVenueGame } from './venue-game.js';
-import { buyConsumables } from '../shared/world-shop.js';
+import { purchaseOnce } from './world-purchases.js';
 // Sessions authorize access; the persisted account owns combat state and cooldowns.
 export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = () => Date.now() }) {
   const sessions = new Map();
@@ -60,8 +60,8 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
         }
       } catch(error){return res.status(400).json({error:error.message,profile,serverNow:clock()});}
     } else if (action === 'buy') {
-      try { buyConsumables(world, item, req.body.quantity); }
-      catch(error) { return res.status(400).json({error:error.message}); }
+      try { purchaseOnce(world, req.body); }
+      catch(error) { return res.status(error.status || 400).json({error:error.message}); }
     } else if (action === 'consume') {
       if (!['potions', 'mana'].includes(item) || world[item] < 1) return res.status(400).json({ error: 'No te quedan consumibles.' });
       const combat = world.combat ||= { cooldowns: {}, encounters: {} };
