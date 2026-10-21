@@ -773,6 +773,28 @@ export function mountWorldPlay(options: {
         if (data.serverNow) serverOffset = data.serverNow - Date.now();
         profile = data.profile;
         progress = profile!.world!;
+        // Restore server-owned timers into the local animation clock on every entry.
+        const localNow = performance.now();
+        const serverNow = data.serverNow || Date.now();
+        const remaining = (until = 0) => Math.max(0, until - serverNow);
+        const combat = progress.combat;
+        attackAt = localNow + remaining(combat?.cooldowns[-1]);
+        cooldown.forEach((_, slot) => {
+          cooldown[slot] = localNow + remaining(combat?.cooldowns[slot]);
+        });
+        for (const item of ['potions', 'mana'] as const)
+          consumeAt[item] = localNow + remaining(combat?.cooldowns[item]);
+        world.enemies.forEach((enemy, index) => {
+          const saved = combat?.encounters['city:' + index];
+          if (!saved || saved.kind !== enemy.kind) return;
+          if (saved.health > 0) enemy.health = saved.health;
+          else if (remaining(saved.nextSpawn) > 0) {
+            enemy.health = 0;
+            enemy.alive = false;
+            enemy.mesh.visible = false;
+            respawns.set(enemy, localNow + remaining(saved.nextSpawn));
+          }
+        });
         const camp = activeCamp(progress);
         const start = camp || zoneConfig(zone).playerStart;
         model.position.set(start.x, 0, start.z);

@@ -196,3 +196,13 @@ Tres misiones: reunir seis materiales, derrotar cinco monstruos y fabricar una p
 Objetos recogibles y vetas tienen ubicación, cantidad y recuperación definidas en el catálogo compartido. La extracción requiere tres segundos y un token de sesión; recoger objetos es inmediato. Los materiales también llegan del botín de monstruos. La forja junto al inicio permite fabricar hoja, coraza y gema y equiparlas desde Equipo. El minimapa marca recursos, guías y forja; el mapa completo lista coordenadas y distancias.
 
 Los encuentros del mundo usan IDs y tipos de un manifiesto compartido para rechazar enemigos inventados. Hay encuentros cerca del inicio, patrullas junto a caminos y grupos de bioma. La proximidad de recogida y fabricación se comprueba con la posición reportada por el cliente; esto no constituye movimiento autoritativo ni prueba de visita física. Las pruebas de aventura usan perfiles ficticios en memoria.
+
+## Persistencia de combate al reconectar — 20 de octubre de 2026
+
+El estado de enemigos y las recargas de combate/consumibles pasan de la sesión temporal a `profile.world.combat`. Se guardan junto con recompensas e inventario mediante la escritura del perfil. Una nueva entrada, cambio de mascota o reinicio del servidor conserva vida parcial, reaparición y esperas; otra cuenta mantiene su propio progreso. La sesión anterior sigue invalidándose al entrar de nuevo.
+
+El cliente restaura los temporizadores desde `serverNow` al reloj local y oculta enemigos que todavía esperan reaparecer. Los perfiles anteriores incorporan el estado al primer ataque o consumo, sin migración destructiva. Los encuentros derrotados cuya espera terminó se retiran al abrir un nuevo encuentro para acotar almacenamiento; el límite de 150 encuentros pendientes se mantiene.
+
+Se añadieron regresiones de reconexión, cambio de Pet, reinicio del controlador, aislamiento entre cuentas, vida parcial, consumibles y fallo de escritura. La reaparición y el siguiente premio se permiten cuando vence el plazo. Esta entrega corrige el reinicio de recompensas; siguen pendientes alcance/movimiento y recursos de combate autorizados, compras idempotentes y recuperación general de sesiones.
+
+Verificación de la entrega: 337 pruebas de cliente y 52 de servidor aprobadas, TypeScript, formato y lint sin errores (14 advertencias previas), build de producción aprobado con advertencia de tamaño existente. Se corrigió una espera de la integración de combate para comprobar reaparición después de terminar el cooldown del golpe final. Web, panel y API mediante proxy responden HTTP 200 tras reiniciar el entorno local. La restauración visual se verifica con WebGL simulado; no se hizo revisión en dispositivo físico.

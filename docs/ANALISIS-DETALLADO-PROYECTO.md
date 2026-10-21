@@ -167,3 +167,7 @@ En esta revisión se ejecutó una sonda del controlador de mundo con perfil clon
 La última comprobación integral del mismo código `a6bcfd8`, realizada en el bloque anterior, aprobó `npm run check` (336 pruebas Vitest + 48 Node), formato, TypeScript y build; lint conservó 14 advertencias. Este cambio solo añade documentación y no vuelve a certificar CI remoto. No se repitió toda la batería sin cambios de lógica.
 
 No se recorrió visualmente la aplicación en esta revisión, no se probó hardware móvil, no se inspeccionaron datos de jugadores ni se validó el despliegue remoto. La presencia del navegador en localhost no sustituye esas pruebas. Las funciones descritas como implementadas se basan en conexión estática y pruebas existentes, con los límites señalados.
+
+## Actualización posterior: reinicio de recompensas corregido
+
+La entrega de persistencia de combate conserva encuentros y cooldowns en el perfil de la cuenta y los restaura al entrar al mundo. El hallazgo «reiniciar sesión permite eludir recuperación de combate» queda corregido para nuevas acciones guardadas, incluidas reconexiones y reinicios de proceso. Las sesiones temporales todavía deben reabrirse tras reiniciar servidor; no se convierten en sesiones permanentes. Los hallazgos de alcance/recursos de combate y compras idempotentes permanecen abiertos. Véase `MUNDO-ABIERTO-VILLAVICENCIO.md` para alcance y pruebas.

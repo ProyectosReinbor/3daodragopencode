@@ -15,6 +15,18 @@ import { Raycaster } from 'three';
 const rendered = vi.hoisted(() => ({ x: 0, y: 0, z: 0, disposed: false, pixelRatio: 1 }));
 const roomControl = vi.hoisted(() => ({ entrance: false }));
 const battleControl = vi.hoisted(() => ({ enemy: null as Enemy | null, enemies: [] as Enemy[] }));
+const cityControl = vi.hoisted(() => ({ enemies: [] as Enemy[] }));
+vi.mock('./city-world', async () => {
+  const actual = await vi.importActual<typeof import('./city-world')>('./city-world');
+  return {
+    ...actual,
+    createCityWorld: (...args: Parameters<typeof actual.createCityWorld>) => {
+      const world = actual.createCityWorld(...args);
+      cityControl.enemies = world.enemies;
+      return world;
+    },
+  };
+});
 vi.mock('./world', async () => {
   const actual = await vi.importActual<typeof import('./world')>('./world');
   return {
@@ -100,6 +112,33 @@ describe('full screen world controls', () => {
   function key(value: string) {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: value, cancelable: true }));
   }
+  it('restores enemy health, respawn and action cooldowns from the server on entry', async () => {
+    stop();
+    const pet = createStarterCharacter();
+    const profile = createProfile(pet);
+    profile.world = initialWorldProgress();
+    profile.world.combat = {
+      cooldowns: { '0': 105000, '-1': 100450, potions: 101500 },
+      encounters: { 'city:0': { kind: 'wolf', health: 0, nextSpawn: 120000 } },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ session: 'restored-qa', profile, serverNow: 100000 }),
+      })
+    );
+    stop = mountWorldPlay({ pet, profile, onExit: vi.fn() });
+    await vi.waitFor(() => expect(cityControl.enemies[0]?.alive).toBe(false));
+    expect(cityControl.enemies[0]?.health).toBe(0);
+    expect(cityControl.enemies[0]?.mesh.visible).toBe(false);
+    tick();
+    expect(document.querySelector<HTMLButtonElement>('[data-power="0"]')?.disabled).toBe(true);
+    now = 21001;
+    tick();
+    expect(cityControl.enemies[0]?.alive).toBe(true);
+    expect(cityControl.enemies[0]?.health).toBe(cityControl.enemies[0]?.maxHealth);
+  });
   it('moves and turns with a gamepad and clears input on disconnect and focus loss', () => {
     const pad = {
       index: 0,

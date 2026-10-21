@@ -79,3 +79,7 @@ Resultado final del bloque: `npm run check` aprobado (salida 0), con 336 pruebas
 ## Revisión detallada de alcance y brechas
 
 El [análisis detallado](docs/ANALISIS-DETALLADO-PROYECTO.md), sobre `a6bcfd8`, inventaría funcionalidades conectadas, código heredado y criterios faltantes por bloque A0–A6. La sonda aislada en memoria confirmó tres prioridades: ataque sin posición aceptado, reinicio de cooldown/encuentros al crear sesión y compra idéntica cobrada dos veces. También se detectó que la API de presencia no tiene consumidor en el cliente actual y que el formulario administrativo conserva la emisión inmediata en lugar del código pendiente de canje. Estos puntos son hallazgos pendientes, no correcciones aplicadas.
+
+## Desarrollo: combate persistente al reconectar
+
+Implementado el primer cierre del análisis: encuentros y cooldowns se conservan en el perfil de la cuenta; reconexión, cambio de Pet y reinicio del proceso no reinician premios ni esperas. El mundo restaura representación de enemigos y temporizadores al entrar. Véanse alcance y regresiones en `docs/MUNDO-ABIERTO-VILLAVICENCIO.md`. Ataques sin alcance validado y compras sin idempotencia continúan pendientes.

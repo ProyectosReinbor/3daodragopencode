@@ -1,4 +1,8 @@
 export interface WorldProgress {
+  combat?: {
+    cooldowns: Record<string, number>;
+    encounters: Record<string, { kind: string; health: number; nextSpawn: number }>;
+  };
   venueGameCooldowns?: Record<string, number>;
   visitedVenues?: string[];
   passportRewarded?: boolean;

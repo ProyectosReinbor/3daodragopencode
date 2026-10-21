@@ -237,6 +237,8 @@ test('world rewards are server-owned, persisted, and cannot be replayed or forge
   assert.equal(hit.data.reward.xp,15);
   assert.equal(hit.data.profile.world.kills,1);
   assert.equal((await request('/world/action',{session,action:'attack',slot:3,kind:'wolf',enemy:'aldea:0'})).status,429);
+  // If a basic hit finished the enemy, let its 450ms cooldown end before checking respawn.
+  await new Promise(resolve => setTimeout(resolve, 475));
   assert.equal((await request('/world/action',{session,action:'attack',slot:-1,kind:'wolf',enemy:'aldea:0'})).status,400);
   const forged = structuredClone(hit.data.profile); forged.world.coins=999999;
   assert.equal((await request('/profile',forged,'PUT')).status,200);

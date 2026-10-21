@@ -88,3 +88,5 @@ Primer bloque de fase 0 implementado el 20 de octubre de 2026: versión Node com
 ## Ajuste de prioridades tras revisión detallada
 
 Antes de ampliar recompensas o implementar evolución: impedir que una sesión nueva reinicie encuentros/cooldowns premiados, validar alcance y recursos de combate, y hacer idempotentes las compras del mundo. Después, unificar la presentación del inventario y conectar el panel a emisión de códigos pendientes. El [análisis detallado](docs/ANALISIS-DETALLADO-PROYECTO.md) contiene reproducciones, límites y criterios; las fases de producto permanecen abiertas según sus criterios de salida.
+
+Avance posterior: estado de combate y recargas persistidos por cuenta, con restauración visual al entrar y regresiones de reconexión/reinicio. La prioridad 1 sigue abierta respecto a alcance, movimiento y recursos de combate; la prioridad 2 de compras idempotentes sigue pendiente.

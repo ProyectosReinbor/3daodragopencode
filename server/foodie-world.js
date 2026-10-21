@@ -9,7 +9,7 @@ import { activateCamp } from '../shared/world-camps.js';
 import { visitVenue } from '../shared/world-passport.js';
 import { beginVenueGame, finishVenueGame } from './venue-game.js';
 import { buyConsumables } from '../shared/world-shop.js';
-// Sessions own combat cooldowns and encounter health. Rewards never come from profile PUT.
+// Sessions authorize access; the persisted account owns combat state and cooldowns.
 export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = () => Date.now() }) {
   const sessions = new Map();
   app.post('/api/world/start', auth, (req, res) => {
@@ -21,7 +21,7 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
     saveProfile(req.phone, profile);
     for (const [id, old] of sessions) if (old.phone === req.phone || old.expires < clock()) sessions.delete(id);
     const id = randomUUID();
-    sessions.set(id, { publicId: randomUUID(), phone: req.phone, petId: pet.id, encounters: new Map(), cooldowns: {}, expires: clock() + 3600000 });
+    sessions.set(id, { publicId: randomUUID(), phone: req.phone, petId: pet.id, expires: clock() + 3600000 });
     res.json({ session: id, profile, serverNow: clock() });
   });
   app.post('/api/world/action', auth, (req, res) => {
@@ -64,8 +64,9 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
       catch(error) { return res.status(400).json({error:error.message}); }
     } else if (action === 'consume') {
       if (!['potions', 'mana'].includes(item) || world[item] < 1) return res.status(400).json({ error: 'No te quedan consumibles.' });
-      if ((session.cooldowns[item] || 0) > clock()) return res.status(400).json({ error: 'Espera un momento para usar otra poción.' });
-      session.cooldowns[item] = clock() + 1500; world[item]--;
+      const combat = world.combat ||= { cooldowns: {}, encounters: {} };
+      if ((combat.cooldowns[item] || 0) > clock()) return res.status(400).json({ error: 'Espera un momento para usar otra poción.' });
+      combat.cooldowns[item] = clock() + 1500; world[item]--;
     } else if (action === 'equip') {
       if (!WORLD_ITEMS[item] || !world.items.includes(item)) return res.status(400).json({ error: 'Todavía no has encontrado ese objeto.' });
       world.equipped[pet.id] ||= {}; world.equipped[pet.id][WORLD_ITEMS[item].slot] = item;
@@ -115,15 +116,21 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
       if (!spec || typeof enemy !== 'string' || enemy.length > 80 || !Number.isInteger(slot) || slot < -1 || slot > 3) return res.status(400).json({ error: 'Ataque inválido.' });
       const now = clock();
       const cooldown = [450, 5000, 8000, 7000, 22000][slot + 1];
-      if ((session.cooldowns[slot] || 0) > now) return res.status(429).json({ error: 'La habilidad todavía se está recuperando.' });
-      session.cooldowns[slot] = now + cooldown;
-      let encounter = session.encounters.get(enemy);
+      const combat = world.combat ||= { cooldowns: {}, encounters: {} };
+      if ((combat.cooldowns[slot] || 0) > now) return res.status(429).json({ error: 'La habilidad todavía se está recuperando.' });
+      let encounter = combat.encounters[enemy];
+      if (encounter && (encounter.kind !== kind || (encounter.health <= 0 && encounter.nextSpawn > now)))
+        return res.status(400).json({ error: 'Este enemigo ya fue derrotado.' });
       if (!encounter) {
-        if (session.encounters.size > 150) return res.status(400).json({ error: 'Vuelve a entrar al mundo.' });
-        encounter = { kind, health: spec.health, nextSpawn: 0 }; session.encounters.set(enemy, encounter);
+        // Completed, respawnable encounters no longer need a stored health entry.
+        for (const [id, previous] of Object.entries(combat.encounters))
+          if (previous.health <= 0 && previous.nextSpawn <= now) delete combat.encounters[id];
+        if (Object.keys(combat.encounters).length >= 150) return res.status(400).json({ error: 'Termina los encuentros pendientes antes de buscar otro rival.' });
+        encounter = { kind, health: spec.health, nextSpawn: 0 };
+        combat.encounters[enemy] = encounter;
       }
-      if (encounter.kind !== kind || (encounter.health <= 0 && encounter.nextSpawn > now)) return res.status(400).json({ error: 'Este enemigo ya fue derrotado.' });
       if (encounter.health <= 0) encounter.health = spec.health;
+      combat.cooldowns[slot] = now + cooldown;
       const equipment = Object.values(world.equipped[pet.id] || {}).map(id => WORLD_ITEMS[id]);
       const attack = pet.baseStats.atk + pet.level - 1 + (pet.upgrades || []).filter(u => u.stat === 'atk').reduce((sum, u) => sum + (u.amount || u.value || 0), 0) + equipment.filter(x => x?.stat === 'atk').reduce((sum, x) => sum + x.bonus, 0);
       damage = Math.round((10 + attack * 2 + pet.baseStats.ability) * (slot === 3 ? 3 : slot === -1 ? 0.7 : 1.3));
@@ -145,7 +152,7 @@ export function mountFoodieWorld(app, { auth, getProfile, saveProfile, clock = (
       }
     } else return res.status(400).json({ error: 'Acción desconocida.' });
     saveProfile(req.phone, profile);
-    res.json({ profile, reward, serverNow:clock(), damage, enemyHealth: enemy ? session.encounters.get(enemy)?.health : undefined });
+    res.json({ profile, reward, serverNow:clock(), damage, enemyHealth: enemy ? world.combat?.encounters[enemy]?.health : undefined });
   });
   app.post('/api/world/presence', auth, (req,res) => {
     const session = sessions.get(req.body.session), now = clock();
